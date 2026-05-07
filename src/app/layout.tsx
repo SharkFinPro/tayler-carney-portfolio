@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Noto_Serif, Inter, DM_Mono } from "next/font/google";
 import { Metadata } from "next";
+import NavBar from "@/components/NavBar";
 
 const notoSerif = Noto_Serif({
   subsets: ["latin"],
@@ -50,6 +51,7 @@ export default function RootLayout({
       className={`${notoSerif.variable} ${inter.variable} ${dmMono.variable}`}
     >
       <body>
+        <NavBar />
         {children}
       </body>
     </html>
