@@ -1,0 +1,15 @@
+import Link from "next/link";
+import Navigation from "./Navigation";
+import styles from "./NavBar.module.scss";
+
+export default function NavBar() {
+  return (
+    <header className={styles.wrapper}>
+      <div className={styles.container}>
+        <Link href="/" className={styles.logo}>Tayler Carney</Link>
+
+        <Navigation />
+      </div>
+    </header>
+  );
+}

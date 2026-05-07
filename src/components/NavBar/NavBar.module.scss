@@ -1,0 +1,157 @@
+.wrapper {
+  height: 70px;
+  padding-inline: 30px;
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+
+  border-bottom: 1px solid var(--canvas-deep);
+
+  background: var(--canvas);
+}
+
+.container {
+  max-width: var(--max-width);
+  width: 100%;
+  height: 100%;
+  margin-inline: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  font-weight: 500;
+  font-size: 22px;
+  letter-spacing: -1.0px;
+  color: var(--accent);
+  text-decoration: none;
+  font-family: var(--ff-serif);
+}
+
+.nav {
+  display: none;
+  height: 100%;
+  gap: 0.5rem;
+  font-family: var(--ff-sans);
+  text-transform: uppercase;
+}
+
+.nav_item {
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: color 0.3s ease;
+  display: grid;
+  place-content: center;
+  padding-inline: 1rem;
+
+  &:hover {
+    color: var(--ink);
+  }
+
+  &.active {
+    color: var(--ink);
+
+    & > span {
+      position: relative;
+
+      &:after {
+        content: '';
+        position: absolute;
+        bottom: -5px;
+        left: 0;
+        width: 100%;
+        height: 1px;
+        background: var(--ink);
+        border-radius: 2px;
+      }
+    }
+  }
+}
+
+.navSmall {
+  height: 100%;
+  display: grid;
+  place-content: center;
+  grid-auto-flow: column;
+  gap: 10px;
+}
+
+.navSmall > button {
+  height: 100%;
+  background: inherit;
+  border: none;
+  aspect-ratio: 1/1;
+}
+
+.navSmallIcon {
+  color: var(--ink-muted);
+  font-size: 18px;
+  height: auto;
+  width: 1em;
+}
+
+.dropdownMenu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: min(300px, 70%);
+  background: var(--canvas);
+  backdrop-filter: blur(10px);
+  border-radius: 0 0 0 8px;
+  overflow: hidden;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  animation: dropdownAppear 0.2s ease-in;
+}
+
+.dropdownItem {
+  padding: 15px 20px;
+  text-decoration: none;
+  color: var(--ink-muted);
+  font-size: 16px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  position: relative;
+
+  &:hover {
+    background: var(--canvas);
+    color: var(--ink);
+  }
+
+  &.active {
+    color: var(--ink);
+    background: var(--canvas-deep);
+    border-left: 3px solid var(--accent);
+    padding-left: 17px;
+  }
+
+  &:not(:last-child) {
+    border-bottom: 1px solid var(--ink-soft);
+  }
+}
+
+@keyframes dropdownAppear {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (min-width: 768px) {
+  .nav {
+    display: flex;
+  }
+
+  .navSmall {
+    display: none;
+  }
+}
