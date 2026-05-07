@@ -54,7 +54,6 @@ export default function Navigation() {
     </nav>
     <nav className={styles.navSmall} ref={dropdownRef}>
       <button
-        className={styles.navSmallToggle}
         onClick={toggleDropdown}
         aria-expanded={isDropdownOpen}
         aria-label="Toggle navigation menu"
