@@ -1,0 +1,23 @@
+{
+  "name": "tayler-carney-portfolio",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "dev": "next dev -p 80",
+    "build": "next build",
+    "start": "next start -p 80",
+    "lint": "next lint"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SharkFinPro/tayler-carney-portfolio.git"
+  },
+  "keywords": [],
+  "author": "Alex Martin",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/SharkFinPro/tayler-carney-portfolio/issues"
+  },
+  "homepage": "https://github.com/SharkFinPro/tayler-carney-portfolio#readme"
+}
