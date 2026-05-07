@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { Noto_Serif, Inter, DM_Mono } from "next/font/google";
 import { Metadata } from "next";
 import NavBar from "@/components/NavBar";
+import Footer from "@/components/Footer";
 
 const notoSerif = Noto_Serif({
   subsets: ["latin"],
@@ -53,6 +54,7 @@ export default function RootLayout({
       <body>
         <NavBar />
         {children}
+        <Footer />
       </body>
     </html>
   );
