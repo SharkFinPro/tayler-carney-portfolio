@@ -1,0 +1,69 @@
+@use "sass:map";
+
+$themes: (
+  light: (
+    // Backgrounds
+    bg-primary: #f5f5f2,
+    bg-secondary: #fcf9f8,
+    bg-tertiary: #ffffff,
+
+    // Surfaces
+    surface-primary: #ffffff,
+    surface-secondary: #f5f5f2,
+    surface-navbar: rgba(18, 18, 18, 0.92),
+
+    // Text
+    text-primary: #121212,
+    text-secondary: #2d3930,
+    text-muted: #707d7e,
+    text-inverse: #ffffff,
+
+    // Borders
+    border-primary: #c3c8c2,
+    border-secondary: #b0b5af,
+
+    // Interactive
+    interactive-primary: #2d3930,
+    interactive-primary-hover: #3d4a40,
+
+    // Misc
+    outline-focus: #3d4a40,
+    shadow-color: rgba(18, 18, 18, 0.08),
+  ),
+
+  //dark: (
+  //  // Backgrounds
+  //  bg-primary: #121212,
+  //  bg-secondary: #1a1a1a,
+  //  bg-tertiary: #222222,
+  //
+  //  // Surfaces
+  //  surface-primary: #1f1f1f,
+  //  surface-secondary: #2a2a2a,
+  //  surface-navbar: rgba(10, 10, 10, 0.92),
+  //
+  //  // Text
+  //  text-primary: #f5f5f2,
+  //  text-secondary: #d6d6d2,
+  //  text-muted: #9aa0a0,
+  //  text-inverse: #121212,
+  //
+  //  // Borders
+  //  border-primary: #3a3a3a,
+  //  border-secondary: #4a4a4a,
+  //
+  //  // Interactive
+  //  interactive-primary: #d6d6d2,
+  //  interactive-primary-hover: #ffffff,
+  //
+  //  // Misc
+  //  outline-focus: #ffffff,
+  //  shadow-color: rgba(0, 0, 0, 0.3),
+  //)
+);
+
+@mixin emit-theme($map) {
+  @each $key, $value in $map {
+    --#{$key}: #{$value};
+  }
+}
