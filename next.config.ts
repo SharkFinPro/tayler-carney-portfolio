@@ -5,7 +5,7 @@ const isDev = process.env.NODE_ENV === 'development';
 const nextConfig: NextConfig = {
   images: {
     dangerouslyAllowSVG: true,
-    contentDispositionType: 'attachment',
+    contentDispositionType: 'inline',
     contentSecurityPolicy: "default-src 'none'; sandbox;",
     remotePatterns: [
       {
