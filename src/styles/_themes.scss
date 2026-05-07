@@ -2,64 +2,35 @@
 
 $themes: (
   light: (
-    // Backgrounds
-    bg-primary: #f5f5f2,
-    bg-secondary: #fcf9f8,
-    bg-tertiary: #ffffff,
+    // Base fields
+    canvas:        #fcf9f8,
+    canvas-soft:   #f5f5f2,
+    canvas-deep:   #ebe7e7,
 
     // Surfaces
-    surface-primary: #ffffff,
-    surface-secondary: #f5f5f2,
-    surface-navbar: rgba(18, 18, 18, 0.92),
+    plate:         #ffffff,
+    plate-muted:   #f0edec,
+    plate-dark:    #2d3930,
 
-    // Text
-    text-primary: #121212,
-    text-secondary: #2d3930,
-    text-muted: #707d7e,
-    text-inverse: #ffffff,
+    // Typography
+    ink:           #121212,
+    ink-soft:      #434843,
+    ink-muted:     #707d7e,
+    ink-inverse:   #f5f5f2,
 
-    // Borders
-    border-primary: #c3c8c2,
-    border-secondary: #b0b5af,
+    // Structural
+    line:          #c3c8c2,
+    line-strong:   #747873,
+    frame:         rgba(45, 57, 48, 0.1),
 
-    // Interactive
-    interactive-primary: #2d3930,
-    interactive-primary-hover: #3d4a40,
+    // Accents
+    accent:        #2d3930,
+    accent-soft:   #3d4a40,
 
-    // Misc
-    outline-focus: #3d4a40,
-    shadow-color: rgba(18, 18, 18, 0.08),
-  ),
-
-  //dark: (
-  //  // Backgrounds
-  //  bg-primary: #121212,
-  //  bg-secondary: #1a1a1a,
-  //  bg-tertiary: #222222,
-  //
-  //  // Surfaces
-  //  surface-primary: #1f1f1f,
-  //  surface-secondary: #2a2a2a,
-  //  surface-navbar: rgba(10, 10, 10, 0.92),
-  //
-  //  // Text
-  //  text-primary: #f5f5f2,
-  //  text-secondary: #d6d6d2,
-  //  text-muted: #9aa0a0,
-  //  text-inverse: #121212,
-  //
-  //  // Borders
-  //  border-primary: #3a3a3a,
-  //  border-secondary: #4a4a4a,
-  //
-  //  // Interactive
-  //  interactive-primary: #d6d6d2,
-  //  interactive-primary-hover: #ffffff,
-  //
-  //  // Misc
-  //  outline-focus: #ffffff,
-  //  shadow-color: rgba(0, 0, 0, 0.3),
-  //)
+    // Utility
+    shadow:        rgba(18, 18, 18, 0.06),
+    overlay:       rgba(18, 18, 18, 0.72),
+  )
 );
 
 @mixin emit-theme($map) {
