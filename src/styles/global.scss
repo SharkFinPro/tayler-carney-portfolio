@@ -1,6 +1,10 @@
 @use "./themes" as t;
 @use "sass:map";
 
+:root {
+  @include t.emit-theme(map.get(t.$themes, light));
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
