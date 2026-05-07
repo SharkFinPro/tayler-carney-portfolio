@@ -1,0 +1,347 @@
+.pageWrapper {
+  background-color: var(--canvas);
+
+  padding-top: 5rem;
+}
+
+.pageContainer {
+  max-width: 1440px;
+  width: 90%;
+  margin-inline: auto;
+  place-items: center;
+  counter-reset: section;
+}
+
+.mainHeader {
+  width: 100%;
+  display: grid;
+  place-items: center;
+  padding-bottom: 5rem;
+
+  & > h1 {
+    width: 40%;
+    justify-self: baseline;
+    font-family: var(--ff-serif);
+    font-size: clamp(48px, 7vw, 88px);
+    font-weight: 400;
+    line-height: 1.02;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+  }
+
+  &:after {
+    border-bottom: 1px solid var(--line);
+    content: '';
+    display: block;
+    width: 100%;
+    padding-top: 3rem;
+  }
+}
+
+.section {
+  width: 100%;
+  padding-bottom: 4rem;
+  counter-increment: section;
+
+  & > h2 {
+    font-family: var(--ff-serif);
+    font-size: clamp(22px, 2.5vw, 30px);
+    font-weight: 400;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+    line-height: 1.15;
+    margin-bottom: 2rem;
+
+    & > span {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 5px;
+      background: var(--ink);
+      color: var(--ink-inverse);
+      font-family: var(--ff-mono);
+      font-size: 11px;
+      font-weight: 500;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    &::before {
+      content: "0" counter(section) " / 07";
+      font-family: var(--ff-mono);
+      font-size: 10px;
+      color: var(--ink-muted);
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    &:after {
+      border-bottom: 1px solid var(--line);
+      content: '';
+      display: block;
+      width: 100%;
+      padding-top: 1rem;
+    }
+  }
+}
+
+.sketchesContainer {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: start;
+
+  & > .sketch:nth-child(even) {
+    margin-top: 36px;
+  }
+}
+
+.sketch {
+  background-color: var(--plate);
+  border: 1px solid var(--line);
+  padding: 1rem;
+
+  width: 20%;
+  min-width: 200px;
+
+  & > img {
+    width: 100%;
+    height: auto;
+  }
+}
+
+.flatViewSelector {
+  display: flex;
+  width: fit-content;
+  border: 1px solid var(--line);
+  margin-bottom: 1.5rem;
+
+  & > button {
+    font-family: var(--ff-sans);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    background: transparent;
+    color: var(--ink);
+    border: none;
+    padding: 10px 22px;
+    transition: background 0.2s, color 0.2s;
+    position: relative;
+
+    & + button {
+      border-left: 1px solid var(--line);
+    }
+
+    &[aria-pressed="true"] {
+      background-color: var(--ink);
+      color: var(--ink-inverse);
+    }
+
+    &:hover:not([aria-pressed="true"]) {
+      background-color: var(--plate);
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+  }
+}
+
+.flat {
+  border: 1px solid var(--line);
+  width: 50%;
+
+  & > h3 {
+    background: var(--ink);
+    color: var(--ink-inverse);
+    padding: 9px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--ff-sans);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+  }
+
+  & > img {
+    width: 100%;
+    height: auto;
+  }
+}
+
+.detailsContainer {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: start;
+}
+
+.detail {
+  width: 30%;
+  background-color: var(--plate);
+  border: 1px solid var(--line);
+  padding: 1rem;
+
+  & > img {
+    width: 100%;
+    height: auto;
+  }
+}
+
+.techPackContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  place-items: center;
+}
+
+.techPack {
+  width: 30%;
+  min-width: 200px;
+
+  background-color: var(--plate);
+  border: 2px solid var(--line);
+  padding: 1.5rem;
+
+  & > img {
+    width: 100%;
+    height: auto;
+  }
+}
+
+.finalProductContainer {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 16px;
+}
+
+.finalProduct {
+  border: 1px solid var(--line);
+  padding: 2rem;
+
+  &:nth-child(1) {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  &:nth-child(2) {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  &:nth-child(3) {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  &:after {
+    border-bottom: 1px solid var(--line);
+    content: '';
+    display: block;
+    width: 100%;
+    padding-top: 1rem;
+  }
+
+  & > img {
+    width: 100%;
+    height: auto;
+  }
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+
+  &.visible {
+    opacity: 1;
+    pointer-events: all;
+  }
+}
+
+.modalInner {
+  position: relative;
+  max-width: 900px;
+  width: 100%;
+  background: var(--plate);
+  transform: scale(0.96) translateY(12px);
+  transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+
+  .modalOverlay.visible & {
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modalHeader {
+  background: var(--ink);
+  color: var(--ink-inverse);
+  padding: 10px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--ff-sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.modalClose {
+  background: none;
+  border: none;
+  color: var(--ink-inverse);
+  opacity: 0.7;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--ff-sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transition: opacity 0.2s;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.modalBody {
+  padding: 40px;
+  background: var(--canvas-soft);
+
+  & img {
+    width: 100%;
+    height: auto;
+    max-height: 70vh;
+    object-fit: contain;
+    mix-blend-mode: multiply;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes scaleUp {
+  from { transform: scale(0.96) translateY(12px); }
+  to   { transform: scale(1) translateY(0); }
+}
