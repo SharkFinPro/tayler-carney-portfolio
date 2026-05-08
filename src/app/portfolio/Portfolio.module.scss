@@ -106,7 +106,7 @@
 
   // Use counter so index always matches data order
   &::before {
-    content: "0" counter(project);
+    content: counter(project, decimal-leading-zero);
   }
 }
 
