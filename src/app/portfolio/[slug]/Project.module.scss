@@ -1,13 +1,133 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Page shell
+// ─────────────────────────────────────────────────────────────────────────────
+
 .pageWrapper {
   background-color: var(--canvas);
-
   padding-top: 5rem;
 }
 
-.pageContainer {
+// Two-column layout: sidebar + content
+.pageLayout {
   max-width: 1440px;
   width: 90%;
   margin-inline: auto;
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 0 3rem;
+  align-items: start;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sticky sidebar nav  (#1 — progress indicator, #2 — anchors, #3 — breadcrumb)
+// ─────────────────────────────────────────────────────────────────────────────
+
+.sidebarNav {
+  position: sticky;
+  top: calc(70px + 2rem); // navbar height + offset
+  padding-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+
+  @media (max-width: 900px) {
+    display: none;
+  }
+}
+
+.breadcrumb {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+
+  a {
+    color: var(--ink-muted);
+    text-decoration: none;
+    transition: color 0.2s;
+
+    &:hover {
+      color: var(--ink);
+    }
+  }
+
+  span[aria-hidden] {
+    color: var(--line);
+    font-size: 8px;
+  }
+
+  & > span:last-child {
+    color: var(--ink);
+    font-weight: 500;
+  }
+}
+
+.sidebarSections {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebarItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: none;
+  border: none;
+  padding: 6px 0;
+  cursor: pointer;
+  text-align: left;
+  color: var(--ink-muted);
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: color 0.2s;
+
+  &:hover {
+    color: var(--ink);
+  }
+}
+
+.sidebarItemActive {
+  color: var(--ink);
+
+  .sidebarDot {
+    background: var(--ink);
+    transform: scale(1.5);
+  }
+
+  .sidebarLabel {
+    font-weight: 600;
+  }
+}
+
+.sidebarDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--line);
+  flex-shrink: 0;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.sidebarLabel {
+  transition: font-weight 0.1s;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Content column
+// ─────────────────────────────────────────────────────────────────────────────
+
+.pageContainer {
+  width: 100%;
   place-items: center;
   counter-reset: section;
 }
@@ -42,6 +162,7 @@
   width: 100%;
   padding-bottom: 4rem;
   counter-increment: section;
+  scroll-margin-top: calc(70px + 2rem); // accounts for sticky navbar
 
   & > h2 {
     font-family: var(--ff-serif);
@@ -87,6 +208,10 @@
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Sketches  (#5 — masonry-style offset stagger, #6 — blur placeholder)
+// ─────────────────────────────────────────────────────────────────────────────
+
 .sketchesContainer {
   display: flex;
   flex-direction: row;
@@ -103,6 +228,9 @@
   background-color: var(--plate);
   border: 1px solid var(--line);
   padding: 1rem;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
 
   width: 20%;
   min-width: 200px;
@@ -110,8 +238,23 @@
   & > img {
     width: 100%;
     height: auto;
+    display: block;
+    transition: transform 0.35s ease;
+  }
+
+  &:hover {
+    border-color: var(--line-strong);
+    box-shadow: 0 4px 20px var(--shadow);
+
+    & > img {
+      transform: scale(1.03);
+    }
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Technical Flats
+// ─────────────────────────────────────────────────────────────────────────────
 
 .flatViewSelector {
   display: flex;
@@ -155,6 +298,12 @@
 .flat {
   border: 1px solid var(--line);
   width: 50%;
+  cursor: pointer;
+  overflow: hidden;
+
+  &:hover img {
+    transform: scale(1.02);
+  }
 
   & > h3 {
     background: var(--plate-dark);
@@ -173,8 +322,14 @@
   & > img {
     width: 100%;
     height: auto;
+    display: block;
+    transition: transform 0.35s ease;
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Details
+// ─────────────────────────────────────────────────────────────────────────────
 
 .detailsContainer {
   display: flex;
@@ -189,12 +344,167 @@
   background-color: var(--plate);
   border: 1px solid var(--line);
   padding: 1rem;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  & > h3 {
+    font-family: var(--ff-sans);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+
+  & > p {
+    font-family: var(--ff-sans);
+    font-size: 12px;
+    color: var(--ink-muted);
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
 
   & > img {
     width: 100%;
     height: auto;
+    display: block;
+    transition: transform 0.35s ease;
+  }
+
+  &:hover {
+    border-color: var(--line-strong);
+    box-shadow: 0 4px 20px var(--shadow);
+
+    & > img {
+      transform: scale(1.03);
+    }
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Patterns  (#7 — proper grid with click-through)
+// ─────────────────────────────────────────────────────────────────────────────
+
+.patternsContainer {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.patternCard {
+  position: relative;
+  border: 1px solid var(--line);
+  background: var(--plate);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  & > img {
+    width: 100%;
+    height: auto;
+    display: block;
+    transition: transform 0.35s ease;
+  }
+
+  &:hover {
+    border-color: var(--line-strong);
+    box-shadow: 0 4px 20px var(--shadow);
+
+    & > img {
+      transform: scale(1.03);
+    }
+
+    .patternLabel {
+      opacity: 1;
+    }
+  }
+}
+
+.patternLabel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--plate-dark);
+  color: var(--ink-inverse);
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 8px 12px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Materials  (#8 — card layout with swatch + metadata)
+// ─────────────────────────────────────────────────────────────────────────────
+
+.materialsContainer {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.materialCard {
+  border: 1px solid var(--line);
+  background: var(--plate);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:hover {
+    border-color: var(--line-strong);
+    box-shadow: 0 4px 20px var(--shadow);
+
+    .materialImage > img {
+      transform: scale(1.04);
+    }
+  }
+}
+
+.materialImage {
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  background: var(--canvas-soft);
+
+  & > img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.35s ease;
+  }
+}
+
+.materialInfo {
+  padding: 12px 14px;
+  border-top: 1px solid var(--line);
+
+  & > h3 {
+    font-family: var(--ff-sans);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+
+  & > p {
+    font-family: var(--ff-sans);
+    font-size: 11px;
+    color: var(--ink-muted);
+    line-height: 1.5;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tech Pack
+// ─────────────────────────────────────────────────────────────────────────────
 
 .techPackContainer {
   display: flex;
@@ -206,16 +516,33 @@
 .techPack {
   width: 30%;
   min-width: 200px;
-
   background-color: var(--plate);
   border: 2px solid var(--line);
   padding: 1.5rem;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
 
   & > img {
     width: 100%;
     height: auto;
+    display: block;
+    transition: transform 0.35s ease;
+  }
+
+  &:hover {
+    border-color: var(--line-strong);
+    box-shadow: 0 4px 20px var(--shadow);
+
+    & > img {
+      transform: scale(1.02);
+    }
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Final Product
+// ─────────────────────────────────────────────────────────────────────────────
 
 .finalProductContainer {
   display: grid;
@@ -226,6 +553,9 @@
 .finalProduct {
   border: 1px solid var(--line);
   padding: 2rem;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.2s;
 
   &:nth-child(1) {
     grid-column: 1;
@@ -242,19 +572,25 @@
     grid-row: 2;
   }
 
-  &:after {
-    border-bottom: 1px solid var(--line);
-    content: '';
-    display: block;
-    width: 100%;
-    padding-top: 1rem;
+  &:hover {
+    border-color: var(--line-strong);
+
+    & > img {
+      transform: scale(1.02);
+    }
   }
 
   & > img {
     width: 100%;
     height: auto;
+    display: block;
+    transition: transform 0.35s ease;
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Modal  (#4 — keyboard nav arrows, #11 — counter)
+// ─────────────────────────────────────────────────────────────────────────────
 
 .modalOverlay {
   position: fixed;
@@ -302,6 +638,20 @@
   text-transform: uppercase;
 }
 
+.modalControls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.modalCounter {
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  color: var(--ink-inverse);
+  opacity: 0.6;
+  letter-spacing: 0.08em;
+}
+
 .modalClose {
   background: none;
   border: none;
@@ -324,6 +674,7 @@
 }
 
 .modalBody {
+  position: relative;
   padding: 40px;
   background: var(--canvas-soft);
 
@@ -333,7 +684,40 @@
     max-height: 70vh;
     object-fit: contain;
     mix-blend-mode: multiply;
+    display: block;
   }
+}
+
+// Prev / next arrow buttons inside modal
+.modalNav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  background: var(--plate);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s, background 0.2s;
+
+  &:hover {
+    opacity: 1;
+    background: var(--canvas-deep);
+  }
+}
+
+.modalNavPrev {
+  left: 10px;
+}
+
+.modalNavNext {
+  right: 10px;
 }
 
 @keyframes fadeIn {
