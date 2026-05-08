@@ -1,18 +1,156 @@
 .wrapper {
   background: var(--canvas);
+  padding-top: 5rem;
+  padding-bottom: 8rem;
 }
 
 .container {
-  max-width: var(--max-width);
-  width: 100%;
+  max-width: 1440px;
+  width: 90%;
   margin-inline: auto;
 }
 
+// ── Page header ──────────────────────────────────────────────────────────────
+
+.header {
+  padding-bottom: 4rem;
+
+  &::after {
+    content: '';
+    display: block;
+    border-bottom: 1px solid var(--line);
+    padding-top: 3rem;
+  }
+}
+
+.headerEyebrow {
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+
+  &::before {
+    content: '';
+    display: block;
+    width: 28px;
+    height: 1px;
+    background: var(--line-strong);
+    flex-shrink: 0;
+  }
+}
+
+.headerTitle {
+  font-family: var(--ff-serif);
+  font-size: clamp(42px, 6vw, 80px);
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 1.02;
+  color: var(--ink);
+}
+
+// ── Project list ─────────────────────────────────────────────────────────────
+
 .projects {
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  counter-reset: project;
 }
 
 .project {
+  counter-increment: project;
+  display: grid;
+  grid-template-columns: 3rem 1fr auto;
+  align-items: baseline;
+  gap: 2rem;
+  padding-block: 2rem;
+  border-bottom: 1px solid var(--line);
+  text-decoration: none;
   color: var(--ink);
-  width: fit-content;
+  transition: background 0.2s;
+  margin-inline: -1.5rem;
+  padding-inline: 1.5rem;
+
+  &:hover {
+    background: var(--canvas-soft);
+
+    .projectTitle {
+      transform: translateX(6px);
+    }
+
+    .projectArrow {
+      opacity: 1;
+      transform: translate(3px, -3px);
+    }
+  }
+
+  @media (max-width: 560px) {
+    grid-template-columns: 2rem 1fr;
+
+    .projectArrow { display: none; }
+  }
+}
+
+.projectIndex {
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  color: var(--ink-muted);
+  align-self: center;
+
+  // Use counter so index always matches data order
+  &::before {
+    content: counter(project, decimal-leading-zero);
+  }
+}
+
+.projectBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.projectTitle {
+  font-family: var(--ff-serif);
+  font-size: clamp(18px, 2vw, 26px);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  color: var(--ink);
+  transition: transform 0.25s ease;
+}
+
+.projectDesc {
+  font-family: var(--ff-sans);
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--ink-muted);
+  max-width: 60ch;
+}
+
+.projectArrow {
+  font-family: var(--ff-mono);
+  font-size: 20px;
+  color: var(--ink);
+  opacity: 0.25;
+  align-self: center;
+  transition: opacity 0.2s, transform 0.25s ease;
+  line-height: 1;
+}
+
+// ── Empty state ──────────────────────────────────────────────────────────────
+
+.empty {
+  padding-block: 5rem;
+  font-family: var(--ff-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
 }

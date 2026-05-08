@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-const PROJECTS_QUERY  = `
+const PROJECTS_QUERY = `
   query Projects {
     projects {
       title
@@ -25,12 +25,9 @@ async function getProjects() {
       "Content-Type": "application/json",
       "Authorization": "Bearer " + process.env.CMS_TOKEN,
     },
-    body: JSON.stringify({
-      query: PROJECTS_QUERY
-    })
+    body: JSON.stringify({ query: PROJECTS_QUERY }),
   });
   const json = await response.json();
-
   return json.data.projects;
 }
 
@@ -40,21 +37,34 @@ export default async function Portfolio() {
   return (
     <div className={styles.wrapper}>
       <main className={styles.container}>
-        <h1>Portfolio</h1>
 
-        <div className={styles.projects}>
-          {projects.map((project) => (
-            <Link
-              key={project.slug}
-              href={`/portfolio/${project.slug}`}
-              className={styles.project}
-            >
-              <h2>{project.title}</h2>
-              <p>{project.description}</p>
-            </Link>
-          ))}
+        <div className={styles.header}>
+          <span className={styles.headerEyebrow}>Design Archive</span>
+          <h1 className={styles.headerTitle}>Portfolio</h1>
         </div>
+
+        {projects.length === 0 ? (
+          <p className={styles.empty}>No projects found</p>
+        ) : (
+          <div className={styles.projects}>
+            {projects.map((project) => (
+              <Link
+                key={project.slug}
+                href={`/portfolio/${project.slug}`}
+                className={styles.project}
+              >
+                <span className={styles.projectIndex} aria-hidden="true" />
+                <div className={styles.projectBody}>
+                  <h2 className={styles.projectTitle}>{project.title}</h2>
+                  <p className={styles.projectDesc}>{project.description}</p>
+                </div>
+                <span className={styles.projectArrow} aria-hidden="true">↗</span>
+              </Link>
+            ))}
+          </div>
+        )}
+
       </main>
     </div>
-  )
+  );
 }
