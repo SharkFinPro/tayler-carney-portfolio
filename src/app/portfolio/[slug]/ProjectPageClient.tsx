@@ -57,7 +57,6 @@ export default function ProjectPageClient({ project }: ProjectPageClientProps) {
   const [modal, setModal] = useState<ModalState | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [activeSection, setActiveSection] = useState<string>("sketches");
-  const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
 
   // ── Open / close modal ──────────────────────────────────────────────────
   const openModal = useCallback((
