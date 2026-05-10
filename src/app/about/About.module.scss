@@ -58,6 +58,20 @@
 .portraitImage {
   object-fit: cover;
   object-position: center top;
+  transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.portraitWrap:hover .portraitImage {
+  transform: scale(1.04);
+}
+
+// Badge fades up slightly on hover for a layered feel
+.portraitWrap:hover .portraitBadge {
+  transform: translateY(-4px);
+}
+
+.portraitBadge {
+  transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .portraitBadge {
@@ -115,21 +129,90 @@
   flex-direction: column;
   gap: 1.1rem;
   max-width: 54ch;
+
+  // ── RichText renderer output ───────────────────────────────────────────
+  // @graphcms/rich-text-react-renderer emits plain HTML elements; style them
+  // here so they match the project's type system without needing custom renderers.
+
+  p {
+    font-family: var(--ff-sans);
+    font-size: clamp(13px, 1vw, 14px);
+    color: var(--ink-muted);
+    line-height: 1.75;
+
+    // First paragraph reads as a serif lead
+    &:first-child {
+      font-family: var(--ff-serif);
+      font-size: clamp(15px, 1.35vw, 19px);
+      color: var(--ink);
+      line-height: 1.6;
+    }
+  }
+
+  strong {
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  em {
+    font-style: italic;
+    color: var(--ink-soft);
+  }
+
+  a {
+    color: var(--ink);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-color: var(--line-strong);
+    transition: text-decoration-color 0.2s;
+
+    &:hover {
+      text-decoration-color: var(--ink);
+    }
+  }
+
+  ul, ol {
+    padding-left: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+
+    li {
+      font-family: var(--ff-sans);
+      font-size: 13px;
+      color: var(--ink-muted);
+      line-height: 1.65;
+    }
+  }
+
+  ul li {
+    list-style-type: "— ";
+  }
 }
 
-.bioLead {
-  font-family: var(--ff-serif);
-  font-size: clamp(15px, 1.35vw, 19px);
-  font-weight: 400;
-  color: var(--ink);
-  line-height: 1.6;
+// ── Page entrance animations ─────────────────────────────────────────────────
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.bioBody {
-  font-family: var(--ff-sans);
-  font-size: clamp(13px, 1vw, 14px);
-  color: var(--ink-muted);
-  line-height: 1.75;
+.hero {
+  animation: fadeUp 0.55s cubic-bezier(0.25, 1, 0.5, 1) both;
+}
+
+.infoGrid {
+  animation: fadeUp 0.55s cubic-bezier(0.25, 1, 0.5, 1) 0.1s both;
+}
+
+.cta {
+  animation: fadeUp 0.55s cubic-bezier(0.25, 1, 0.5, 1) 0.2s both;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
