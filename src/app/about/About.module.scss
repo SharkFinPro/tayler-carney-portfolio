@@ -14,10 +14,6 @@
   margin-inline: auto;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Shared label / meta text style (replaces font-label-caps)
-// ─────────────────────────────────────────────────────────────────────────────
-
 .label {
   font-family: var(--ff-mono);
   font-size: 10px;
@@ -33,108 +29,105 @@
 
 .hero {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4rem;
-  padding-bottom: 5rem;
-  margin-bottom: 5rem;
+  grid-template-columns: 5fr 7fr;
+  gap: 0;
+  margin-bottom: 6rem;
+  border: 1px solid var(--line);
 
   &::after {
-    content: '';
-    display: block;
-    grid-column: 1 / -1;
-    border-bottom: 1px solid var(--line);
+    content: none;
   }
 
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
-    gap: 2.5rem;
   }
 }
 
-// Left column
-.heroLeft {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  place-items: center;
-}
-
-.portrait {
-  border: 1px solid var(--line);
-  padding: 1rem;
-  background: var(--plate);
-
-  // intrinsic wrapper keeps aspect ratio without a fixed height
+// Portrait — fills its cell, name pinned at the bottom
+.portraitWrap {
   position: relative;
   aspect-ratio: 4 / 5;
-  width: 60%;
   overflow: hidden;
+  background: var(--canvas-deep);
 
-  img {
-    object-fit: cover;
+  @media (max-width: 768px) {
+    aspect-ratio: 3 / 2;
   }
 }
 
-.heroRef {
-  composes: label;
+.portraitImage {
+  object-fit: cover;
+  object-position: center top;
 }
 
-.heroHeadline {
-  font-family: var(--ff-serif);
-  font-size: clamp(28px, 4vw, 52px);
-  font-weight: 400;
-  letter-spacing: -0.025em;
-  line-height: 1.05;
-  color: var(--ink);
-}
-
-// Right column
-.heroRight {
+.portraitBadge {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 3rem 1.5rem 1.25rem;
+  background: linear-gradient(to top, rgba(18, 18, 18, 0.65) 0%, transparent 100%);
   display: flex;
   flex-direction: column;
-  gap: 2.5rem;
-  padding-top: 0.5rem;
+  gap: 3px;
 }
 
-.philosophy {
+.portraitName {
+  font-family: var(--ff-serif);
+  font-size: clamp(18px, 2vw, 26px);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: #f5f5f2;
+  line-height: 1.1;
+}
+
+.portraitTitle {
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(245, 245, 242, 0.55);
+}
+
+// Right — label + bio
+.heroContent {
+  padding: 2.5rem;
   border-left: 1px solid var(--line);
-  padding-left: 2rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 2rem;
+
+  @media (max-width: 768px) {
+    border-left: none;
+    border-top: 1px solid var(--line);
+    padding: 2rem;
+  }
 }
 
-.philosophyLabel {
+.heroContentLabel {
   composes: label;
-}
-
-.philosophyQuote {
-  font-family: var(--ff-serif);
-  font-size: clamp(16px, 1.8vw, 22px);
-  font-weight: 400;
-  font-style: italic;
-  color: var(--ink-soft);
-  line-height: 1.55;
-  max-width: 52ch;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--line);
 }
 
 .bio {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  max-width: 58ch;
+  gap: 1.1rem;
+  max-width: 54ch;
 }
 
 .bioLead {
-  font-family: var(--ff-sans);
-  font-size: clamp(13px, 1.1vw, 15px);
-  color: var(--ink-soft);
-  line-height: 1.7;
+  font-family: var(--ff-serif);
+  font-size: clamp(15px, 1.35vw, 19px);
+  font-weight: 400;
+  color: var(--ink);
+  line-height: 1.6;
 }
 
 .bioBody {
   font-family: var(--ff-sans);
-  font-size: clamp(12px, 0.9vw, 13px);
+  font-size: clamp(13px, 1vw, 14px);
   color: var(--ink-muted);
   line-height: 1.75;
 }
@@ -158,20 +151,17 @@
   }
 }
 
-// Shared column header
 .colHeader {
   composes: label;
   color: var(--ink);
   display: block;
-  margin-bottom: 2.5rem;
-  padding-bottom: 1.5rem;
-  border-top: 1px solid var(--line);
   padding-top: 1.5rem;
+  padding-bottom: 1.5rem;
+  margin-bottom: 2.5rem;
+  border-top: 1px solid var(--line);
 }
 
 // ── Education ──────────────────────────────────────────────────────────────
-
-.educationCol {}
 
 .educationList {
   display: flex;
@@ -230,32 +220,28 @@
   color: var(--ink-inverse);
   opacity: 0.55;
   display: block;
-  margin-bottom: 2.5rem;
   padding-top: 0.25rem;
-  border-top: 1px solid rgba(255,255,255,0.15);
   padding-bottom: 1.5rem;
+  margin-bottom: 2.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .skillsList {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 0;
 }
 
 .skillItem {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  border-bottom: 1px solid rgba(255,255,255,0.12);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   padding-block: 14px;
-  transition: border-color 0.25s, background 0.25s;
   margin-inline: -0.5rem;
   padding-inline: 0.5rem;
+  transition: border-color 0.25s, background 0.25s;
 
   &:hover {
-    border-color: rgba(255,255,255,0.3);
-    background: rgba(255,255,255,0.04);
+    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.04);
   }
 }
 
@@ -267,39 +253,7 @@
   color: var(--ink-inverse);
 }
 
-.skillLevel {
-  font-family: var(--ff-mono);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  color: var(--ink-inverse);
-  opacity: 0.5;
-  transition: transform 0.25s;
-
-  .skillItem:hover & {
-    transform: translateX(3px);
-    opacity: 0.8;
-  }
-}
-
-.skillsFooter {
-  margin-top: 2rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  color: var(--ink-inverse);
-  opacity: 0.4;
-}
-
-.skillsFooterIcon {
-  font-size: 10px;
-  letter-spacing: 0.2em;
-  font-family: var(--ff-mono);
-  text-transform: uppercase;
-}
-
 // ── Exhibitions ─────────────────────────────────────────────────────────────
-
-.exhibitionsCol {}
 
 .exhibitionList {
   display: flex;
@@ -358,13 +312,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 .cta {
-  border: 1px solid var(--line);
+  background: var(--plate-dark);
   padding: 3rem 3.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 3rem;
-  background: var(--plate);
 
   @media (max-width: 640px) {
     flex-direction: column;
@@ -373,18 +326,12 @@
   }
 }
 
-.ctaLabel {
-  composes: label;
-  margin-bottom: 0.75rem;
-  display: block;
-}
-
 .ctaHeadline {
   font-family: var(--ff-serif);
   font-size: clamp(18px, 2vw, 28px);
   font-weight: 400;
   letter-spacing: -0.015em;
-  color: var(--ink);
+  color: var(--ink-inverse);
   max-width: 48ch;
   line-height: 1.25;
 }
@@ -392,7 +339,7 @@
 .ctaButton {
   display: inline-block;
   flex-shrink: 0;
-  background: var(--plate-dark);
+  background: transparent;
   color: var(--ink-inverse);
   padding: 1.1rem 2.5rem;
   font-family: var(--ff-mono);
@@ -401,13 +348,14 @@
   letter-spacing: 0.2em;
   text-transform: uppercase;
   text-decoration: none;
-  border: 1px solid var(--line);
-  transition: background 0.25s, color 0.25s;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  transition: background 0.25s, border-color 0.25s;
   text-align: center;
   white-space: nowrap;
 
   &:hover {
-    background: var(--ink);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.6);
   }
 
   @media (max-width: 640px) {
