@@ -16,7 +16,8 @@ export default function Navigation() {
     { label: "Home", path: "/" },
     { label: "Portfolio", path: "/portfolio" },
     { label: "Atelier", path: "/atelier" },
-    { label: "About", path: "/about" }
+    { label: "About", path: "/about" },
+    { label: "Contact", path: "/contact" }
   ];
 
   // Close dropdown when clicking outside

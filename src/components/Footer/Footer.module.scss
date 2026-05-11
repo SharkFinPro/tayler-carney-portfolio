@@ -1,17 +1,123 @@
 .wrapper {
-  padding-block: 2rem;
   background-color: var(--plate-dark);
+  padding-top: 4rem;
+  padding-bottom: 1rem;
 }
 
-.container {}
+// ── Main row ──────────────────────────────────────────────────────────────────
+
+.container {
+  max-width: 1440px;
+  width: 90%;
+  margin-inline: auto;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 3rem;
+  padding-bottom: 4rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+}
+
+// ── Brand + socials (left cluster) ───────────────────────────────────────────
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.brandName {
+  font-family: var(--ff-serif);
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--ink-inverse);
+  text-decoration: none;
+  transition: opacity 0.2s;
+
+  &:hover {
+    opacity: 0.75;
+  }
+}
+
+.brandSub {
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-inverse);
+  opacity: 0.35;
+}
+
+.socials {
+  display: flex;
+  gap: 1.1rem;
+  align-items: center;
+}
+
+.socialLink {
+  color: var(--ink-inverse);
+  opacity: 0.45;
+  font-size: 16px;
+  text-decoration: none;
+  transition: opacity 0.2s, transform 0.2s;
+  display: flex;
+  align-items: center;
+
+  &:hover {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+// ── Nav links (right) ─────────────────────────────────────────────────────────
+
+.nav {
+  display: flex;
+  gap: 2rem;
+  justify-self: end;
+
+  @media (max-width: 640px) {
+    justify-self: start;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+}
+
+.navLink {
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-inverse);
+  opacity: 0.5;
+  text-decoration: none;
+  transition: opacity 0.2s;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+// ── Copyright bar ─────────────────────────────────────────────────────────────
 
 .bottom {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  text-align: center;
-  font-family: var(--ff-serif);
+  max-width: 1440px;
+  width: 90%;
+  margin-inline: auto;
+  padding-block: 1.5rem;
 
   p {
+    font-family: var(--ff-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
     color: var(--ink-inverse);
+    opacity: 0.3;
   }
 }
