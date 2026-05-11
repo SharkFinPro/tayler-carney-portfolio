@@ -9,24 +9,38 @@ export const metadata: Metadata = {
   title: "Contact"
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Content — swap for CMS fetch when ready
-// ─────────────────────────────────────────────────────────────────────────────
+export const dynamic = "force-dynamic";
 
-const pageData = {
-  eyebrow: "Contact",
-  headline: "Let's Work Together.",
-  subtext:
-    "Open for internships, collaborations, and conversations about fashion, design, and merchandising.",
-  availability: "Available for opportunities"
-};
+const CONTACTPAGE_QUERY = `
+  query ContactPage {
+    contactPages {
+      header
+      subheader
+      availabilityMessage
+    }
+  }
+`;
+
+async function getContactPage() {
+  const response = await fetch(process.env.CMS_ENDPOINT as string, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + process.env.CMS_TOKEN,
+    },
+    body: JSON.stringify({ query: CONTACTPAGE_QUERY }),
+  });
+  const json = await response.json();
+  return json.data.contactPages[0];
+}
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Page
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default async function ContactPage() {
-  const { eyebrow, headline, subtext, availability } = pageData;
+  const contactPage = await getContactPage();
 
   const siteData = await getSiteData();
 
@@ -53,13 +67,13 @@ export default async function ContactPage() {
           {/* ── Left panel ─────────────────────────────────────────────── */}
           <div className={styles.left}>
             <div className={styles.leftTop}>
-              <span className={styles.eyebrow}>{eyebrow}</span>
-              <h1 className={styles.headline}>{headline}</h1>
-              <p className={styles.subtext}>{subtext}</p>
+              <span className={styles.eyebrow}>Contact</span>
+              <h1 className={styles.headline}>{contactPage.header}</h1>
+              <p className={styles.subtext}>{contactPage.subheader}</p>
             </div>
             <div className={styles.availability}>
               <span className={styles.availabilityDot} aria-hidden="true" />
-              <span className={styles.availabilityText}>{availability}</span>
+              <span className={styles.availabilityText}>{contactPage.availabilityMessage}</span>
             </div>
           </div>
 
