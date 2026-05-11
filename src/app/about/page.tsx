@@ -8,6 +8,8 @@ export const metadata: Metadata = {
   title: "About"
 };
 
+export const dynamic = "force-dynamic";
+
 const ABOUT_QUERY = `
   query AboutPage {
     aboutPages {
