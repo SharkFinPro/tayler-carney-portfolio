@@ -1,0 +1,331 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Contact page
+// ─────────────────────────────────────────────────────────────────────────────
+
+.pageWrapper {
+  background-color: var(--canvas);
+  padding-top: 5rem;
+  padding-bottom: 8rem;
+}
+
+.pageContainer {
+  max-width: 1440px;
+  width: 90%;
+  margin-inline: auto;
+}
+
+// ── Keyframes ────────────────────────────────────────────────────────────────
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+// Stagger children of .leftTop on load
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1;   transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.85); }
+}
+
+// ── Two-column layout ────────────────────────────────────────────────────────
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid var(--line);
+  animation: fadeUp 0.5s cubic-bezier(0.25, 1, 0.5, 1) both;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// ── Left — dark panel ────────────────────────────────────────────────────────
+
+.left {
+  background: var(--plate-dark);
+  padding: 3rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 3rem;
+  background-image: repeating-linear-gradient(
+          -45deg,
+          transparent,
+          transparent 40px,
+          rgba(255, 255, 255, 0.015) 40px,
+          rgba(255, 255, 255, 0.015) 41px
+  );
+
+  @media (max-width: 768px) {
+    padding: 2rem;
+    gap: 2rem;
+    justify-content: flex-start;
+  }
+}
+
+.leftTop {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+
+  // Stagger each direct child in on load
+  & > * {
+    animation: fadeIn 0.8s ease-out both;
+    will-change: opacity, transform;
+  }
+
+  & > *:nth-child(1) { animation-delay: 0.08s; }
+  & > *:nth-child(2) { animation-delay: 0.16s; }
+  & > *:nth-child(3) { animation-delay: 0.24s; }
+}
+
+.eyebrow {
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ink-inverse);
+  opacity: 0.4;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+
+  &::before {
+    content: '';
+    display: block;
+    width: 20px;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.3);
+    flex-shrink: 0;
+  }
+}
+
+.headline {
+  font-family: var(--ff-serif);
+  font-size: clamp(28px, 3.5vw, 50px);
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  color: var(--ink-inverse);
+}
+
+.subtext {
+  font-family: var(--ff-sans);
+  font-size: 13px;
+  color: var(--ink-inverse);
+  opacity: 0.55;
+  line-height: 1.75;
+  max-width: 34ch;
+}
+
+// Availability badge
+.availability {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 0.6rem 0.875rem;
+  width: fit-content;
+  animation: fadeIn 0.5s cubic-bezier(0.25, 1, 0.5, 1) 0.4s both;
+}
+
+.availabilityDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #7ecfa0;
+  flex-shrink: 0;
+  animation: pulse 2.5s ease-in-out infinite;
+}
+
+.availabilityText {
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-inverse);
+  opacity: 0.5;
+}
+
+// ── Right — light panel ──────────────────────────────────────────────────────
+
+.right {
+  background: var(--plate);
+  padding: 3rem;
+  border-left: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+
+  @media (max-width: 768px) {
+    border-left: none;
+    border-top: 1px solid var(--line);
+    padding: 2rem;
+    gap: 2rem;
+  }
+}
+
+.sectionLabel {
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  display: block;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 1.5rem;
+}
+
+// ── Email button ─────────────────────────────────────────────────────────────
+
+.emailButton {
+  display: flex;
+  align-items: center;
+  background: var(--plate-dark);
+  color: var(--ink-inverse);
+  padding: 1.1rem 1.75rem;
+  text-decoration: none;
+  width: 100%;
+  margin-bottom: 0.875rem;
+  transition: background 0.2s;
+
+  &:hover {
+    background: var(--ink);
+  }
+
+  &:hover .emailButtonArrow {
+    transform: translate(2px, -2px);
+    opacity: 0.9;
+  }
+}
+
+.emailButtonInner {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  width: 100%;
+}
+
+.emailButtonIcon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.emailButtonText {
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.emailButtonArrow {
+  margin-left: auto;
+  font-family: var(--ff-mono);
+  font-size: 14px;
+  opacity: 0.4;
+  transition: transform 0.2s ease, opacity 0.2s;
+}
+
+.emailAddress {
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+  display: block;
+  padding-left: 0.25rem;
+}
+
+// ── Social cards ─────────────────────────────────────────────────────────────
+
+.socialList {
+  display: flex;
+  flex-direction: column;
+}
+
+.socialCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+  text-decoration: none;
+  color: var(--ink);
+  margin-inline: -0.75rem;
+  transition: background 0.2s;
+
+  &:first-child {
+    border-top: 1px solid var(--line);
+  }
+
+  &:hover {
+    background: var(--canvas-soft);
+  }
+
+  &:hover .socialCardTitle {
+    transform: translateX(4px);
+  }
+
+  &:hover .socialArrow {
+    opacity: 0.8;
+    transform: translate(2px, -2px);
+  }
+
+  &:hover .socialIcon {
+    color: var(--ink);
+  }
+}
+
+.socialCardInner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.socialIcon {
+  font-size: 18px;
+  width: 20px;
+  color: var(--ink-muted);
+  flex-shrink: 0;
+  transition: color 0.2s;
+}
+
+.socialCardInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.socialCardTitle {
+  font-family: var(--ff-sans);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  transition: transform 0.2s ease;
+  line-height: 1.2;
+}
+
+.socialCardHandle {
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+}
+
+.socialArrow {
+  font-family: var(--ff-mono);
+  font-size: 16px;
+  color: var(--ink);
+  opacity: 0.2;
+  transition: opacity 0.2s, transform 0.2s ease;
+  line-height: 1;
+}
