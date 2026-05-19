@@ -15,6 +15,19 @@ interface Detail {
   image: ImageAsset;
 }
 
+type TechPackInfo = {
+  style: number;
+  garmentName: string;
+  season: string;
+  fitType: string;
+  brand: string;
+  sizeRange: string;
+  sampleSize: string;
+  designer: string;
+  fabrication: string;
+};
+
+
 interface Project {
   title: string;
   slug: string;
@@ -26,7 +39,8 @@ interface Project {
   details: Detail[];
   patterns: ImageAsset[];
   materials: Detail[];
-  techPack: ImageAsset[];
+  techPackHeader: TechPackInfo;
+  techPacks: Detail[];
   finalProduct: ImageAsset[];
 }
 
@@ -139,7 +153,7 @@ export default function ProjectPageClient({ project }: ProjectPageClientProps) {
   const numDetails      = project.details?.length ?? 0;
   const numPatterns     = project.patterns?.length ?? 0;
   const numMaterials    = project.materials?.length ?? 0;
-  const numTechPacks    = project.techPack?.length ?? 0;
+  const numTechPacks    = project.techPacks?.length ?? 0;
   const numFinalProducts = project.finalProduct?.length ?? 0;
 
   // ── Normalize to ImageGridItem ──────────────────────────────────────────
@@ -147,10 +161,12 @@ export default function ProjectPageClient({ project }: ProjectPageClientProps) {
   const detailItems: ImageGridItem[]       = (project.details ?? []).map((d) => ({ url: d.image.url, title: d.title, description: d.description }));
   const patternItems: ImageGridItem[]      = (project.patterns ?? []).map((p, i) => ({ url: p.url, title: `Pattern ${i + 1}` }));
   const materialItems: ImageGridItem[]     = (project.materials ?? []).map((m) => ({ url: m.image.url, title: m.title, description: m.description }));
-  const techPackItems: ImageGridItem[]     = (project.techPack ?? []).map((t, i) => ({ url: t.url, title: `Tech Pack ${i + 1}` }));
+  const techPackItems: ImageGridItem[]     = (project.techPacks ?? []).map((t, i) => ({ url: t.image.url, title: t.title, description: t.description }));
   const finalProductItems: ImageGridItem[] = (project.finalProduct ?? []).map((f, i) => ({ url: f.url, title: `Final Product ${i + 1}` }));
 
   const currentModalItem = modal ? modal.items[modal.index] : null;
+
+  const techPackInfo: TechPackInfo = project.techPackHeader;
 
   return (
     <>
@@ -331,11 +347,34 @@ export default function ProjectPageClient({ project }: ProjectPageClientProps) {
             {/* 6 — Tech Pack */}
             <div id="techpack" className={styles.section}>
               <h2>Tech Pack <span>{numTechPacks}</span></h2>
-              <ImageGrid
-                items={techPackItems}
-                variant="techpack"
-                onOpen={openModal}
-              />
+
+              <div className={styles.techPackLayout}>
+
+                <aside className={styles.techPackInfo}>
+                  {Object.entries(techPackInfo).map(([label, value]) => (
+                    <div key={label} className={styles.techPackInfoItem}>
+                      <span className={styles.techPackLabel}>
+                        {label
+                          .replace(/([A-Z])/g, " $1")
+                          .replace(/^./, c => c.toUpperCase())}
+                      </span>
+
+                      <span className={styles.techPackValue}>
+                        {value}
+                      </span>
+                    </div>
+                  ))}
+                </aside>
+
+                <div className={styles.techPackContent}>
+                  <ImageGrid
+                    items={techPackItems}
+                    variant="techpack"
+                    onOpen={openModal}
+                  />
+                </div>
+
+              </div>
             </div>
 
             {/* 7 — Final Product */}

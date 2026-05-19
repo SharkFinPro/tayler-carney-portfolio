@@ -506,38 +506,154 @@
 // Tech Pack
 // ─────────────────────────────────────────────────────────────────────────────
 
-.techPackContainer {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-  place-items: center;
+.techPackViewer {
+  width: 100%;
 }
 
-.techPack {
-  width: 30%;
-  min-width: 200px;
-  background-color: var(--plate);
-  border: 2px solid var(--line);
-  padding: 1.5rem;
-  cursor: pointer;
-  overflow: hidden;
-  transition: border-color 0.2s, box-shadow 0.2s;
+.techPackToolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
 
-  & > img {
-    width: 100%;
-    height: auto;
-    display: block;
-    transition: transform 0.35s ease;
+  border: 1px solid var(--line);
+  background: var(--plate);
+
+  padding: 12px 16px;
+  margin-bottom: 1rem;
+
+  flex-wrap: wrap;
+}
+
+.techPackToolbarLabel {
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.techPackCounter {
+  margin-left: auto;
+
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  color: var(--ink-muted);
+}
+
+.techPackSelect {
+  appearance: none;
+
+  min-width: 220px;
+
+  border: 1px solid var(--line);
+  background: var(--canvas);
+  color: var(--ink);
+
+  padding: 10px 14px;
+
+  font-family: var(--ff-sans);
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+
+  cursor: pointer;
+
+  &:focus {
+    outline: none;
+    border-color: var(--line-strong);
   }
+}
+
+.techPackSheet {
+  border: 1px solid var(--line);
+  background: var(--plate);
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  width: fit-content;
+  max-width: 100%;
+
+  padding: 1.5rem;
+  margin-inline: auto;
+
+  cursor: pointer;
+
+  transition:
+          border-color .25s,
+          box-shadow .25s;
 
   &:hover {
     border-color: var(--line-strong);
     box-shadow: 0 4px 20px var(--shadow);
 
-    & > img {
-      transform: scale(1.02);
+    img {
+      transform: scale(1.015);
     }
   }
+
+  img {
+    display: block;
+
+    height: min(60vh, 900px);
+    width: auto;
+
+    max-width: 100%;
+    object-fit: contain;
+
+    transition: transform .35s ease;
+  }
+}
+
+.techPackLayout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 2rem;
+  align-items: start;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.techPackContent {
+  min-width: 0;
+}
+
+.techPackInfo {
+  width: 100%;
+  background: var(--plate);
+  border: 1px solid var(--line);
+}
+
+.techPackInfoItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  padding: 14px 18px;
+
+  border-bottom: 1px solid var(--line);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.techPackLabel {
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.techPackValue {
+  font-family: var(--ff-serif);
+  font-size: 16px;
+  line-height: 1.3;
+  color: var(--ink);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
