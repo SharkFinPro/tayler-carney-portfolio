@@ -15,6 +15,19 @@ interface Detail {
   image: ImageAsset;
 }
 
+type TechPackInfo = {
+  style: number;
+  garmentName: string;
+  season: string;
+  fitType: string;
+  brand: string;
+  sizeRange: string;
+  sampleSize: string;
+  designer: string;
+  fabrication: string;
+};
+
+
 interface Project {
   title: string;
   slug: string;
@@ -26,6 +39,7 @@ interface Project {
   details: Detail[];
   patterns: ImageAsset[];
   materials: Detail[];
+  techPackHeader: TechPackInfo;
   techPacks: Detail[];
   finalProduct: ImageAsset[];
 }
@@ -152,17 +166,7 @@ export default function ProjectPageClient({ project }: ProjectPageClientProps) {
 
   const currentModalItem = modal ? modal.items[modal.index] : null;
 
-  const techPackInfo = {
-    "style": 4,
-    "garmentName": "longline box blazer",
-    "season": "fall/winter 2027",
-    "fitType": "oversized",
-    "brand": "TAC",
-    "sizeRange": "XS-XXL",
-    "sampleSize": "Nike 42",
-    "designer": "Tayler Carney",
-    "fabrication": "Cotton/Poly Suiting Fabric"
-  };
+  const techPackInfo: TechPackInfo = project.techPackHeader;
 
   return (
     <>
