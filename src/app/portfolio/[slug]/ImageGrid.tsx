@@ -1,6 +1,7 @@
 "use client";
 import styles from "./Project.module.scss";
 import Image from "next/image";
+import { useState } from "react";
 
 export interface ImageGridItem {
   url: string;
@@ -95,24 +96,57 @@ export default function ImageGrid({ items, variant = "grid", onOpen }: ImageGrid
   }
 
   if (variant === "techpack") {
+    const [selectedIndex, setSelectedIndex] = useState(0);
+
+    const selected = items[selectedIndex];
+
     return (
-      <div className={styles.techPackContainer}>
-        {items.map((item, i) => (
-          <div
-            key={i}
-            className={styles.techPack}
-            onClick={() => onOpen(item.url, item.title, items, i)}
+      <div className={styles.techPackViewer}>
+
+        <div className={styles.techPackToolbar}>
+        <span className={styles.techPackToolbarLabel}>
+          Sheet
+        </span>
+
+          <select
+            value={selectedIndex}
+            onChange={(e) =>
+              setSelectedIndex(Number(e.target.value))
+            }
+            className={styles.techPackSelect}
           >
-            <Image
-              src={item.url}
-              alt={item.title}
-              width={1000}
-              height={1000}
-              placeholder="blur"
-              blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwMCIgaGVpZ2h0PSIxMDAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmMGYwZWUiLz48L3N2Zz4="
-            />
-          </div>
-        ))}
+            {items.map((item, i) => (
+              <option key={i} value={i}>
+                {item.title}
+              </option>
+            ))}
+          </select>
+
+          <span className={styles.techPackCounter}>
+          {selectedIndex + 1} / {items.length}
+        </span>
+        </div>
+
+        <div
+          className={styles.techPackSheet}
+          onClick={() =>
+            onOpen(
+              selected.url,
+              selected.title,
+              items,
+              selectedIndex
+            )
+          }
+        >
+          <Image
+            src={selected.url}
+            alt={selected.title}
+            width={1600}
+            height={2200}
+            placeholder="blur"
+            blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwMCIgaGVpZ2h0PSIxMDAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmMGYwZWUiLz48L3N2Zz4="
+          />
+        </div>
       </div>
     );
   }

@@ -49,8 +49,12 @@ async function getProject(slug: string) {
                   url
                 }
               }  
-              techPack {
-                url
+              techPacks {
+                title
+                description
+                image {
+                  url
+                }
               }
               finalProduct {
                 url
