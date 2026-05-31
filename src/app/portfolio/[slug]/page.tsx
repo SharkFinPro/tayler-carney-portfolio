@@ -23,6 +23,9 @@ async function getProject(slug: string) {
               sketches {
                 url
               }
+              digitalRendering {
+                url
+              }
               frontFlat {
                 url
               }
@@ -31,6 +34,13 @@ async function getProject(slug: string) {
               }
               sideFlat {
                 url
+              }
+              coloredFlats {
+                title
+                description
+                image {
+                  url
+                }
               }
               details {
                 title
@@ -51,6 +61,13 @@ async function getProject(slug: string) {
               }
               techPackHeader
               techPacks {
+                title
+                description
+                image {
+                  url
+                }
+              }
+              looks {
                 title
                 description
                 image {

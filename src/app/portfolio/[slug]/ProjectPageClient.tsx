@@ -33,14 +33,17 @@ interface Project {
   slug: string;
   description: string;
   sketches: ImageAsset[];
+  digitalRendering: ImageAsset;
   frontFlat: ImageAsset;
   backFlat: ImageAsset;
   sideFlat: ImageAsset;
+  coloredFlats: Detail[];
   details: Detail[];
   patterns: ImageAsset[];
   materials: Detail[];
   techPackHeader: TechPackInfo;
   techPacks: Detail[];
+  looks: Detail[];
   finalProduct: ImageAsset[];
 }
 
@@ -56,13 +59,15 @@ interface ModalState {
 
 // ─── Section IDs for sidebar nav ────────────────────────────────────────────
 const SECTIONS = [
-  { id: "sketches",     label: "Sketches" },
-  { id: "flats",        label: "Flats" },
-  { id: "details",      label: "Details" },
-  { id: "patterns",     label: "Patterns" },
-  { id: "materials",    label: "Materials" },
-  { id: "techpack",     label: "Tech Pack" },
-  { id: "final",        label: "Final" },
+  { id: "sketches",          label: "Sketches" },
+  { id: "digitalRendering",  label: "Digital" },
+  { id: "flats",             label: "Flats" },
+  { id: "looks",             label: "Looks" },
+  { id: "details",           label: "Details" },
+  { id: "patterns",          label: "Patterns" },
+  { id: "materials",         label: "Materials" },
+  { id: "techpack",          label: "Tech Pack" },
+  { id: "final",             label: "Final" },
 ];
 
 export default function ProjectPageClient({ project }: ProjectPageClientProps) {
@@ -148,16 +153,20 @@ export default function ProjectPageClient({ project }: ProjectPageClientProps) {
   };
 
   // ── Derived data ────────────────────────────────────────────────────────
-  const numSketches     = project.sketches?.length ?? 0;
-  const numFlats        = (project.frontFlat ? 1 : 0) + (project.backFlat ? 1 : 0) + (project.sideFlat ? 1 : 0);
-  const numDetails      = project.details?.length ?? 0;
-  const numPatterns     = project.patterns?.length ?? 0;
-  const numMaterials    = project.materials?.length ?? 0;
-  const numTechPacks    = project.techPacks?.length ?? 0;
+  const numSketches      = project.sketches?.length ?? 0;
+  const numFlats         = (project.frontFlat ? 1 : 0) + (project.backFlat ? 1 : 0) + (project.sideFlat ? 1 : 0);
+  const numColoredFlats  = project.coloredFlats?.length ?? 0;
+  const numLooks         = project.looks?.length ?? 0;
+  const numDetails       = project.details?.length ?? 0;
+  const numPatterns      = project.patterns?.length ?? 0;
+  const numMaterials     = project.materials?.length ?? 0;
+  const numTechPacks     = project.techPacks?.length ?? 0;
   const numFinalProducts = project.finalProduct?.length ?? 0;
 
   // ── Normalize to ImageGridItem ──────────────────────────────────────────
   const sketchItems: ImageGridItem[]       = (project.sketches ?? []).map((s, i) => ({ url: s.url, title: `Sketch ${i + 1}` }));
+  const coloredFlatItems: ImageGridItem[]  = (project.coloredFlats ?? []).map((c) => ({ url: c.image.url, title: c.title, description: c.description }));
+  const looksItems: ImageGridItem[]        = (project.looks ?? []).map((l, i) => ({ url: l.image.url, title: l.title || `Look ${i + 1}`, description: l.description }));
   const detailItems: ImageGridItem[]       = (project.details ?? []).map((d) => ({ url: d.image.url, title: d.title, description: d.description }));
   const patternItems: ImageGridItem[]      = (project.patterns ?? []).map((p, i) => ({ url: p.url, title: `Pattern ${i + 1}` }));
   const materialItems: ImageGridItem[]     = (project.materials ?? []).map((m) => ({ url: m.image.url, title: m.title, description: m.description }));
@@ -276,7 +285,32 @@ export default function ProjectPageClient({ project }: ProjectPageClientProps) {
               />
             </div>
 
-            {/* 2 — Technical Flats */}
+            {/* 2 — Digital Rendering */}
+            {project.digitalRendering && (
+              <div id="digitalRendering" className={styles.section}>
+                <h2>Digital Rendering</h2>
+                <div
+                  className={styles.digitalRendering}
+                  onClick={() => openModal(
+                    project.digitalRendering.url,
+                    "Digital Rendering",
+                    [{ url: project.digitalRendering.url, title: "Digital Rendering" }],
+                    0
+                  )}
+                >
+                  <Image
+                    src={project.digitalRendering.url}
+                    alt="Digital Rendering"
+                    width={1600}
+                    height={1200}
+                    placeholder="blur"
+                    blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYwMCIgaGVpZ2h0PSIxMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmMGYwZWUiLz48L3N2Zz4="
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* 3 — Technical Flats */}
             <div id="flats" className={styles.section}>
               <h2>Technical Flats <span>{numFlats}</span></h2>
               <div className={styles.flatViewSelector}>
@@ -312,9 +346,35 @@ export default function ProjectPageClient({ project }: ProjectPageClientProps) {
                   </>}
                 </div>
               </div>
+
+              {/* Colored Flats — below the main flat viewer */}
+              {numColoredFlats > 0 && (
+                <div className={styles.coloredFlatsSubsection}>
+                  <h3 className={styles.subsectionHeading}>
+                    Colored Flats <span>{numColoredFlats}</span>
+                  </h3>
+                  <ImageGrid
+                    items={coloredFlatItems}
+                    variant="materials"
+                    onOpen={openModal}
+                  />
+                </div>
+              )}
             </div>
 
-            {/* 3 — Details */}
+            {/* 4 — Looks */}
+            {numLooks > 0 && (
+              <div id="looks" className={styles.section}>
+                <h2>Looks <span>{numLooks}</span></h2>
+                <ImageGrid
+                  items={looksItems}
+                  variant="looks"
+                  onOpen={openModal}
+                />
+              </div>
+            )}
+
+            {/* 5 — Details */}
             <div id="details" className={styles.section}>
               <h2>Details <span>{numDetails}</span></h2>
               <ImageGrid
@@ -324,7 +384,7 @@ export default function ProjectPageClient({ project }: ProjectPageClientProps) {
               />
             </div>
 
-            {/* 4 — Patterns */}
+            {/* 6 — Patterns */}
             <div id="patterns" className={styles.section}>
               <h2>Pattern Drafting <span>{numPatterns}</span></h2>
               <ImageGrid
@@ -334,7 +394,7 @@ export default function ProjectPageClient({ project }: ProjectPageClientProps) {
               />
             </div>
 
-            {/* 5 — Materials */}
+            {/* 7 — Materials */}
             <div id="materials" className={styles.section}>
               <h2>Materials List <span>{numMaterials}</span></h2>
               <ImageGrid
@@ -344,13 +404,13 @@ export default function ProjectPageClient({ project }: ProjectPageClientProps) {
               />
             </div>
 
-            {/* 6 — Tech Pack */}
+            {/* 8 — Tech Pack */}
             <div id="techpack" className={styles.section}>
               <h2>Tech Pack <span>{numTechPacks}</span></h2>
 
               <div className={styles.techPackLayout}>
 
-                <aside className={styles.techPackInfo}>
+                {techPackInfo && <aside className={styles.techPackInfo}>
                   {Object.entries(techPackInfo).map(([label, value]) => (
                     <div key={label} className={styles.techPackInfoItem}>
                       <span className={styles.techPackLabel}>
@@ -364,7 +424,7 @@ export default function ProjectPageClient({ project }: ProjectPageClientProps) {
                       </span>
                     </div>
                   ))}
-                </aside>
+                </aside>}
 
                 <div className={styles.techPackContent}>
                   <ImageGrid
@@ -377,7 +437,7 @@ export default function ProjectPageClient({ project }: ProjectPageClientProps) {
               </div>
             </div>
 
-            {/* 7 — Final Product */}
+            {/* 9 — Final Product */}
             <div id="final" className={styles.section}>
               <h2>Final Product <span>{numFinalProducts}</span></h2>
               <ImageGrid
