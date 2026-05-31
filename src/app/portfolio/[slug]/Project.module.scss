@@ -744,6 +744,22 @@
 
 .coloredFlatsSubsection {
   margin-top: 2.5rem;
+
+  // Larger cards than the materials section default
+  .materialsContainer {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  }
+
+  // Don't crop — show the full image regardless of aspect ratio
+  .materialImage {
+    aspect-ratio: unset;
+
+    & > img {
+      width: 100%;
+      height: auto;
+      object-fit: unset;
+    }
+  }
 }
 
 .subsectionHeading {
