@@ -317,34 +317,58 @@ export default function ProjectPageClient({ project }: ProjectPageClientProps) {
                 <button onClick={() => setActiveFlat("front")} aria-pressed={activeFlat === "front"} disabled={!project.frontFlat}>Front</button>
                 <button onClick={() => setActiveFlat("back")}  aria-pressed={activeFlat === "back"}  disabled={!project.backFlat}>Back</button>
                 <button onClick={() => setActiveFlat("side")}  aria-pressed={activeFlat === "side"}  disabled={!project.sideFlat}>Side</button>
+                {project.frontFlat && project.backFlat && (
+                  <button onClick={() => setActiveFlat("both")} aria-pressed={activeFlat === "both"}>Both</button>
+                )}
               </div>
               <div>
-                <div className={styles.flat}>
-                  {activeFlat === "front" && project.frontFlat && <>
-                    <h3>Front View</h3>
-                    <Image src={project.frontFlat.url} alt="Front Flat" width={1000} height={1000}
-                           onClick={() => openModal(project.frontFlat.url, "Front Flat", [{ url: project.frontFlat.url, title: "Front Flat" }], 0)}
-                           placeholder="blur"
-                           blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwMCIgaGVpZ2h0PSIxMDAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmMGYwZWUiLz48L3N2Zz4="
-                    />
-                  </>}
-                  {activeFlat === "back" && project.backFlat && <>
-                    <h3>Back View</h3>
-                    <Image src={project.backFlat.url} alt="Back Flat" width={1000} height={1000}
-                           onClick={() => openModal(project.backFlat.url, "Back Flat", [{ url: project.backFlat.url, title: "Back Flat" }], 0)}
-                           placeholder="blur"
-                           blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwMCIgaGVpZ2h0PSIxMDAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmMGYwZWUiLz48L3N2Zz4="
-                    />
-                  </>}
-                  {activeFlat === "side" && project.sideFlat && <>
-                    <h3>Side View</h3>
-                    <Image src={project.sideFlat.url} alt="Side Flat" width={1000} height={1000}
-                           onClick={() => openModal(project.sideFlat.url, "Side Flat", [{ url: project.sideFlat.url, title: "Side Flat" }], 0)}
-                           placeholder="blur"
-                           blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwMCIgaGVpZ2h0PSIxMDAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmMGYwZWUiLz48L3N2Zz4="
-                    />
-                  </>}
-                </div>
+                {activeFlat === "both" ? (
+                  <div className={styles.flatSideBySide}>
+                    <div className={styles.flat}>
+                      <h3>Front View</h3>
+                      <Image src={project.frontFlat.url} alt="Front Flat" width={1000} height={1000}
+                             onClick={() => openModal(project.frontFlat.url, "Front Flat", [{ url: project.frontFlat.url, title: "Front Flat" }], 0)}
+                             placeholder="blur"
+                             blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwMCIgaGVpZ2h0PSIxMDAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmMGYwZWUiLz48L3N2Zz4="
+                      />
+                    </div>
+                    <div className={styles.flat}>
+                      <h3>Back View</h3>
+                      <Image src={project.backFlat.url} alt="Back Flat" width={1000} height={1000}
+                             onClick={() => openModal(project.backFlat.url, "Back Flat", [{ url: project.backFlat.url, title: "Back Flat" }], 0)}
+                             placeholder="blur"
+                             blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwMCIgaGVpZ2h0PSIxMDAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmMGYwZWUiLz48L3N2Zz4="
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className={styles.flat}>
+                    {activeFlat === "front" && project.frontFlat && <>
+                      <h3>Front View</h3>
+                      <Image src={project.frontFlat.url} alt="Front Flat" width={1000} height={1000}
+                             onClick={() => openModal(project.frontFlat.url, "Front Flat", [{ url: project.frontFlat.url, title: "Front Flat" }], 0)}
+                             placeholder="blur"
+                             blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwMCIgaGVpZ2h0PSIxMDAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmMGYwZWUiLz48L3N2Zz4="
+                      />
+                    </>}
+                    {activeFlat === "back" && project.backFlat && <>
+                      <h3>Back View</h3>
+                      <Image src={project.backFlat.url} alt="Back Flat" width={1000} height={1000}
+                             onClick={() => openModal(project.backFlat.url, "Back Flat", [{ url: project.backFlat.url, title: "Back Flat" }], 0)}
+                             placeholder="blur"
+                             blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwMCIgaGVpZ2h0PSIxMDAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmMGYwZWUiLz48L3N2Zz4="
+                      />
+                    </>}
+                    {activeFlat === "side" && project.sideFlat && <>
+                      <h3>Side View</h3>
+                      <Image src={project.sideFlat.url} alt="Side Flat" width={1000} height={1000}
+                             onClick={() => openModal(project.sideFlat.url, "Side Flat", [{ url: project.sideFlat.url, title: "Side Flat" }], 0)}
+                             placeholder="blur"
+                             blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwMCIgaGVpZ2h0PSIxMDAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmMGYwZWUiLz48L3N2Zz4="
+                      />
+                    </>}
+                  </div>
+                )}
               </div>
 
               {/* Colored Flats — below the main flat viewer */}
