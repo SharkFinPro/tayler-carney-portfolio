@@ -135,12 +135,12 @@
 .mainHeader {
   width: 100%;
   display: grid;
-  place-items: center;
+  grid-template-columns: 1fr 1fr;
+  align-items: end;
+  gap: 2rem 4rem;
   padding-bottom: 5rem;
 
   & > h1 {
-    width: 40%;
-    justify-self: baseline;
     font-family: var(--ff-serif);
     font-size: clamp(48px, 7vw, 88px);
     font-weight: 400;
@@ -149,12 +149,29 @@
     color: var(--ink);
   }
 
+  & > p {
+    font-family: var(--ff-sans);
+    font-size: clamp(13px, 1.1vw, 15px);
+    line-height: 1.7;
+    color: var(--ink-muted);
+    padding-bottom: 0.25rem; // optically align with title baseline
+  }
+
   &:after {
+    grid-column: 1 / -1;
     border-bottom: 1px solid var(--line);
     content: '';
     display: block;
     width: 100%;
-    padding-top: 3rem;
+    margin-top: -2rem;
+  }
+
+  @media (max-width: 700px) {
+    grid-template-columns: 1fr;
+
+    & > p {
+      padding-bottom: 0;
+    }
   }
 }
 
@@ -190,7 +207,7 @@
     }
 
     &::before {
-      content: "0" counter(section) " / 07";
+      content: "0" counter(section) " / 09";
       font-family: var(--ff-mono);
       font-size: 10px;
       color: var(--ink-muted);
@@ -295,9 +312,37 @@
   }
 }
 
+.flatSideBySide {
+  display: flex;
+  gap: 16px;
+  align-items: start;
+
+  & > .flat {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    & > h3 {
+      width: 100%;
+    }
+
+    & > img {
+      max-height: 75vh;
+    }
+  }
+
+  @media (max-width: 600px) {
+    flex-direction: column;
+  }
+}
+
 .flat {
   border: 1px solid var(--line);
-  width: 50%;
+  width: fit-content;
+  max-width: 100%;
   cursor: pointer;
   overflow: hidden;
 
@@ -306,6 +351,8 @@
   }
 
   & > h3 {
+    position: relative;
+    z-index: 1;
     background: var(--plate-dark);
     color: var(--ink-inverse);
     padding: 9px 16px;
@@ -320,9 +367,11 @@
   }
 
   & > img {
-    width: 100%;
-    height: auto;
     display: block;
+    max-height: 65vh;
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
     transition: transform 0.35s ease;
   }
 }
@@ -654,6 +703,151 @@
   font-size: 16px;
   line-height: 1.3;
   color: var(--ink);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Digital Rendering
+// ─────────────────────────────────────────────────────────────────────────────
+
+.digitalRendering {
+  border: 1px solid var(--line);
+  background: var(--plate);
+  overflow: hidden;
+  cursor: pointer;
+  width: fit-content;
+  max-width: 100%;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  & > img {
+    display: block;
+    max-height: 70vh;
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+    transition: transform 0.35s ease;
+  }
+
+  &:hover {
+    border-color: var(--line-strong);
+    box-shadow: 0 4px 20px var(--shadow);
+
+    & > img {
+      transform: scale(1.02);
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Colored Flats subsection (inside flats section)
+// ─────────────────────────────────────────────────────────────────────────────
+
+.coloredFlatsSubsection {
+  margin-top: 2.5rem;
+
+  // Larger cards than the materials section default
+  .materialsContainer {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  }
+
+  // Don't crop — show the full image regardless of aspect ratio
+  .materialImage {
+    aspect-ratio: unset;
+
+    & > img {
+      width: 100%;
+      height: auto;
+      object-fit: unset;
+    }
+  }
+}
+
+.subsectionHeading {
+  font-family: var(--ff-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  & > span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    background: var(--line);
+    color: var(--ink);
+    font-family: var(--ff-mono);
+    font-size: 10px;
+    font-weight: 500;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Looks
+// ─────────────────────────────────────────────────────────────────────────────
+
+.looksContainer {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.lookCard {
+  border: 1px solid var(--line);
+  background: var(--plate);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:hover {
+    border-color: var(--line-strong);
+    box-shadow: 0 4px 20px var(--shadow);
+
+    .lookImage > img {
+      transform: scale(1.03);
+    }
+  }
+}
+
+.lookImage {
+  overflow: hidden;
+  background: var(--canvas-soft);
+
+  & > img {
+    width: 100%;
+    height: auto;
+    display: block;
+    transition: transform 0.35s ease;
+  }
+}
+
+.lookInfo {
+  padding: 12px 14px;
+  border-top: 1px solid var(--line);
+
+  & > h3 {
+    font-family: var(--ff-sans);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+
+  & > p {
+    font-family: var(--ff-sans);
+    font-size: 11px;
+    color: var(--ink-muted);
+    line-height: 1.5;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

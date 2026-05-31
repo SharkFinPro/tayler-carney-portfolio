@@ -12,7 +12,7 @@ export interface ImageGridItem {
 
 interface ImageGridProps {
   items: ImageGridItem[];
-  variant?: "sketches" | "grid" | "patterns" | "materials" | "techpack" | "finalProduct";
+  variant?: "sketches" | "grid" | "patterns" | "materials" | "techpack" | "finalProduct" | "looks";
   onOpen: (src: string, title: string, items: ImageGridItem[], index: number) => void;
 }
 
@@ -168,6 +168,37 @@ export default function ImageGrid({ items, variant = "grid", onOpen }: ImageGrid
               placeholder="blur"
               blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwMCIgaGVpZ2h0PSIxMDAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmMGYwZWUiLz48L3N2Zz4="
             />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (variant === "looks") {
+    return (
+      <div className={styles.looksContainer}>
+        {items.map((item, i) => (
+          <div
+            key={i}
+            className={styles.lookCard}
+            onClick={() => onOpen(item.url, item.title, items, i)}
+          >
+            <div className={styles.lookImage}>
+              <Image
+                src={item.url}
+                alt={item.title}
+                width={1000}
+                height={1200}
+                placeholder="blur"
+                blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwMCIgaGVpZ2h0PSIxMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmMGYwZWUiLz48L3N2Zz4="
+              />
+            </div>
+            {(item.title || item.description) && (
+              <div className={styles.lookInfo}>
+                {item.title && <h3>{item.title}</h3>}
+                {item.description && <p>{item.description}</p>}
+              </div>
+            )}
           </div>
         ))}
       </div>

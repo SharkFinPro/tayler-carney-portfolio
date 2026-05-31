@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import ProjectPageClient from "./ProjectPageClient";
+import { Metadata } from "next";
 
 interface ProjectPageProps {
   params: Promise<{ slug: string }>;
@@ -23,6 +24,9 @@ async function getProject(slug: string) {
               sketches {
                 url
               }
+              digitalRendering {
+                url
+              }
               frontFlat {
                 url
               }
@@ -31,6 +35,13 @@ async function getProject(slug: string) {
               }
               sideFlat {
                 url
+              }
+              coloredFlats {
+                title
+                description
+                image {
+                  url
+                }
               }
               details {
                 title
@@ -57,6 +68,13 @@ async function getProject(slug: string) {
                   url
                 }
               }
+              looks {
+                title
+                description
+                image {
+                  url
+                }
+              }
               finalProduct {
                 url
               }
@@ -76,6 +94,24 @@ async function getProject(slug: string) {
     console.log("Error fetching project: ", error);
     notFound();
   }
+}
+
+export async function generateMetadata({
+  params,
+}: ProjectPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const project = await getProject(slug);
+
+  if (!project) {
+    return {
+      title: "Project Not Found",
+    };
+  }
+
+  return {
+    title: project.title,
+    description: project.description,
+  };
 }
 
 export default async function ProjectPage({ params }: ProjectPageProps) {
