@@ -2,14 +2,11 @@ import { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import styles from "./Home.module.scss";
+import { AnimatedSection } from "@/components/AnimatedSection";
 
 export const metadata: Metadata = {
   title: "Home"
 };
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Static page data — swap for CMS fetch when ready
-// ─────────────────────────────────────────────────────────────────────────────
 
 const pageData = {
   hero: {
@@ -38,7 +35,6 @@ const pageData = {
     imageAlt: "Archival garment on concrete pedestal",
   },
 
-  // Primary = large left card; secondary = right stacked pair
   destinations: [
     {
       ref: "Sec. 01",
@@ -70,10 +66,6 @@ const pageData = {
   ]
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Page
-// ─────────────────────────────────────────────────────────────────────────────
-
 export default function Home() {
   const { hero, archive, destinations } = pageData;
 
@@ -83,107 +75,110 @@ export default function Home() {
   return (
     <div className={styles.pageWrapper}>
 
-      {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      <section className={styles.hero}>
-        <div className={styles.heroInner}>
+      <AnimatedSection>
+        <section className={styles.hero}>
+          <div className={styles.heroInner}>
 
-          <div className={styles.heroLeft}>
-            <span className={styles.heroEyebrow}>{hero.eyebrow}</span>
-            <h1 className={styles.heroHeadline}>{hero.headline}</h1>
-            <p className={styles.heroSub}>{hero.subtext}</p>
-            <div className={styles.heroCta}>
-              <Link href={hero.primaryCta.href} className={styles.heroCtaPrimary}>
-                {hero.primaryCta.label}
-              </Link>
-              <Link href={hero.secondaryCta.href} className={styles.heroCtaSecondary}>
-                {hero.secondaryCta.label} →
+            <div className={styles.heroLeft}>
+              <span className={styles.heroEyebrow}>{hero.eyebrow}</span>
+              <h1 className={styles.heroHeadline}>{hero.headline}</h1>
+              <p className={styles.heroSub}>{hero.subtext}</p>
+              <div className={styles.heroCta}>
+                <Link href={hero.primaryCta.href} className={styles.heroCtaPrimary}>
+                  {hero.primaryCta.label}
+                </Link>
+                <Link href={hero.secondaryCta.href} className={styles.heroCtaSecondary}>
+                  {hero.secondaryCta.label} →
+                </Link>
+              </div>
+            </div>
+
+            <div className={styles.heroRight}>
+              <div className={styles.heroDataHeader}>
+                <span>TC / Archive</span>
+                <span>001</span>
+              </div>
+              {hero.stats.map((stat) => (
+                <div key={stat.key} className={styles.heroDataRow}>
+                  <span className={styles.heroDataKey}>{stat.key}</span>
+                  <span className={styles.heroDataVal}>{stat.value}</span>
+                </div>
+              ))}
+            </div>
+
+          </div>
+        </section>
+      </AnimatedSection>
+
+      <AnimatedSection>
+        <section className={styles.archiveBand}>
+          <div className={styles.archiveBandInner}>
+
+            <div className={styles.archiveCard}>
+              <span className={styles.archiveCardLabel}>{archive.label}</span>
+              <h2 className={styles.archiveCardHeadline}>{archive.headline}</h2>
+              <p className={styles.archiveCardBody}>{archive.body}</p>
+              <Link href={archive.buttonHref} className={styles.archiveCardButton}>
+                {archive.buttonLabel}
               </Link>
             </div>
-          </div>
 
-          <div className={styles.heroRight}>
-            <div className={styles.heroDataHeader}>
-              <span>TC / Archive</span>
-              <span>001</span>
+            <div className={styles.archiveImage}>
+              <Image
+                src={archive.imageUrl}
+                alt={archive.imageAlt}
+                fill
+                sizes="(max-width: 860px) 90vw, 45vw"
+              />
             </div>
-            {hero.stats.map((stat) => (
-              <div key={stat.key} className={styles.heroDataRow}>
-                <span className={styles.heroDataKey}>{stat.key}</span>
-                <span className={styles.heroDataVal}>{stat.value}</span>
-              </div>
-            ))}
+
           </div>
+        </section>
+      </AnimatedSection>
 
-        </div>
-      </section>
+      <AnimatedSection>
+        <section className={styles.navSection}>
+          <div className={styles.navSectionInner}>
 
-      {/* ── Dark archive band ─────────────────────────────────────────────── */}
-      <section className={styles.archiveBand}>
-        <div className={styles.archiveBandInner}>
+            <div className={styles.navSectionHeader}>
+              <h3 className={styles.navSectionTitle}>Explore the Site</h3>
+              <span className={styles.navSectionMeta}>Index: 3 Sections</span>
+            </div>
 
-          <div className={styles.archiveCard}>
-            <span className={styles.archiveCardLabel}>{archive.label}</span>
-            <h2 className={styles.archiveCardHeadline}>{archive.headline}</h2>
-            <p className={styles.archiveCardBody}>{archive.body}</p>
-            <Link href={archive.buttonHref} className={styles.archiveCardButton}>
-              {archive.buttonLabel}
-            </Link>
-          </div>
+            <div className={styles.navGrid}>
 
-          <div className={styles.archiveImage}>
-            <Image
-              src={archive.imageUrl}
-              alt={archive.imageAlt}
-              fill
-              sizes="(max-width: 860px) 90vw, 45vw"
-            />
-          </div>
-
-        </div>
-      </section>
-
-      {/* ── Site navigation cards ─────────────────────────────────────────── */}
-      <section className={styles.navSection}>
-        <div className={styles.navSectionInner}>
-
-          <div className={styles.navSectionHeader}>
-            <h3 className={styles.navSectionTitle}>Explore the Site</h3>
-            <span className={styles.navSectionMeta}>Index: 3 Sections</span>
-          </div>
-
-          <div className={styles.navGrid}>
-
-            <Link href={primaryCard.href} className={styles.navCardPrimary}>
-              <div className={styles.navCardBody}>
-                <span className={styles.navCardRef}>{primaryCard.ref}</span>
-                <h4 className={styles.navCardTitle}>{primaryCard.title}</h4>
-                <p className={styles.navCardDesc}>{primaryCard.description}</p>
-              </div>
-              <div className={styles.navCardFooter}>
-                <span className={styles.navCardTag}>{primaryCard.tag}</span>
-                <span className={styles.navCardArrow}>↗</span>
-              </div>
-              <span className={styles.navCardAccent} />
-            </Link>
-
-            {secondaryCards.map((card) => (
-              <Link key={card.href} href={card.href} className={styles.navCardSecondary}>
+              <Link href={primaryCard.href} className={styles.navCardPrimary}>
                 <div className={styles.navCardBody}>
-                  <span className={styles.navCardRef}>{card.ref}</span>
-                  <h4 className={styles.navCardTitleSmall}>{card.title}</h4>
-                  <p className={styles.navCardDesc}>{card.description}</p>
+                  <span className={styles.navCardRef}>{primaryCard.ref}</span>
+                  <h4 className={styles.navCardTitle}>{primaryCard.title}</h4>
+                  <p className={styles.navCardDesc}>{primaryCard.description}</p>
                 </div>
                 <div className={styles.navCardFooter}>
-                  <span className={styles.navCardTag}>{card.tag}</span>
+                  <span className={styles.navCardTag}>{primaryCard.tag}</span>
                   <span className={styles.navCardArrow}>↗</span>
                 </div>
                 <span className={styles.navCardAccent} />
               </Link>
-            ))}
 
+              {secondaryCards.map((card) => (
+                <Link key={card.href} href={card.href} className={styles.navCardSecondary}>
+                  <div className={styles.navCardBody}>
+                    <span className={styles.navCardRef}>{card.ref}</span>
+                    <h4 className={styles.navCardTitleSmall}>{card.title}</h4>
+                    <p className={styles.navCardDesc}>{card.description}</p>
+                  </div>
+                  <div className={styles.navCardFooter}>
+                    <span className={styles.navCardTag}>{card.tag}</span>
+                    <span className={styles.navCardArrow}>↗</span>
+                  </div>
+                  <span className={styles.navCardAccent} />
+                </Link>
+              ))}
+
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </AnimatedSection>
 
     </div>
   );
