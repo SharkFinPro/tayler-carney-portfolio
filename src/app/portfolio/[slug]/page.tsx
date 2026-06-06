@@ -96,6 +96,28 @@ async function getProject(slug: string) {
   }
 }
 
+async function getAllProjects() {
+  const response = await fetch(process.env.CMS_ENDPOINT as string, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + process.env.CMS_TOKEN,
+    },
+    body: JSON.stringify({
+      query: `
+        query {
+          projects {
+            slug
+            title
+          }
+        }
+      `,
+    }),
+  });
+  const json = await response.json();
+  return json.data.projects;
+}
+
 export async function generateMetadata({
   params,
 }: ProjectPageProps): Promise<Metadata> {
@@ -123,5 +145,10 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
     notFound();
   }
 
-  return <ProjectPageClient project={project} />;
+  const allProjects = await getAllProjects();
+  const currentIndex = allProjects.findIndex((p: any) => p.slug === slug);
+  const prevProject = currentIndex > 0 ? allProjects[currentIndex - 1] : null;
+  const nextProject = currentIndex < allProjects.length - 1 ? allProjects[currentIndex + 1] : null;
+
+  return <ProjectPageClient project={project} prevProject={prevProject} nextProject={nextProject} />;
 }

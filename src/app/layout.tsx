@@ -31,11 +31,26 @@ export const metadata: Metadata = {
     default: "Tayler Carney's Portfolio",
     template: "%s | Tayler Carney"
   },
-  description: "",
+  description: "A professional portfolio of structural fashion design by Tayler Carney, showcasing the intersection of garment engineering and architectural precision through pattern-making and material research.",
   keywords: [
-    "portfolio",
-    "fashion"
+    "tayler carney",
+    "fashion design portfolio",
+    "structural design",
+    "pattern making",
+    "apparel production",
+    "fashion architecture"
   ],
+  openGraph: {
+    title: "Tayler Carney | Structural Fashion Design",
+    description: "Explore a portfolio of garments engineered with the precision of architecture.",
+    type: "website",
+    url: process.env.WEBSITE_URL,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Tayler Carney | Structural Fashion Design",
+    description: "Explore a portfolio of garments engineered with the precision of architecture.",
+  },
   robots: {
     index: true,
     follow: true

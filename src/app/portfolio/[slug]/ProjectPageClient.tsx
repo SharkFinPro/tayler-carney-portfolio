@@ -2,8 +2,12 @@
 import styles from "./Project.module.scss";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { motion, type Variants } from "framer-motion";
 import ImageGrid, { ImageGridItem } from "./ImageGrid";
+import ProjectModal from "./ProjectModal";
+import ProjectSidebar from "./ProjectSidebar";
+import { BLUR_DATA_URL } from "@/components/AnimatedSection";
 
 interface ImageAsset {
   url: string;
@@ -27,7 +31,6 @@ type TechPackInfo = {
   fabrication: string;
 };
 
-
 interface Project {
   title: string;
   slug: string;
@@ -47,17 +50,22 @@ interface Project {
   finalProduct: ImageAsset[];
 }
 
-interface ProjectPageClientProps {
-  project: Project;
+interface ProjectNavItem {
+  slug: string;
+  title: string;
 }
 
-// ─── Modal state ────────────────────────────────────────────────────────────
+interface ProjectPageClientProps {
+  project: Project;
+  prevProject: ProjectNavItem | null;
+  nextProject: ProjectNavItem | null;
+}
+
 interface ModalState {
   items: ImageGridItem[];
   index: number;
 }
 
-// ─── Section IDs for sidebar nav ────────────────────────────────────────────
 const SECTIONS = [
   { id: "sketches",          label: "Sketches" },
   { id: "digitalRendering",  label: "Digital" },
@@ -70,14 +78,17 @@ const SECTIONS = [
   { id: "final",             label: "Final" },
 ];
 
-export default function ProjectPageClient({ project }: ProjectPageClientProps) {
+const fadeInVariant: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
+};
 
+export default function ProjectPageClient({ project, prevProject, nextProject }: ProjectPageClientProps) {
   const [activeFlat, setActiveFlat] = useState<string>("front");
   const [modal, setModal] = useState<ModalState | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [activeSection, setActiveSection] = useState<string>("sketches");
 
-  // ── Open / close modal ──────────────────────────────────────────────────
   const openModal = useCallback((
     src: string,
     title: string,
@@ -96,20 +107,13 @@ export default function ProjectPageClient({ project }: ProjectPageClientProps) {
   }, []);
 
   const goNext = useCallback(() => {
-    setModal((prev) => {
-      if (!prev) return prev;
-      return { ...prev, index: (prev.index + 1) % prev.items.length };
-    });
+    setModal((prev) => (prev ? { ...prev, index: (prev.index + 1) % prev.items.length } : prev));
   }, []);
 
   const goPrev = useCallback(() => {
-    setModal((prev) => {
-      if (!prev) return prev;
-      return { ...prev, index: (prev.index - 1 + prev.items.length) % prev.items.length };
-    });
+    setModal((prev) => (prev ? { ...prev, index: (prev.index - 1 + prev.items.length) % prev.items.length } : prev));
   }, []);
 
-  // ── Keyboard: Esc + arrows ──────────────────────────────────────────────
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape")      closeModal();
@@ -120,20 +124,16 @@ export default function ProjectPageClient({ project }: ProjectPageClientProps) {
     return () => window.removeEventListener("keydown", handleKey);
   }, [closeModal, goNext, goPrev]);
 
-  // ── Lock body scroll when modal is open ────────────────────────────────
   useEffect(() => {
     document.body.style.overflow = modal ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [modal]);
 
-  // ── Intersection observer for sidebar active state ──────────────────────
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setActiveSection(entry.target.id);
-          }
+          if (entry.isIntersecting) setActiveSection(entry.target.id);
         });
       },
       { rootMargin: "-40% 0px -55% 0px", threshold: 0 }
@@ -147,12 +147,10 @@ export default function ProjectPageClient({ project }: ProjectPageClientProps) {
     return () => observer.disconnect();
   }, []);
 
-  // ── Smooth scroll to section ────────────────────────────────────────────
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  // ── Derived data ────────────────────────────────────────────────────────
   const numSketches      = project.sketches?.length ?? 0;
   const numFlats         = (project.frontFlat ? 1 : 0) + (project.backFlat ? 1 : 0) + (project.sideFlat ? 1 : 0);
   const numColoredFlats  = project.coloredFlats?.length ?? 0;
@@ -163,7 +161,6 @@ export default function ProjectPageClient({ project }: ProjectPageClientProps) {
   const numTechPacks     = project.techPacks?.length ?? 0;
   const numFinalProducts = project.finalProduct?.length ?? 0;
 
-  // ── Normalize to ImageGridItem ──────────────────────────────────────────
   const sketchItems: ImageGridItem[]       = (project.sketches ?? []).map((s, i) => ({ url: s.url, title: `Sketch ${i + 1}` }));
   const coloredFlatItems: ImageGridItem[]  = (project.coloredFlats ?? []).map((c) => ({ url: c.image.url, title: c.title, description: c.description }));
   const looksItems: ImageGridItem[]        = (project.looks ?? []).map((l, i) => ({ url: l.image.url, title: l.title || `Look ${i + 1}`, description: l.description }));
@@ -173,121 +170,45 @@ export default function ProjectPageClient({ project }: ProjectPageClientProps) {
   const techPackItems: ImageGridItem[]     = (project.techPacks ?? []).map((t, i) => ({ url: t.image.url, title: t.title, description: t.description }));
   const finalProductItems: ImageGridItem[] = (project.finalProduct ?? []).map((f, i) => ({ url: f.url, title: `Final Product ${i + 1}` }));
 
-  const currentModalItem = modal ? modal.items[modal.index] : null;
-
   const techPackInfo: TechPackInfo = project.techPackHeader;
 
   return (
     <>
+      <ProjectModal
+        modal={modal}
+        modalVisible={modalVisible}
+        closeModal={closeModal}
+        goNext={goNext}
+        goPrev={goPrev}
+      />
       <main className={styles.pageWrapper}>
-
-        {/* ── Modal ────────────────────────────────────────────────────── */}
-        {modal && currentModalItem && (
-          <div
-            className={`${styles.modalOverlay} ${modalVisible ? styles.visible : ""}`}
-            onClick={closeModal}
-          >
-            <div
-              className={styles.modalInner}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className={styles.modalHeader}>
-                <span>{currentModalItem.title}</span>
-                <div className={styles.modalControls}>
-                  {modal.items.length > 1 && (
-                    <span className={styles.modalCounter}>
-                      {modal.index + 1} / {modal.items.length}
-                    </span>
-                  )}
-                  <button className={styles.modalClose} onClick={closeModal} aria-label="Close">
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                      <line x1="1" y1="1" x2="9" y2="9" stroke="currentColor" strokeWidth="1.5"/>
-                      <line x1="9" y1="1" x2="1" y2="9" stroke="currentColor" strokeWidth="1.5"/>
-                    </svg>
-                    Close
-                  </button>
-                </div>
-              </div>
-              <div className={styles.modalBody}>
-                {modal.items.length > 1 && (
-                  <button
-                    className={`${styles.modalNav} ${styles.modalNavPrev}`}
-                    onClick={goPrev}
-                    aria-label="Previous image"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                      <path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                    </svg>
-                  </button>
-                )}
-                <Image
-                  src={currentModalItem.url}
-                  alt={currentModalItem.title}
-                  width={1600}
-                  height={900}
-                />
-                {modal.items.length > 1 && (
-                  <button
-                    className={`${styles.modalNav} ${styles.modalNavNext}`}
-                    onClick={goNext}
-                    aria-label="Next image"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                      <path d="M6 3L11 8L6 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                    </svg>
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
         <div className={styles.pageLayout}>
+          <ProjectSidebar
+            projectTitle={project.title}
+            activeSection={activeSection}
+            setActiveSection={setActiveSection}
+            scrollTo={scrollTo}
+            sections={SECTIONS}
+          />
 
-          {/* ── Sticky sidebar nav ───────────────────────────────────────── */}
-          <aside className={styles.sidebarNav}>
-            {/* Breadcrumb */}
-            <nav className={styles.breadcrumb} aria-label="Breadcrumb">
-              <Link href="/portfolio">Portfolio</Link>
-              <span aria-hidden="true">→</span>
-              <span>{project.title}</span>
-            </nav>
-
-            {/* Section progress */}
-            <div className={styles.sidebarSections}>
-              {SECTIONS.map(({ id, label }) => (
-                <button
-                  key={id}
-                  className={`${styles.sidebarItem} ${activeSection === id ? styles.sidebarItemActive : ""}`}
-                  onClick={() => scrollTo(id)}
-                >
-                  <span className={styles.sidebarDot} />
-                  <span className={styles.sidebarLabel}>{label}</span>
-                </button>
-              ))}
-            </div>
-          </aside>
-
-          {/* ── Main content ─────────────────────────────────────────────── */}
           <div className={styles.pageContainer}>
-            <div className={styles.mainHeader}>
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              variants={fadeInVariant}
+              className={styles.mainHeader}
+            >
               <h1>{project.title}</h1>
               <p>{project.description}</p>
-            </div>
+            </motion.div>
 
-            {/* 1 — Sketches */}
-            <div id="sketches" className={styles.section}>
+            <motion.div id="sketches" className={styles.section} variants={fadeInVariant} initial="hidden" whileInView="visible" viewport={{ once: true }}>
               <h2>Initial Sketches <span>{numSketches}</span></h2>
-              <ImageGrid
-                items={sketchItems}
-                variant="sketches"
-                onOpen={openModal}
-              />
-            </div>
+              <ImageGrid items={sketchItems} variant="sketches" onOpen={openModal} />
+            </motion.div>
 
-            {/* 2 — Digital Rendering */}
             {project.digitalRendering && (
-              <div id="digitalRendering" className={styles.section}>
+              <motion.div id="digitalRendering" className={styles.section} variants={fadeInVariant} initial="hidden" whileInView="visible" viewport={{ once: true }}>
                 <h2>Digital Rendering</h2>
                 <div
                   className={styles.digitalRendering}
@@ -304,14 +225,13 @@ export default function ProjectPageClient({ project }: ProjectPageClientProps) {
                     width={1600}
                     height={1200}
                     placeholder="blur"
-                    blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYwMCIgaGVpZ2h0PSIxMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmMGYwZWUiLz48L3N2Zz4="
+                    blurDataURL={BLUR_DATA_URL}
                   />
                 </div>
-              </div>
+              </motion.div>
             )}
 
-            {/* 3 — Technical Flats */}
-            <div id="flats" className={styles.section}>
+            <motion.div id="flats" className={styles.section} variants={fadeInVariant} initial="hidden" whileInView="visible" viewport={{ once: true }}>
               <h2>Technical Flats <span>{numFlats}</span></h2>
               <div className={styles.flatViewSelector}>
                 <button onClick={() => setActiveFlat("front")} aria-pressed={activeFlat === "front"} disabled={!project.frontFlat}>Front</button>
@@ -321,7 +241,7 @@ export default function ProjectPageClient({ project }: ProjectPageClientProps) {
                   <button onClick={() => setActiveFlat("both")} aria-pressed={activeFlat === "both"}>Both</button>
                 )}
               </div>
-              <div>
+              <div className={styles.flatDisplay}>
                 {activeFlat === "both" ? (
                   <div className={styles.flatSideBySide}>
                     <div className={styles.flat}>
@@ -329,7 +249,7 @@ export default function ProjectPageClient({ project }: ProjectPageClientProps) {
                       <Image src={project.frontFlat.url} alt="Front Flat" width={1000} height={1000}
                              onClick={() => openModal(project.frontFlat.url, "Front Flat", [{ url: project.frontFlat.url, title: "Front Flat" }], 0)}
                              placeholder="blur"
-                             blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwMCIgaGVpZ2h0PSIxMDAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmMGYwZWUiLz48L3N2Zz4="
+                             blurDataURL={BLUR_DATA_URL}
                       />
                     </div>
                     <div className={styles.flat}>
@@ -337,7 +257,7 @@ export default function ProjectPageClient({ project }: ProjectPageClientProps) {
                       <Image src={project.backFlat.url} alt="Back Flat" width={1000} height={1000}
                              onClick={() => openModal(project.backFlat.url, "Back Flat", [{ url: project.backFlat.url, title: "Back Flat" }], 0)}
                              placeholder="blur"
-                             blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwMCIgaGVpZ2h0PSIxMDAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmMGYwZWUiLz48L3N2Zz4="
+                             blurDataURL={BLUR_DATA_URL}
                       />
                     </div>
                   </div>
@@ -348,7 +268,7 @@ export default function ProjectPageClient({ project }: ProjectPageClientProps) {
                       <Image src={project.frontFlat.url} alt="Front Flat" width={1000} height={1000}
                              onClick={() => openModal(project.frontFlat.url, "Front Flat", [{ url: project.frontFlat.url, title: "Front Flat" }], 0)}
                              placeholder="blur"
-                             blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwMCIgaGVpZ2h0PSIxMDAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmMGYwZWUiLz48L3N2Zz4="
+                             blurDataURL={BLUR_DATA_URL}
                       />
                     </>}
                     {activeFlat === "back" && project.backFlat && <>
@@ -356,7 +276,7 @@ export default function ProjectPageClient({ project }: ProjectPageClientProps) {
                       <Image src={project.backFlat.url} alt="Back Flat" width={1000} height={1000}
                              onClick={() => openModal(project.backFlat.url, "Back Flat", [{ url: project.backFlat.url, title: "Back Flat" }], 0)}
                              placeholder="blur"
-                             blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwMCIgaGVpZ2h0PSIxMDAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmMGYwZWUiLz48L3N2Zz4="
+                             blurDataURL={BLUR_DATA_URL}
                       />
                     </>}
                     {activeFlat === "side" && project.sideFlat && <>
@@ -364,76 +284,46 @@ export default function ProjectPageClient({ project }: ProjectPageClientProps) {
                       <Image src={project.sideFlat.url} alt="Side Flat" width={1000} height={1000}
                              onClick={() => openModal(project.sideFlat.url, "Side Flat", [{ url: project.sideFlat.url, title: "Side Flat" }], 0)}
                              placeholder="blur"
-                             blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwMCIgaGVpZ2h0PSIxMDAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmMGYwZWUiLz48L3N2Zz4="
+                             blurDataURL={BLUR_DATA_URL}
                       />
                     </>}
                   </div>
                 )}
               </div>
 
-              {/* Colored Flats — below the main flat viewer */}
               {numColoredFlats > 0 && (
                 <div className={styles.coloredFlatsSubsection}>
                   <h3 className={styles.subsectionHeading}>
                     Colored Flats <span>{numColoredFlats}</span>
                   </h3>
-                  <ImageGrid
-                    items={coloredFlatItems}
-                    variant="materials"
-                    onOpen={openModal}
-                  />
+                  <ImageGrid items={coloredFlatItems} variant="materials" onOpen={openModal} />
                 </div>
               )}
-            </div>
+            </motion.div>
 
-            {/* 4 — Looks */}
-            {numLooks > 0 && (
-              <div id="looks" className={styles.section}>
-                <h2>Looks <span>{numLooks}</span></h2>
-                <ImageGrid
-                  items={looksItems}
-                  variant="looks"
-                  onOpen={openModal}
-                />
-              </div>
-            )}
+            <motion.div id="looks" className={styles.section} variants={fadeInVariant} initial="hidden" whileInView="visible" viewport={{ once: true }}>
+              <h2>Looks <span>{numLooks}</span></h2>
+              <ImageGrid items={looksItems} variant="looks" onOpen={openModal} />
+            </motion.div>
 
-            {/* 5 — Details */}
-            <div id="details" className={styles.section}>
+            <motion.div id="details" className={styles.section} variants={fadeInVariant} initial="hidden" whileInView="visible" viewport={{ once: true }}>
               <h2>Details <span>{numDetails}</span></h2>
-              <ImageGrid
-                items={detailItems}
-                variant="grid"
-                onOpen={openModal}
-              />
-            </div>
+              <ImageGrid items={detailItems} variant="grid" onOpen={openModal} />
+            </motion.div>
 
-            {/* 6 — Patterns */}
-            <div id="patterns" className={styles.section}>
+            <motion.div id="patterns" className={styles.section} variants={fadeInVariant} initial="hidden" whileInView="visible" viewport={{ once: true }}>
               <h2>Pattern Drafting <span>{numPatterns}</span></h2>
-              <ImageGrid
-                items={patternItems}
-                variant="patterns"
-                onOpen={openModal}
-              />
-            </div>
+              <ImageGrid items={patternItems} variant="patterns" onOpen={openModal} />
+            </motion.div>
 
-            {/* 7 — Materials */}
-            <div id="materials" className={styles.section}>
+            <motion.div id="materials" className={styles.section} variants={fadeInVariant} initial="hidden" whileInView="visible" viewport={{ once: true }}>
               <h2>Materials List <span>{numMaterials}</span></h2>
-              <ImageGrid
-                items={materialItems}
-                variant="materials"
-                onOpen={openModal}
-              />
-            </div>
+              <ImageGrid items={materialItems} variant="materials" onOpen={openModal} />
+            </motion.div>
 
-            {/* 8 — Tech Pack */}
-            <div id="techpack" className={styles.section}>
+            <motion.div id="techpack" className={styles.section} variants={fadeInVariant} initial="hidden" whileInView="visible" viewport={{ once: true }}>
               <h2>Tech Pack <span>{numTechPacks}</span></h2>
-
               <div className={styles.techPackLayout}>
-
                 {techPackInfo && <aside className={styles.techPackInfo}>
                   {Object.entries(techPackInfo).map(([label, value]) => (
                     <div key={label} className={styles.techPackInfoItem}>
@@ -442,34 +332,47 @@ export default function ProjectPageClient({ project }: ProjectPageClientProps) {
                           .replace(/([A-Z])/g, " $1")
                           .replace(/^./, c => c.toUpperCase())}
                       </span>
-
-                      <span className={styles.techPackValue}>
-                        {value}
-                      </span>
+                      <span className={styles.techPackValue}>{value}</span>
                     </div>
                   ))}
                 </aside>}
-
                 <div className={styles.techPackContent}>
-                  <ImageGrid
-                    items={techPackItems}
-                    variant="techpack"
-                    onOpen={openModal}
-                  />
+                  <ImageGrid items={techPackItems} variant="techpack" onOpen={openModal} />
                 </div>
-
               </div>
-            </div>
+            </motion.div>
 
-            {/* 9 — Final Product */}
-            <div id="final" className={styles.section}>
+            <motion.div id="final" className={styles.section} variants={fadeInVariant} initial="hidden" whileInView="visible" viewport={{ once: true }}>
               <h2>Final Product <span>{numFinalProducts}</span></h2>
-              <ImageGrid
-                items={finalProductItems}
-                variant="finalProduct"
-                onOpen={openModal}
-              />
-            </div>
+              <ImageGrid items={finalProductItems} variant="finalProduct" onOpen={openModal} />
+            </motion.div>
+
+            {/* Project Footer Navigation */}
+            <motion.div
+              className={styles.projectFooter}
+              variants={fadeInVariant}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+            >
+              {prevProject ? (
+                <Link href={`/portfolio/${prevProject.slug}`} className={styles.navButton}>
+                  <span className={styles.arrow}>←</span>
+                  {prevProject.title}
+                </Link>
+              ) : <span />}
+
+              <Link href="/portfolio" className={styles.exploreButton}>
+                All Projects
+              </Link>
+
+              {nextProject ? (
+                <Link href={`/portfolio/${nextProject.slug}`} className={styles.navButton}>
+                  {nextProject.title}
+                  <span className={styles.arrow}>→</span>
+                </Link>
+              ) : <span />}
+            </motion.div>
           </div>
         </div>
       </main>

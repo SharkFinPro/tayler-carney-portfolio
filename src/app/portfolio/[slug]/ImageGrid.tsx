@@ -2,6 +2,7 @@
 import styles from "./Project.module.scss";
 import Image from "next/image";
 import { useState } from "react";
+import { BLUR_DATA_URL } from "@/components/AnimatedSection";
 
 export interface ImageGridItem {
   url: string;
@@ -35,7 +36,7 @@ export default function ImageGrid({ items, variant = "grid", onOpen }: ImageGrid
                 width={600}
                 height={600}
                 placeholder="blur"
-                blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGVlIi8+PC9zdmc+"
+                blurDataURL={BLUR_DATA_URL}
               />
             </div>
             <div className={styles.materialInfo}>
@@ -63,7 +64,7 @@ export default function ImageGrid({ items, variant = "grid", onOpen }: ImageGrid
               width={1200}
               height={1200}
               placeholder="blur"
-              blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwMCIgaGVpZ2h0PSIxMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmMGYwZWUiLz48L3N2Zz4="
+              blurDataURL={BLUR_DATA_URL}
             />
             <div className={styles.patternLabel}>{item.title}</div>
           </div>
@@ -87,7 +88,7 @@ export default function ImageGrid({ items, variant = "grid", onOpen }: ImageGrid
               width={1000}
               height={1000}
               placeholder="blur"
-              blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwMCIgaGVpZ2h0PSIxMDAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmMGYwZWUiLz48L3N2Zz4="
+              blurDataURL={BLUR_DATA_URL}
             />
           </div>
         ))}
@@ -144,7 +145,7 @@ export default function ImageGrid({ items, variant = "grid", onOpen }: ImageGrid
             width={1600}
             height={2200}
             placeholder="blur"
-            blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwMCIgaGVpZ2h0PSIxMDAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmMGYwZWUiLz48L3N2Zz4="
+            blurDataURL={BLUR_DATA_URL}
           />
         </div>
       </div>
@@ -166,7 +167,7 @@ export default function ImageGrid({ items, variant = "grid", onOpen }: ImageGrid
               width={1000}
               height={1000}
               placeholder="blur"
-              blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwMCIgaGVpZ2h0PSIxMDAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmMGYwZWUiLz48L3N2Zz4="
+              blurDataURL={BLUR_DATA_URL}
             />
           </div>
         ))}
@@ -190,7 +191,7 @@ export default function ImageGrid({ items, variant = "grid", onOpen }: ImageGrid
                 width={1000}
                 height={1200}
                 placeholder="blur"
-                blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwMCIgaGVpZ2h0PSIxMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmMGYwZWUiLz48L3N2Zz4="
+                blurDataURL={BLUR_DATA_URL}
               />
             </div>
             {(item.title || item.description) && (
@@ -222,7 +223,7 @@ export default function ImageGrid({ items, variant = "grid", onOpen }: ImageGrid
             width={1000}
             height={1000}
             placeholder="blur"
-            blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwMCIgaGVpZ2h0PSIxMDAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNmMGYwZWUiLz48L3N2Zz4="
+            blurDataURL={BLUR_DATA_URL}
           />
         </div>
       ))}

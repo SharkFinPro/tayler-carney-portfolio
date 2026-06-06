@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEnvelope } from "@fortawesome/free-solid-svg-icons";
 import { faLinkedin, faInstagram } from "@fortawesome/free-brands-svg-icons";
 import getSiteData from "@/components/SiteData"
+import { AnimatedSection } from "@/components/AnimatedSection";
 
 export const metadata: Metadata = {
   title: "Contact"
@@ -35,10 +36,6 @@ async function getContactPage() {
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Page
-// ─────────────────────────────────────────────────────────────────────────────
-
 export default async function ContactPage() {
   const contactPage = await getContactPage();
 
@@ -62,64 +59,66 @@ export default async function ContactPage() {
   return (
     <div className={styles.pageWrapper}>
       <div className={styles.pageContainer}>
-        <div className={styles.grid}>
+        <AnimatedSection>
+          <div className={styles.grid}>
 
-          {/* ── Left panel ─────────────────────────────────────────────── */}
-          <div className={styles.left}>
-            <div className={styles.leftTop}>
-              <span className={styles.eyebrow}>Contact</span>
-              <h1 className={styles.headline}>{contactPage.header}</h1>
-              <p className={styles.subtext}>{contactPage.subheader}</p>
-            </div>
-            <div className={styles.availability}>
-              <span className={styles.availabilityDot} aria-hidden="true" />
-              <span className={styles.availabilityText}>{contactPage.availabilityMessage}</span>
-            </div>
-          </div>
-
-          {/* ── Right panel ────────────────────────────────────────────── */}
-          <div className={styles.right}>
-
-            <div>
-              <span className={styles.sectionLabel}>Email</span>
-              <a href={`mailto:${siteData.email}`} className={styles.emailButton}>
-                <div className={styles.emailButtonInner}>
-                  <FontAwesomeIcon icon={faEnvelope} className={styles.emailButtonIcon} />
-                  <span className={styles.emailButtonText}>Send an Email</span>
-                  <span className={styles.emailButtonArrow}>↗</span>
-                </div>
-              </a>
-              <span className={styles.emailAddress}>{siteData.email}</span>
-            </div>
-
-            <div>
-              <span className={styles.sectionLabel}>Online</span>
-              <div className={styles.socialList}>
-                {socials.map((s) => {
-                  return (
-                    <a
-                      key={s.title}
-                      href={s.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={styles.socialCard}
-                    >
-                      <div className={styles.socialCardInner}>
-                        <FontAwesomeIcon icon={s.icon} className={styles.socialIcon} />
-                        <div className={styles.socialCardInfo}>
-                          <span className={styles.socialCardTitle}>{s.title}</span>
-                          <span className={styles.socialCardHandle}>{s.handle}</span>
-                        </div>
-                      </div>
-                      <span className={styles.socialArrow}>↗</span>
-                    </a>
-                  );
-                })}
+            {/* ── Left panel ─────────────────────────────────────────────── */}
+            <div className={styles.left}>
+              <div className={styles.leftTop}>
+                <span className={styles.eyebrow}>Contact</span>
+                <h1 className={styles.headline}>{contactPage.header}</h1>
+                <p className={styles.subtext}>{contactPage.subheader}</p>
+              </div>
+              <div className={styles.availability}>
+                <span className={styles.availabilityDot} aria-hidden="true" />
+                <span className={styles.availabilityText}>{contactPage.availabilityMessage}</span>
               </div>
             </div>
 
+            {/* ── Right panel ────────────────────────────────────────────── */}
+            <div className={styles.right}>
+
+              <div className={styles.contactItem}>
+                <span className={styles.sectionLabel}>Email</span>
+                <a href={`mailto:${siteData.email}`} className={styles.emailButton}>
+                  <div className={styles.emailButtonInner}>
+                    <FontAwesomeIcon icon={faEnvelope} className={styles.emailButtonIcon} />
+                    <span className={styles.emailButtonText}>Send an Email</span>
+                    <span className={styles.emailButtonArrow}>↗</span>
+                  </div>
+                </a>
+                <span className={styles.emailAddress}>{siteData.email}</span>
+              </div>
+
+              <div className={styles.contactItem}>
+                <span className={styles.sectionLabel}>Online</span>
+                <div className={styles.socialList}>
+                  {socials.map((s) => {
+                    return (
+                      <a
+                        key={s.title}
+                        href={s.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={styles.socialCard}
+                      >
+                        <div className={styles.socialCardInner}>
+                          <FontAwesomeIcon icon={s.icon} className={styles.socialIcon} />
+                          <div className={styles.socialCardInfo}>
+                            <span className={styles.socialCardTitle}>{s.title}</span>
+                            <span className={styles.socialCardHandle}>{s.handle}</span>
+                          </div>
+                        </div>
+                        <span className={styles.socialArrow}>↗</span>
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
+
+            </div>
           </div>
-        </div>
+        </AnimatedSection>
       </div>
     </div>
   );
