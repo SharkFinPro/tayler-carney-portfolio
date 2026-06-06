@@ -3,7 +3,7 @@ import styles from "./Project.module.scss";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState, useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import ImageGrid, { ImageGridItem } from "./ImageGrid";
 import ProjectModal from "./ProjectModal";
 import ProjectSidebar from "./ProjectSidebar";
@@ -50,10 +50,15 @@ interface Project {
   finalProduct: ImageAsset[];
 }
 
+interface ProjectNavItem {
+  slug: string;
+  title: string;
+}
+
 interface ProjectPageClientProps {
   project: Project;
-  prevProject?: { slug: string; title: string } | null;
-  nextProject?: { slug: string; title: string } | null;
+  prevProject: ProjectNavItem | null;
+  nextProject: ProjectNavItem | null;
 }
 
 interface ModalState {
@@ -73,7 +78,7 @@ const SECTIONS = [
   { id: "final",             label: "Final" },
 ];
 
-const fadeInVariant = {
+const fadeInVariant: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
 };
@@ -342,30 +347,31 @@ export default function ProjectPageClient({ project, prevProject, nextProject }:
               <ImageGrid items={finalProductItems} variant="finalProduct" onOpen={openModal} />
             </motion.div>
 
+            {/* Project Footer Navigation */}
             <motion.div
-              className={styles.projectNav}
+              className={styles.projectFooter}
               variants={fadeInVariant}
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true }}
             >
-              <div className={styles.projectNavWrapper}>
-                {prevProject ? (
-                  <Link href={`/portfolio/${prevProject.slug}`} className={styles.projectNavLink}>
-                    <span className={styles.projectNavLinkLabel}>Previous</span>
-                    <span className={styles.projectNavLinkTitle}>{prevProject.title}</span>
-                    <span className={styles.projectNavLinkArrow}>←</span>
-                  </Link>
-                ) : <div className={styles.projectNavLinkEmpty} />}
+              {prevProject ? (
+                <Link href={`/portfolio/${prevProject.slug}`} className={styles.navButton}>
+                  <span className={styles.arrow}>←</span>
+                  {prevProject.title}
+                </Link>
+              ) : <span />}
 
-                {nextProject ? (
-                  <Link href={`/portfolio/${nextProject.slug}`} className={styles.projectNavLink}>
-                    <span className={styles.projectNavLinkArrow}>→</span>
-                    <span className={styles.projectNavLinkTitle}>{nextProject.title}</span>
-                    <span className={styles.projectNavLinkLabel}>Next</span>
-                  </Link>
-                ) : <div className={styles.projectNavLinkEmpty} />}
-              </div>
+              <Link href="/portfolio" className={styles.exploreButton}>
+                All Projects
+              </Link>
+
+              {nextProject ? (
+                <Link href={`/portfolio/${nextProject.slug}`} className={styles.navButton}>
+                  {nextProject.title}
+                  <span className={styles.arrow}>→</span>
+                </Link>
+              ) : <span />}
             </motion.div>
           </div>
         </div>
