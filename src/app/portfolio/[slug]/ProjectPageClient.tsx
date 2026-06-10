@@ -161,14 +161,14 @@ export default function ProjectPageClient({ project, prevProject, nextProject }:
   const numTechPacks     = project.techPacks?.length ?? 0;
   const numFinalProducts = project.finalProduct?.length ?? 0;
 
-  const sketchItems: ImageGridItem[]       = (project.sketches ?? []).map((s, i) => ({ url: s.url, title: `Sketch ${i + 1}` }));
-  const coloredFlatItems: ImageGridItem[]  = (project.coloredFlats ?? []).map((c) => ({ url: c.image.url, title: c.title, description: c.description }));
-  const looksItems: ImageGridItem[]        = (project.looks ?? []).map((l, i) => ({ url: l.image.url, title: l.title || `Look ${i + 1}`, description: l.description }));
-  const detailItems: ImageGridItem[]       = (project.details ?? []).map((d) => ({ url: d.image.url, title: d.title, description: d.description }));
-  const patternItems: ImageGridItem[]      = (project.patterns ?? []).map((p, i) => ({ url: p.url, title: `Pattern ${i + 1}` }));
-  const materialItems: ImageGridItem[]     = (project.materials ?? []).map((m) => ({ url: m.image.url, title: m.title, description: m.description }));
-  const techPackItems: ImageGridItem[]     = (project.techPacks ?? []).map((t, i) => ({ url: t.image.url, title: t.title, description: t.description }));
-  const finalProductItems: ImageGridItem[] = (project.finalProduct ?? []).map((f, i) => ({ url: f.url, title: `Final Product ${i + 1}` }));
+  const sketchItems: ImageGridItem[]       = (project.sketches ?? []).filter((s) => s?.url).map((s, i) => ({ url: s.url, title: `Sketch ${i + 1}` }));
+  const coloredFlatItems: ImageGridItem[]  = (project.coloredFlats ?? []).filter((c) => c?.image?.url).map((c) => ({ url: c.image.url, title: c.title, description: c.description }));
+  const looksItems: ImageGridItem[]        = (project.looks ?? []).filter((l) => l?.image?.url).map((l, i) => ({ url: l.image.url, title: l.title || `Look ${i + 1}`, description: l.description }));
+  const detailItems: ImageGridItem[]       = (project.details ?? []).filter((d) => d?.image?.url).map((d) => ({ url: d.image.url, title: d.title, description: d.description }));
+  const patternItems: ImageGridItem[]      = (project.patterns ?? []).filter((p) => p?.url).map((p, i) => ({ url: p.url, title: `Pattern ${i + 1}` }));
+  const materialItems: ImageGridItem[]     = (project.materials ?? []).filter((m) => m?.image?.url).map((m) => ({ url: m.image.url, title: m.title, description: m.description }));
+  const techPackItems: ImageGridItem[]     = (project.techPacks ?? []).filter((t) => t?.image?.url).map((t, i) => ({ url: t.image.url, title: t.title, description: t.description }));
+  const finalProductItems: ImageGridItem[] = (project.finalProduct ?? []).filter((f) => f?.url).map((f, i) => ({ url: f.url, title: `Final Product ${i + 1}` }));
 
   const techPackInfo: TechPackInfo = project.techPackHeader;
 
@@ -207,7 +207,7 @@ export default function ProjectPageClient({ project, prevProject, nextProject }:
               <ImageGrid items={sketchItems} variant="sketches" onOpen={openModal} />
             </motion.div>
 
-            {project.digitalRendering && (
+            {project.digitalRendering?.url && (
               <motion.div id="digitalRendering" className={styles.section} variants={fadeInVariant} initial="hidden" whileInView="visible" viewport={{ once: true }}>
                 <h2>Digital Rendering</h2>
                 <div
@@ -234,10 +234,10 @@ export default function ProjectPageClient({ project, prevProject, nextProject }:
             <motion.div id="flats" className={styles.section} variants={fadeInVariant} initial="hidden" whileInView="visible" viewport={{ once: true }}>
               <h2>Technical Flats <span>{numFlats}</span></h2>
               <div className={styles.flatViewSelector}>
-                <button onClick={() => setActiveFlat("front")} aria-pressed={activeFlat === "front"} disabled={!project.frontFlat}>Front</button>
-                <button onClick={() => setActiveFlat("back")}  aria-pressed={activeFlat === "back"}  disabled={!project.backFlat}>Back</button>
-                <button onClick={() => setActiveFlat("side")}  aria-pressed={activeFlat === "side"}  disabled={!project.sideFlat}>Side</button>
-                {project.frontFlat && project.backFlat && (
+                <button onClick={() => setActiveFlat("front")} aria-pressed={activeFlat === "front"} disabled={!project.frontFlat?.url}>Front</button>
+                <button onClick={() => setActiveFlat("back")}  aria-pressed={activeFlat === "back"}  disabled={!project.backFlat?.url}>Back</button>
+                <button onClick={() => setActiveFlat("side")}  aria-pressed={activeFlat === "side"}  disabled={!project.sideFlat?.url}>Side</button>
+                {project.frontFlat?.url && project.backFlat?.url && (
                   <button onClick={() => setActiveFlat("both")} aria-pressed={activeFlat === "both"}>Both</button>
                 )}
               </div>
@@ -263,7 +263,7 @@ export default function ProjectPageClient({ project, prevProject, nextProject }:
                   </div>
                 ) : (
                   <div className={styles.flat}>
-                    {activeFlat === "front" && project.frontFlat && <>
+                    {activeFlat === "front" && project.frontFlat?.url && <>
                       <h3>Front View</h3>
                       <Image src={project.frontFlat.url} alt="Front Flat" width={1000} height={1000}
                              onClick={() => openModal(project.frontFlat.url, "Front Flat", [{ url: project.frontFlat.url, title: "Front Flat" }], 0)}
@@ -271,7 +271,7 @@ export default function ProjectPageClient({ project, prevProject, nextProject }:
                              blurDataURL={BLUR_DATA_URL}
                       />
                     </>}
-                    {activeFlat === "back" && project.backFlat && <>
+                    {activeFlat === "back" && project.backFlat?.url && <>
                       <h3>Back View</h3>
                       <Image src={project.backFlat.url} alt="Back Flat" width={1000} height={1000}
                              onClick={() => openModal(project.backFlat.url, "Back Flat", [{ url: project.backFlat.url, title: "Back Flat" }], 0)}
@@ -279,7 +279,7 @@ export default function ProjectPageClient({ project, prevProject, nextProject }:
                              blurDataURL={BLUR_DATA_URL}
                       />
                     </>}
-                    {activeFlat === "side" && project.sideFlat && <>
+                    {activeFlat === "side" && project.sideFlat?.url && <>
                       <h3>Side View</h3>
                       <Image src={project.sideFlat.url} alt="Side Flat" width={1000} height={1000}
                              onClick={() => openModal(project.sideFlat.url, "Side Flat", [{ url: project.sideFlat.url, title: "Side Flat" }], 0)}
