@@ -2,7 +2,7 @@
 import styles from "./Project.module.scss";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState, useCallback } from "react";
+import { CSSProperties, useEffect, useState, useCallback } from "react";
 import { motion, type Variants } from "framer-motion";
 import ImageGrid, { ImageGridItem } from "./ImageGrid";
 import ProjectModal from "./ProjectModal";
@@ -206,7 +206,14 @@ export default function ProjectPageClient({ project, prevProject, nextProject }:
             sections={activeSections}
           />
 
-          <div className={styles.pageContainer}>
+          <div
+            className={styles.pageContainer}
+            style={
+              {
+                "--section-total": `"${String(activeSections.length).padStart(2, "0")}"`
+              } as CSSProperties
+            }
+          >
             <motion.div
               initial="hidden"
               animate="visible"
