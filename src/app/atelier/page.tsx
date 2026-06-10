@@ -70,57 +70,60 @@ export default async function Atelier() {
           <p className={styles.empty}>No entries found</p>
         ) : (
           <div className={styles.entries}>
-            {ateliers.map((atelier, i) => (
-              <AnimatedSection key={i} delay={i * 0.05}>
-                <article className={styles.entry}>
+            {ateliers.map((atelier, i) => {
+              const validImages = (atelier.image ?? []).filter((e) => e?.image?.url);
+              return (
+                <AnimatedSection key={i} delay={i * 0.05}>
+                  <article className={styles.entry}>
 
-                  <div className={styles.entryText}>
+                    <div className={styles.entryText}>
                     <span className={styles.entryIndex}>
                       {String(i + 1).padStart(2, "0")}
                     </span>
-                    <h2 className={styles.entryTitle}>{atelier.title}</h2>
-                    {atelier.description && (
-                      <p className={styles.entryDesc}>{atelier.description}</p>
-                    )}
-                    {atelier.image.length > 0 && (
-                      <span className={styles.entryCount}>
-                        {atelier.image.length} {atelier.image.length === 1 ? "image" : "images"}
+                      <h2 className={styles.entryTitle}>{atelier.title}</h2>
+                      {atelier.description && (
+                        <p className={styles.entryDesc}>{atelier.description}</p>
+                      )}
+                      {validImages.length > 0 && (
+                        <span className={styles.entryCount}>
+                        {validImages.length} {validImages.length === 1 ? "image" : "images"}
                       </span>
-                    )}
-                  </div>
-
-                  {atelier.image.length > 0 && (
-                    <div className={styles.imageStrip}>
-                      {atelier.image.map((entry, j) => (
-                        <figure key={j} className={styles.imageItem}>
-                          <div className={styles.imageWrap}>
-                            <Image
-                              src={entry.image.url}
-                              alt={entry.title ?? atelier.title}
-                              width={0}
-                              height={0}
-                              sizes="(max-width: 860px) 90vw, 40vw"
-                              className={styles.imageNatural}
-                            />
-                          </div>
-                          {(entry.title || entry.description) && (
-                            <figcaption className={styles.imageCaption}>
-                              {entry.title && (
-                                <span className={styles.imageCaptionTitle}>{entry.title}</span>
-                              )}
-                              {entry.description && (
-                                <span className={styles.imageCaptionDesc}>{entry.description}</span>
-                              )}
-                            </figcaption>
-                          )}
-                        </figure>
-                      ))}
+                      )}
                     </div>
-                  )}
 
-                </article>
-              </AnimatedSection>
-            ))}
+                    {validImages.length > 0 && (
+                      <div className={styles.imageStrip}>
+                        {validImages.map((entry, j) => (
+                          <figure key={j} className={styles.imageItem}>
+                            <div className={styles.imageWrap}>
+                              <Image
+                                src={entry.image.url}
+                                alt={entry.title ?? atelier.title}
+                                width={0}
+                                height={0}
+                                sizes="(max-width: 860px) 90vw, 40vw"
+                                className={styles.imageNatural}
+                              />
+                            </div>
+                            {(entry.title || entry.description) && (
+                              <figcaption className={styles.imageCaption}>
+                                {entry.title && (
+                                  <span className={styles.imageCaptionTitle}>{entry.title}</span>
+                                )}
+                                {entry.description && (
+                                  <span className={styles.imageCaptionDesc}>{entry.description}</span>
+                                )}
+                              </figcaption>
+                            )}
+                          </figure>
+                        ))}
+                      </div>
+                    )}
+
+                  </article>
+                </AnimatedSection>
+              );
+            })}
           </div>
         )}
 
