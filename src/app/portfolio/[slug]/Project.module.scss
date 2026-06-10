@@ -207,7 +207,7 @@
     }
 
     &::before {
-      content: "0" counter(section) " / 09";
+      content: "0" counter(section) " / " var(--section-total);
       font-family: var(--ff-mono);
       font-size: 10px;
       color: var(--ink-muted);
