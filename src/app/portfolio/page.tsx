@@ -28,7 +28,7 @@ async function getProjects() {
     body: JSON.stringify({ query: PROJECTS_QUERY }),
   });
   const json = await response.json();
-  return json.data.projects;
+  return json.data?.projects ?? [];
 }
 
 export default async function Portfolio() {

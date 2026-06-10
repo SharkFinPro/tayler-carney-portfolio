@@ -89,7 +89,7 @@ async function getProject(slug: string) {
 
     const json = await response.json();
 
-    return json.data.projects[0];
+    return json.data?.projects?.[0] ?? null;
   } catch (error) {
     console.log("Error fetching project: ", error);
     notFound();
@@ -115,7 +115,7 @@ async function getAllProjects() {
     }),
   });
   const json = await response.json();
-  return json.data.projects;
+  return json.data?.projects ?? [];
 }
 
 export async function generateMetadata({
