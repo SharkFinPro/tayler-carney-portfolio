@@ -9,7 +9,7 @@ import SheetViewer from "./SheetViewer";
 import RichTextWidget from "./richText/RichTextWidget";
 import { BLUR_DATA_URL } from "@/components/AnimatedSection";
 import { resolveAlt } from "@/lib/images";
-import { blockHasData, type Block, type ImageItem, type ImageRef } from "./blocks";
+import { blockHasData, richTextHasContent, type Block, type ImageItem, type ImageRef } from "./blocks";
 
 const fadeInVariant: Variants = {
   hidden: { opacity: 0, y: 20 },
@@ -56,6 +56,8 @@ function blockCount(b: Block): number | undefined {
     case "comparison":
       return b.views.length;
     case "documentViewer":
+      return b.items.length;
+    case "entry":
       return b.items.length;
     default:
       return undefined;
@@ -181,6 +183,58 @@ function BlockContent({ block, onOpen }: { block: Block; onOpen: OnOpen }) {
           <SplitColumn block={block.right} onOpen={onOpen} />
         </div>
       );
+
+    case "entry": {
+      const items = itemsToGrid(block.items, block.heading || "Image");
+      return (
+        <div className={styles.entry}>
+          <div className={styles.entryText}>
+            <span className={styles.entryIndex} aria-hidden="true" />
+            {block.heading && <h2 className={styles.entryTitle}>{block.heading}</h2>}
+            {richTextHasContent(block.content) && (
+              <div className={styles.entryDesc}>
+                <RichTextWidget content={block.content} variant="bare" />
+              </div>
+            )}
+            {items.length > 0 && (
+              <span className={styles.entryCount}>
+                {items.length} {items.length === 1 ? "image" : "images"}
+              </span>
+            )}
+          </div>
+          {items.length > 0 && (
+            <div className={styles.imageStrip}>
+              {items.map((item, i) => (
+                <figure
+                  key={i}
+                  className={styles.imageItem}
+                  onClick={() => onOpen(item.url, item.title, items, i)}
+                >
+                  <div className={styles.imageWrap}>
+                    <Image
+                      src={item.url}
+                      alt={item.alt ?? item.title}
+                      width={0}
+                      height={0}
+                      sizes="(max-width: 860px) 90vw, 40vw"
+                      className={styles.imageNatural}
+                    />
+                  </div>
+                  {(item.title || item.description) && (
+                    <figcaption className={styles.imageCaption}>
+                      {item.title && <span className={styles.imageCaptionTitle}>{item.title}</span>}
+                      {item.description && (
+                        <span className={styles.imageCaptionDesc}>{item.description}</span>
+                      )}
+                    </figcaption>
+                  )}
+                </figure>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
   }
 }
 
@@ -202,6 +256,15 @@ function SplitColumn({ block, onOpen }: { block: Block; onOpen: OnOpen }) {
 // to the host page's lightbox.
 export default function BlockSection({ block, onOpen }: { block: Block; onOpen: OnOpen }) {
   const count = blockCount(block);
+  // The editorial entry renders its own heading/index/count inside the text
+  // rail, so it skips the generic section chrome (the "01 / 05" counter h2).
+  if (block.type === "entry") {
+    return (
+      <motion.div id={block.id} {...sectionMotion}>
+        <BlockContent block={block} onOpen={onOpen} />
+      </motion.div>
+    );
+  }
   return (
     <motion.div id={block.id} {...sectionMotion}>
       {(block.heading || count != null) && (

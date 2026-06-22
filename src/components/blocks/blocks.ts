@@ -37,7 +37,8 @@ export type BlockType =
   | "specs"
   | "documentViewer"
   | "callout"
-  | "split";
+  | "split"
+  | "entry";
 
 interface BaseBlock {
   id: string;
@@ -57,7 +58,10 @@ export type Block =
   // Container: lays two child blocks side-by-side. Children are any non-split
   // block (no nested splits), so the same primitive composes e.g. a specs table
   // beside a document viewer (the old tech-pack layout) or any other pairing.
-  | (BaseBlock & { type: "split"; left: Block; right: Block });
+  | (BaseBlock & { type: "split"; left: Block; right: Block })
+  // An editorial entry: a narrow text rail (auto-numbered index + heading +
+  // prose) beside a captioned image grid. The signature atelier layout.
+  | (BaseBlock & { type: "entry"; content: RichTextAST; items: ImageItem[] });
 
 // ── Block metadata (palette + chrome) ─────────────────────────────────────
 
@@ -72,11 +76,14 @@ export const BLOCK_TYPES: BlockType[] = [
   "documentViewer",
   "callout",
   "split",
+  "entry",
 ];
 
-// Block types that may be placed inside a split container. Splits can't nest, so
-// the only excluded type is `split` itself.
-export const CHILD_BLOCK_TYPES: BlockType[] = BLOCK_TYPES.filter((t) => t !== "split");
+// Block types that may be placed inside a split container. Splits can't nest,
+// and an `entry` is itself a two-column container, so both are excluded.
+export const CHILD_BLOCK_TYPES: BlockType[] = BLOCK_TYPES.filter(
+  (t) => t !== "split" && t !== "entry"
+);
 
 // Short label shown on the block row / palette / sidebar fallback.
 export const BLOCK_LABELS: Record<BlockType, string> = {
@@ -89,6 +96,7 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   documentViewer: "Document viewer",
   callout: "Callout",
   split: "Split layout",
+  entry: "Editorial entry",
 };
 
 // One-line descriptions shown in the editor's "add block" palette.
@@ -102,6 +110,7 @@ export const BLOCK_DESCRIPTIONS: Record<BlockType, string> = {
   documentViewer: "Large documents/sheets browsed one at a time via a dropdown.",
   callout: "A highlighted note or pull quote.",
   split: "Two blocks side-by-side (e.g. a specs table beside a document viewer).",
+  entry: "A numbered text rail (heading + prose) beside a captioned image grid.",
 };
 
 // Whether the block row / section heading shows a count badge.
@@ -115,6 +124,7 @@ export const BLOCK_SHOW_COUNT: Record<BlockType, boolean> = {
   documentViewer: true,
   callout: false,
   split: false,
+  entry: true,
 };
 
 const DEFAULT_HEADINGS: Record<BlockType, string> = {
@@ -127,6 +137,7 @@ const DEFAULT_HEADINGS: Record<BlockType, string> = {
   documentViewer: "Documents",
   callout: "",
   split: "",
+  entry: "",
 };
 
 export function newId(): string {
@@ -167,6 +178,8 @@ export function createEmptyBlock(type: BlockType): Block {
         left: createEmptyBlock("specs"),
         right: createEmptyBlock("documentViewer"),
       };
+    case "entry":
+      return { id, type, heading, content: emptyRichText(), items: [] };
   }
 }
 
@@ -191,6 +204,8 @@ export function blockSummary(b: Block): string {
       return b.variant;
     case "split":
       return `${BLOCK_LABELS[b.left.type]} + ${BLOCK_LABELS[b.right.type]}`;
+    case "entry":
+      return `${b.items.length} image${b.items.length === 1 ? "" : "s"}`;
   }
 }
 
@@ -258,7 +273,7 @@ function cleanRichText(raw: unknown): RichTextAST {
   return emptyRichText();
 }
 
-function richTextHasContent(content: RichTextAST | undefined): boolean {
+export function richTextHasContent(content: RichTextAST | undefined): boolean {
   if (!content || !Array.isArray(content.children)) return false;
   const hasText = (nodes: unknown[]): boolean =>
     nodes.some((n) => {
@@ -316,6 +331,8 @@ function cleanBlock(raw: unknown): Block | null {
     }
     case "split":
       return { id, type, heading, left: cleanChild(r.left), right: cleanChild(r.right) };
+    case "entry":
+      return { id, type, heading, content: cleanRichText(r.content), items: cleanItems(r.items) };
     default:
       return null;
   }
@@ -364,6 +381,8 @@ export function blockHasData(b: Block): boolean {
       return b.text.trim().length > 0;
     case "split":
       return blockHasData(b.left) || blockHasData(b.right);
+    case "entry":
+      return b.heading.trim().length > 0 || richTextHasContent(b.content) || b.items.length > 0;
   }
 }
 

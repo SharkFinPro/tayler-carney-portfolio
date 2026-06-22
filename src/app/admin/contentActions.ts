@@ -59,6 +59,7 @@ export async function updateContentField(
 // Whitelist of JSON block-layout fields, keyed by model.
 const BLOCK_LAYOUT_FIELDS: Record<string, string[]> = {
   Project: ["projectPage"],
+  SiteData: ["atelier"],
 };
 
 type BlockResult = { ok: true; blocks: Block[] } | { ok: false; error: string };
