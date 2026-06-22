@@ -68,7 +68,8 @@ function blockCount(b: Block): number | undefined {
 // active view) get a stable instance.
 function BlockContent({ block, onOpen }: { block: Block; onOpen: OnOpen }) {
   // Declared unconditionally so hook order is stable (only comparison uses it).
-  const [activeView, setActiveView] = useState(0);
+  // -1 is the "view all" mode (all views shown side-by-side); it's the default.
+  const [activeView, setActiveView] = useState(-1);
 
   switch (block.type) {
     case "richText":
@@ -99,12 +100,20 @@ function BlockContent({ block, onOpen }: { block: Block; onOpen: OnOpen }) {
 
     case "comparison": {
       const views = block.views;
-      const current = views[Math.min(activeView, views.length - 1)];
-      if (!current) return null;
-      const alt = resolveAlt(current.image.altText, current.label);
+      if (!views.length) return null;
+      // "View all" (activeView === -1) shows every view; otherwise a single one.
+      const shown = activeView === -1 ? views : [views[Math.min(activeView, views.length - 1)]];
+      const gallery = views.map((v) => ({
+        url: v.image.url,
+        title: v.label,
+        alt: resolveAlt(v.image.altText, v.label),
+      }));
       return (
         <>
           <div className={styles.comparisonSelector}>
+            <button onClick={() => setActiveView(-1)} aria-pressed={activeView === -1}>
+              View all
+            </button>
             {views.map((v, i) => (
               <button key={i} onClick={() => setActiveView(i)} aria-pressed={i === activeView}>
                 {v.label}
@@ -112,13 +121,20 @@ function BlockContent({ block, onOpen }: { block: Block; onOpen: OnOpen }) {
             ))}
           </div>
           <div className={styles.comparisonDisplay}>
-            <div
-              className={styles.comparisonView}
-              onClick={() => onOpen(current.image.url, current.label, [{ url: current.image.url, title: current.label, alt }], 0)}
-            >
-              <h3>{current.label}</h3>
-              <Image src={current.image.url} alt={alt} width={1000} height={1000} placeholder="blur" blurDataURL={BLUR_DATA_URL} />
-            </div>
+            {shown.map((v) => {
+              const idx = views.indexOf(v);
+              const alt = gallery[idx].alt;
+              return (
+                <div
+                  key={idx}
+                  className={styles.comparisonView}
+                  onClick={() => onOpen(v.image.url, v.label, gallery, idx)}
+                >
+                  <h3>{v.label}</h3>
+                  <Image src={v.image.url} alt={alt} width={1000} height={1000} placeholder="blur" blurDataURL={BLUR_DATA_URL} />
+                </div>
+              );
+            })}
           </div>
         </>
       );
