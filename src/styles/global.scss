@@ -9,10 +9,79 @@
   --ff-mono:  var(--font-dm-mono), 'Courier New', monospace;
 
   --max-width: 1300px;
+  --navbar-height: 70px;
 }
 
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+}
+
+// ── Accessibility utilities ───────────────────────────────────────────────
+
+// Skip link: visually hidden until focused, then slides into view.
+.skipLink {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2000;
+  margin: 0.5rem;
+  padding: 0.6rem 1rem;
+  background: var(--plate);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-family: var(--ff-sans);
+  text-decoration: none;
+  transform: translateY(-150%);
+  transition: transform 0.2s;
+
+  &:focus {
+    transform: translateY(0);
+  }
+}
+
+#main-content {
+  scroll-margin-top: calc(var(--navbar-height) + 1rem);
+
+  &:focus,
+  &:focus-visible {
+    outline: none;
+  }
+}
+
+// Keyboard-only focus ring.
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+// Screen-reader-only content.
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+// Honor reduced-motion globally for CSS-driven animation/transition.
+// (Framer Motion is handled separately via MotionConfig reducedMotion="user".)
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

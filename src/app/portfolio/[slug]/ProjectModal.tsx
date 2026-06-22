@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import styles from "./Project.module.scss";
-import { useCallback } from "react";
+import Modal from "@/components/Modal";
 
 interface ImageGridItem {
   url: string;
@@ -28,16 +28,14 @@ export default function ProjectModal({ modal, modalVisible, closeModal, goNext, 
   if (!currentModalItem) return null;
 
   return (
-    <div
-      className={`${styles.modalOverlay} ${modalVisible ? styles.visible : ""}`}
-      onClick={closeModal}
+    <Modal
+      onClose={closeModal}
+      labelledBy="modal-title"
+      overlayClassName={`${styles.modalOverlay} ${modalVisible ? styles.visible : ""}`}
     >
-      <div
-        className={styles.modalInner}
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className={styles.modalInner}>
         <div className={styles.modalHeader}>
-          <span>{currentModalItem.title}</span>
+          <span id="modal-title">{currentModalItem.title}</span>
           <div className={styles.modalControls}>
             {modal.items.length > 1 && (
               <span className={styles.modalCounter}>
@@ -84,6 +82,6 @@ export default function ProjectModal({ modal, modalVisible, closeModal, goNext, 
           )}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

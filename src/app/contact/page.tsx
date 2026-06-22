@@ -5,6 +5,7 @@ import { faEnvelope } from "@fortawesome/free-solid-svg-icons";
 import { faLinkedin, faInstagram } from "@fortawesome/free-brands-svg-icons";
 import getSiteData from "@/components/SiteData"
 import { AnimatedSection } from "@/components/AnimatedSection";
+import { cmsQuery } from "@/lib/cms";
 
 export const metadata: Metadata = {
   title: "Contact"
@@ -23,16 +24,8 @@ const CONTACTPAGE_QUERY = `
 `;
 
 async function getContactPage() {
-  const response = await fetch(process.env.CMS_ENDPOINT as string, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + process.env.CMS_TOKEN,
-    },
-    body: JSON.stringify({ query: CONTACTPAGE_QUERY }),
-  });
-  const json = await response.json();
-  return json.data.contactPages[0];
+  const data = await cmsQuery(CONTACTPAGE_QUERY);
+  return data.contactPages[0];
 }
 
 

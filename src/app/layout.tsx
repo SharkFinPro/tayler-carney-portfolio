@@ -5,6 +5,7 @@ import "@/styles/global.scss";
 import NavBar from "@/components/NavBar";
 import Footer from "@/components/Footer";
 import AdminBar from "@/components/AdminBar";
+import MotionProvider from "@/components/MotionProvider";
 
 const notoSerif = Noto_Serif({
   subsets: ["latin"],
@@ -69,9 +70,16 @@ export default function RootLayout({
       className={`${notoSerif.variable} ${inter.variable} ${dmMono.variable}`}
     >
       <body>
+        <a href="#main-content" className="skipLink">
+          Skip to main content
+        </a>
         <AdminBar />
         <NavBar />
-        {children}
+        <MotionProvider>
+          <main id="main-content" tabIndex={-1}>
+            {children}
+          </main>
+        </MotionProvider>
         <Footer />
       </body>
     </html>

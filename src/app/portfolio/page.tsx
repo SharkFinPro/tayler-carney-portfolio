@@ -29,7 +29,7 @@ export default async function Portfolio() {
 
   return (
     <div className={styles.wrapper}>
-      <main className={styles.container}>
+      <div className={styles.container}>
 
         <div className={styles.header}>
           <span className={styles.headerEyebrow}>Design Archive</span>
@@ -57,7 +57,7 @@ export default async function Portfolio() {
           </div>
         )}
 
-      </main>
+      </div>
     </div>
   );
 }

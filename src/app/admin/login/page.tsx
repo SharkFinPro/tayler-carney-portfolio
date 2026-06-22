@@ -9,12 +9,12 @@ export const metadata: Metadata = {
 
 export default function AdminLoginPage() {
   return (
-    <main className={styles.wrapper}>
+    <div className={styles.wrapper}>
       <div className={styles.card}>
         <span className={styles.eyebrow}>Restricted</span>
         <h1 className={styles.title}>Admin sign in</h1>
         <LoginForm />
       </div>
-    </main>
+    </div>
   );
 }

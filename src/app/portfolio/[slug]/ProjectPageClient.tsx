@@ -201,7 +201,7 @@ export default function ProjectPageClient({ project, prevProject, nextProject, i
         goNext={goNext}
         goPrev={goPrev}
       />
-      <main className={styles.pageWrapper}>
+      <div className={styles.pageWrapper}>
         <div className={styles.pageLayout}>
           <ProjectSidebar
             projectTitle={project.title}
@@ -426,7 +426,7 @@ export default function ProjectPageClient({ project, prevProject, nextProject, i
             </motion.div>
           </div>
         </div>
-      </main>
+      </div>
     </>
   );
 }
