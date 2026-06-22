@@ -18,6 +18,7 @@ async function getProject(slug: string) {
               title
               slug
               description
+              projectPage
               sketches {
                 url
                 altText

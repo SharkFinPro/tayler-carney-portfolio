@@ -2,6 +2,7 @@
 
 import { isAuthed } from "@/lib/auth";
 import { cmsMutate } from "@/lib/cms";
+import { sanitizeProjectPage, type Block } from "@/components/ProjectBlocks/blocks";
 
 // Whitelist of inline-editable scalar/list fields, keyed by Hygraph model.
 // Model names are interpolated into the mutation string, so a value is only
@@ -14,7 +15,7 @@ const EDITABLE_FIELDS: Record<string, string[]> = {
 
 type Result = { ok: true } | { ok: false; error: string };
 
-async function requireAuth(): Promise<Result | null> {
+async function requireAuth(): Promise<{ ok: false; error: string } | null> {
   return (await isAuthed()) ? null : { ok: false, error: "Not authorized." };
 }
 
@@ -52,4 +53,37 @@ export async function updateContentField(
     return { ok: false, error: e instanceof Error ? e.message : "Update failed." };
   }
   return { ok: true };
+}
+
+// Whitelist of JSON block-layout fields, keyed by model.
+const BLOCK_LAYOUT_FIELDS: Record<string, string[]> = {
+  Project: ["projectPage"],
+};
+
+type BlockResult = { ok: true; blocks: Block[] } | { ok: false; error: string };
+
+// Persist a block layout. The raw array is sanitized server-side (the same
+// validator the renderer uses) before it is written, so the client can never
+// store an invalid or unsafe layout. Returns the sanitized blocks so the editor
+// can sync its optimistic state.
+export async function updateBlockLayout(
+  model: string,
+  id: string,
+  field: string,
+  rawBlocks: unknown
+): Promise<BlockResult> {
+  const denied = await requireAuth();
+  if (denied) return denied;
+
+  if (!BLOCK_LAYOUT_FIELDS[model]?.includes(field)) {
+    return { ok: false, error: `Field "${field}" is not editable.` };
+  }
+
+  const blocks = sanitizeProjectPage(rawBlocks);
+  try {
+    await updateAndPublish(model, id, { [field]: blocks });
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Save failed." };
+  }
+  return { ok: true, blocks };
 }
