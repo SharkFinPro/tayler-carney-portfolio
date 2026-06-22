@@ -101,14 +101,16 @@ export async function uploadAsset(formData: FormData): Promise<Ok<{ asset: Media
   }
   const rawTitle = formData.get("title");
   const title = typeof rawTitle === "string" ? rawTitle.trim() : "";
+  const rawAlt = formData.get("altText");
+  const altText = typeof rawAlt === "string" ? rawAlt.trim() : "";
 
   try {
     const { id } = await cmsUpload(file);
 
-    if (title) {
+    if (title || altText) {
       await cmsMutate(
         `mutation Update($id: ID!, $data: AssetUpdateInput!) { updateAsset(where: { id: $id }, data: $data) { id } }`,
-        { id, data: { title } }
+        { id, data: { ...(title ? { title } : {}), ...(altText ? { altText } : {}) } }
       );
     }
 

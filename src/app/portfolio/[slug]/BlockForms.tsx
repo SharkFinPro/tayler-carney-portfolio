@@ -25,27 +25,26 @@ function Field({ label, value, onChange, multiline }: {
   );
 }
 
+// The image URL and alt text are metadata on the asset itself, set in the media
+// library / uploader — so this just shows the chosen image and a picker button.
 function ImageRefFields({ value, onChange }: { value: ImageRef | null; onChange: (v: ImageRef | null) => void }) {
   const [picking, setPicking] = useState(false);
   const url = value?.url ?? "";
-  const alt = value?.altText ?? "";
-  const set = (next: { url?: string; altText?: string }) => {
-    const u = (next.url ?? url).trim();
-    const a = (next.altText ?? alt).trim();
-    if (!u) return onChange(null);
-    onChange({ url: u, altText: a || undefined });
-  };
   return (
     <div className={styles.row}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      {url && <img src={url} alt="" className={styles.thumb} />}
-      <Field label="Image URL" value={url} onChange={(v) => set({ url: v })} />
-      <Field label="Alt text" value={alt} onChange={(v) => set({ altText: v })} />
-      <button type="button" className={styles.iconBtn} onClick={() => setPicking(true)}>Choose…</button>
+      {url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url} alt={value?.altText ?? ""} className={styles.thumb} />
+      ) : (
+        <span className={styles.thumbEmpty} aria-hidden="true" />
+      )}
+      <button type="button" className={styles.iconBtn} onClick={() => setPicking(true)}>
+        {url ? "Replace…" : "Choose image…"}
+      </button>
       {picking && (
         <AssetPicker
           onClose={() => setPicking(false)}
-          onSelect={(asset) => onChange({ url: asset.url, altText: asset.altText || alt || undefined })}
+          onSelect={(asset) => onChange({ url: asset.url, altText: asset.altText || undefined })}
         />
       )}
     </div>

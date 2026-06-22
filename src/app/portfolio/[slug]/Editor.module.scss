@@ -127,7 +127,7 @@
   &:disabled { opacity: 0.4; cursor: default; }
 }
 
-.blockPreview { padding: 0.5rem 0; }
+.blockPreview { padding: 1.25rem; }
 
 // ── Edit panel ────────────────────────────────────────────────────────────
 
@@ -186,6 +186,15 @@
   object-fit: cover;
   border-radius: 3px;
   border: 1px solid var(--line);
+  flex: 0 0 auto;
+}
+
+.thumbEmpty {
+  width: 44px;
+  height: 44px;
+  border-radius: 3px;
+  border: 1px dashed var(--line-strong);
+  background: var(--plate-muted);
   flex: 0 0 auto;
 }
 

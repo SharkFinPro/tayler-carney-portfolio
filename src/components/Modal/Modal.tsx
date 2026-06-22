@@ -25,6 +25,13 @@ interface ModalProps {
 export default function Modal({ onClose, labelledBy, overlayClassName, children }: ModalProps) {
   const ref = useRef<HTMLDivElement>(null);
 
+  // Keep the latest onClose without re-running the focus-trap effect: callers
+  // routinely pass a fresh closure each render, and re-running the setup steals
+  // focus away from inputs (the cleanup refocuses the previously-active element,
+  // then setup grabs the first focusable). Run setup once on mount instead.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   useEffect(() => {
     const overlay = ref.current;
     const prev = document.activeElement as HTMLElement | null;
@@ -39,7 +46,7 @@ export default function Modal({ onClose, labelledBy, overlayClassName, children 
     function onKey(e: KeyboardEvent) {
       if (!topmost() || !overlay) return;
       if (e.key === "Escape") {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== "Tab") return;
@@ -66,7 +73,10 @@ export default function Modal({ onClose, labelledBy, overlayClassName, children 
       stack.splice(stack.indexOf(token), 1);
       prev?.focus?.();
     };
-  }, [onClose]);
+    // Mount-once: onClose is read through a ref so a fresh closure each render
+    // doesn't re-run setup and disturb focus.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div

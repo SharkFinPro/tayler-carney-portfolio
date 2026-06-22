@@ -60,12 +60,12 @@ export default async function About() {
               />
               <div className={styles.portraitBadge}>
                 <span className={styles.portraitName}>
-                  <EditableText model="AboutPage" id={about.id} field="title" value={about.title} editable={isAdmin}>
+                  <EditableText model="AboutPage" id={about.id} field="title" value={about.title} editable={isAdmin} floatEdit>
                     {about.title}
                   </EditableText>
                 </span>
                 <span className={styles.portraitTitle}>
-                  <EditableText model="AboutPage" id={about.id} field="subtitle" value={about.subtitle} editable={isAdmin}>
+                  <EditableText model="AboutPage" id={about.id} field="subtitle" value={about.subtitle} editable={isAdmin} floatEdit>
                     {about.subtitle}
                   </EditableText>
                 </span>

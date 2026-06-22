@@ -1,62 +1,145 @@
+// The wrapper anchors the floating edit panel; keep it inline so it sits with
+// the text it edits.
 .wrap {
   position: relative;
 }
 
-.editBtn {
-  margin-left: 0.4rem;
-  padding: 0.1rem 0.35rem;
-  font-size: 0.7rem;
-  line-height: 1;
-  vertical-align: middle;
-  border: 1px solid var(--line);
-  border-radius: 3px;
-  background: var(--plate-muted);
-  color: var(--ink-soft);
-  cursor: pointer;
-  opacity: 0.6;
-  transition: opacity 0.15s;
-
-  &:hover {
-    opacity: 1;
+// For headings / gradient text that must not reflow: float the pencil out of
+// flow so a long value can't push it onto its own line. The editable element
+// is already position: relative via .wrap.
+.wrapFloat {
+  .editBtn {
+    position: absolute;
+    top: 0;
+    left: 100%;
+    margin-left: 0.5rem;
   }
 }
 
-.editor {
+// ── Edit affordance ─────────────────────────────────────────────────────────
+// A solid accent pill with a clear icon and a comfortable hit target — far
+// easier to see and click than the old faint glyph.
+.editBtn {
   display: inline-flex;
-  align-items: flex-start;
-  gap: 0.35rem;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+  font-size: 0.7rem;
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--ink-inverse);
+  // Gradient-text parents use -webkit-text-fill-color: transparent, which would
+  // otherwise hide the icon; force it visible.
+  -webkit-text-fill-color: var(--ink-inverse);
+  cursor: pointer;
+  box-shadow: 0 1px 3px var(--shadow);
+  opacity: 0.85;
+  transition: opacity 0.15s, transform 0.15s;
+
+  &:hover,
+  &:focus-visible {
+    opacity: 1;
+    transform: translateY(-1px);
+  }
+}
+
+// ── Floating editor panel ───────────────────────────────────────────────────
+// Anchored below the text and taken out of flow so opening it never reflows the
+// page. Sized to be genuinely usable rather than squeezed into the text run.
+.panel {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: max-content;
+  min-width: 18rem;
+  max-width: min(32rem, 90vw);
+  padding: 0.75rem;
+  background: var(--plate);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px var(--shadow);
+  text-align: left;
+  // Reset any inherited gradient/heading text styling so the controls render
+  // normally.
+  -webkit-text-fill-color: initial;
+  white-space: normal;
 }
 
 .input,
 .textarea {
-  font: inherit;
+  width: 100%;
+  font-family: var(--ff-sans);
+  font-size: 0.95rem;
+  line-height: 1.4;
   color: var(--ink);
+  -webkit-text-fill-color: var(--ink);
   background: var(--canvas);
   border: 1px solid var(--line-strong);
-  border-radius: 3px;
-  padding: 0.25rem 0.4rem;
-  min-width: 12rem;
+  border-radius: 5px;
+  padding: 0.5rem 0.6rem;
 }
 
 .textarea {
-  width: 100%;
-  min-height: 5rem;
+  min-height: 7rem;
   resize: vertical;
 }
 
+.controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .actionBtn {
-  padding: 0.15rem 0.45rem;
-  font-size: 0.75rem;
-  border: 1px solid var(--line);
-  border-radius: 3px;
-  background: var(--plate);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.7rem;
+  font-family: var(--ff-sans);
+  font-size: 0.85rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  background: var(--plate-muted);
   color: var(--ink);
   cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover:not(:disabled) {
+    background: var(--canvas-deep);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
+.save {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--ink-inverse);
+
+  &:hover:not(:disabled) {
+    background: var(--accent-soft);
+  }
+}
+
+.hint {
+  font-family: var(--ff-sans);
+  font-size: 0.7rem;
+  color: var(--ink-muted);
 }
 
 .error {
-  display: block;
-  margin-top: 0.25rem;
-  font-size: 0.75rem;
+  font-family: var(--ff-sans);
+  font-size: 0.8rem;
   color: #b3261e;
 }

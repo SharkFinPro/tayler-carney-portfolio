@@ -329,7 +329,7 @@
 .modalHead { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 .modalTitle { font-family: var(--ff-serif); font-size: 1.2rem; }
 
-.ratioGroup { display: flex; gap: 0.4rem; }
+.ratioGroup { display: flex; gap: 0.4rem; flex-wrap: wrap; }
 
 .ratioBtn {
   font: inherit;

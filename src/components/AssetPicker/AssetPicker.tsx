@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Modal from "@/components/Modal";
 import styles from "./AssetPicker.module.scss";
-import { fetchAssets, uploadAsset } from "@/app/admin/mediaActions";
+import { fetchAssets } from "@/app/admin/mediaActions";
+import MediaUploader from "@/app/admin/media/MediaUploader";
 import type { MediaAsset } from "@/lib/getAssets";
 
 interface Props {
@@ -15,8 +16,6 @@ export default function AssetPicker({ onClose, onSelect }: Props) {
   const [assets, setAssets] = useState<MediaAsset[]>([]);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<{ msg: string; error?: boolean } | null>(null);
-  const [busy, setBusy] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   async function load() {
     const res = await fetchAssets();
@@ -36,26 +35,6 @@ export default function AssetPicker({ onClose, onSelect }: Props) {
     if (!q) return true;
     return (a.title ?? "").toLowerCase().includes(q) || a.fileName.toLowerCase().includes(q);
   });
-
-  async function handleUpload(file: File) {
-    setBusy(true);
-    setStatus({ msg: "Uploading…" });
-    try {
-      const form = new FormData();
-      form.append("file", file);
-      form.append("title", file.name);
-      const res = await uploadAsset(form);
-      if ("error" in res) throw new Error(res.error);
-
-      setStatus({ msg: "Uploaded." });
-      onSelect({ url: res.asset.url, altText: res.asset.altText });
-      onClose();
-    } catch (e) {
-      setStatus({ msg: e instanceof Error ? e.message : "Upload failed.", error: true });
-    } finally {
-      setBusy(false);
-    }
-  }
 
   return (
     <Modal onClose={onClose} labelledBy="asset-picker-title" overlayClassName={styles.overlay}>
@@ -98,20 +77,14 @@ export default function AssetPicker({ onClose, onSelect }: Props) {
         </div>
 
         <div className={styles.foot}>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            hidden
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) handleUpload(f);
-              e.target.value = "";
+          <MediaUploader
+            triggerLabel="Upload new…"
+            triggerClassName={styles.close}
+            onUploaded={(asset) => {
+              onSelect({ url: asset.url, altText: asset.altText });
+              onClose();
             }}
           />
-          <button type="button" className={styles.close} onClick={() => fileRef.current?.click()} disabled={busy}>
-            Upload new…
-          </button>
           {status && (
             <span className={`${styles.status} ${status.error ? styles.statusError : ""}`} role="status">
               {status.msg}
