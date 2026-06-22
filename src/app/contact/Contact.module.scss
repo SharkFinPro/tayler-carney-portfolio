@@ -125,6 +125,31 @@
   max-width: 34ch;
 }
 
+// Admin-only edit affordance (opens the shared edit modal)
+.editButton {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ink-inverse);
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 0.55rem 0.875rem;
+  cursor: pointer;
+  transition: border-color 0.2s, opacity 0.2s;
+  opacity: 0.75;
+
+  &:hover {
+    opacity: 1;
+    border-color: rgba(255, 255, 255, 0.45);
+  }
+}
+
 // Availability badge
 .availability {
   display: inline-flex;

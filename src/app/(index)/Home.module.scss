@@ -272,7 +272,6 @@
     object-fit: cover;
     width: 100%;
     height: 100%;
-    filter: grayscale(1) brightness(0.72);
   }
 
   @media (max-width: 860px) {
@@ -472,58 +471,10 @@
   }
 }
 
-/* ── Card-editor modal ─────────────────────────────────────────────────── */
-
-.modalOverlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 4rem 1rem;
-  overflow-y: auto;
-  background: rgba(0, 0, 0, 0.55);
-}
-
-.modalPanel {
-  width: 100%;
-  max-width: 640px;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 1.75rem;
-  background: var(--canvas);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  font-family: var(--ff-sans);
-  color: var(--ink);
-}
-
-.modalHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.modalTitle {
-  font-family: var(--ff-serif);
-  font-size: 1.4rem;
-  margin: 0;
-}
-
-.modalClose {
-  border: none;
-  background: none;
-  font-size: 1.1rem;
-  line-height: 1;
-  color: var(--ink-muted);
-  cursor: pointer;
-
-  &:hover {
-    color: var(--ink);
-  }
-}
+/* ── Card-editor modal contents ────────────────────────────────────────────
+   The modal chrome and the form-field primitives now live with the shared
+   EditModal component; only the homepage-specific drag/list/image styles below
+   remain here. */
 
 .editList {
   display: flex;
@@ -588,30 +539,6 @@
   gap: 0.25rem;
 }
 
-.editFieldLabel {
-  font-family: var(--ff-mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-muted);
-}
-
-.editInput {
-  font-family: var(--ff-sans);
-  font-size: 0.9rem;
-  padding: 0.45rem 0.55rem;
-  border: 1px solid var(--line);
-  border-radius: 3px;
-  background: var(--canvas);
-  color: var(--ink);
-  resize: vertical;
-
-  &:focus {
-    outline: none;
-    border-color: var(--accent);
-  }
-}
-
 .addBtn {
   align-self: flex-start;
   font-family: var(--ff-sans);
@@ -629,51 +556,139 @@
   }
 }
 
-.editError {
-  font-size: 0.85rem;
-  color: #b3261e;
-}
-
-.modalActions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  margin-top: 0.25rem;
-}
-
-.modalCancel {
-  font-family: var(--ff-sans);
-  font-size: 0.88rem;
-  padding: 0.55rem 1.1rem;
-  border: 1px solid var(--line-strong, var(--line));
-  border-radius: 4px;
-  background: var(--plate);
-  color: var(--ink);
-  cursor: pointer;
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: default;
-  }
-}
-
-.modalSave {
-  font-family: var(--ff-sans);
-  font-size: 0.88rem;
-  padding: 0.55rem 1.3rem;
-  border: none;
-  border-radius: 4px;
-  background: var(--accent);
-  color: var(--ink-inverse);
-  cursor: pointer;
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: default;
-  }
-}
-
 .editFloatingLayer {
+  position: fixed;
+  z-index: 1100;
+  pointer-events: none;
+}
+
+.imageField {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.imagePreview {
+  position: relative;
+  flex: none;
+  width: 110px;
+  aspect-ratio: 4 / 5;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--plate);
+
+  img {
+    object-fit: cover;
+  }
+}
+
+.imageEmpty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--ff-mono);
+  font-size: 0.7rem;
+  color: var(--ink-muted);
+}
+
+.imageControls {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* ── Edit-section trigger on the dark archive band ─────────────────────── */
+
+.editSectionBtnDark {
+  align-self: flex-start;
+}
+
+/* ── In-place card editing (Explore the Site) ──────────────────────────── */
+
+.navCardAdmin {
+  cursor: default;
+}
+
+.navCardFloating {
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.3);
+  background: var(--plate);
+}
+
+.navCardPlaceholder {
+  // Height comes from the grid cell, with a floor so an emptied slot stays
+  // visible — never from the dragged card's own (possibly tall) height.
+  min-height: 140px;
+  border: 1px dashed var(--line-strong, var(--line));
+  background: transparent;
+}
+
+.cardAdminBar {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  z-index: 2;
+  display: flex;
+  gap: 0.4rem;
+}
+
+.cardDragBtn,
+.cardEditBtn,
+.cardDeleteBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--canvas);
+  color: var(--ink-muted);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--ink);
+    border-color: var(--accent);
+  }
+}
+
+.cardDragBtn {
+  cursor: grab;
+  touch-action: none;
+}
+
+.cardDeleteBtn:hover {
+  color: #b3261e;
+  border-color: #b3261e;
+}
+
+.addCardTile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 1.25rem;
+  padding: 1rem;
+  border: 1px dashed var(--line-strong, var(--line));
+  background: none;
+  color: var(--ink-muted);
+  font-family: var(--ff-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+}
+
+.cardFloatingLayer {
   position: fixed;
   z-index: 1100;
   pointer-events: none;

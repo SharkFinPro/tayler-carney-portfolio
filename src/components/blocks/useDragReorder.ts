@@ -13,9 +13,16 @@ type Options<T> = {
   setItems: (next: T[]) => void;
   getKey: (item: T) => string;
   onCommit: (orderedKeys: string[]) => void;
+  /**
+   * "y" (default) — a single vertical column: insertion is the first card whose
+   * vertical midpoint the pointer is above. "grid" — a 2-D layout: insertion is
+   * relative to the nearest card's center, so dropping onto the large primary
+   * cell promotes a card and reflows the rest.
+   */
+  mode?: "y" | "grid";
 };
 
-export function useDragReorder<T>({ items, setItems, getKey, onCommit }: Options<T>) {
+export function useDragReorder<T>({ items, setItems, getKey, onCommit, mode = "y" }: Options<T>) {
   const [draggingKey, setDraggingKey] = useState<string | null>(null);
   const [pointer, setPointer] = useState({ x: 0, y: 0 });
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -45,7 +52,7 @@ export function useDragReorder<T>({ items, setItems, getKey, onCommit }: Options
   // never oscillates even when blocks have very different heights — and because
   // the dragged block is replaced by a small placeholder, the other cards barely
   // shift as the order changes.
-  function reorderAt(_x: number, y: number) {
+  function reorderAt(x: number, y: number) {
     const draggingKey = draggingKeyRef.current;
     if (draggingKey === null) return;
     const list = itemsRef.current;
@@ -54,13 +61,42 @@ export function useDragReorder<T>({ items, setItems, getKey, onCommit }: Options
 
     const others = list.filter((it) => getKey(it) !== draggingKey);
     let insertBefore = others.length;
-    for (let i = 0; i < others.length; i++) {
-      const el = cardRefs.current.get(getKey(others[i]));
-      if (!el) continue;
-      const r = el.getBoundingClientRect();
-      if (y < r.top + r.height / 2) {
-        insertBefore = i;
-        break;
+
+    if (mode === "grid") {
+      // Insert relative to the card nearest the pointer. Below that card → after
+      // it; above → before; alongside (same row band) → decide by horizontal
+      // side. This lets a card dragged over the tall primary cell land at index
+      // 0, while a primary dragged into the side column drops to a later slot.
+      let bestDist = Infinity;
+      let bestIdx = -1;
+      let after = false;
+      for (let i = 0; i < others.length; i++) {
+        const el = cardRefs.current.get(getKey(others[i]));
+        if (!el) continue;
+        const r = el.getBoundingClientRect();
+        const cx = r.left + r.width / 2;
+        const cy = r.top + r.height / 2;
+        const dx = x - cx;
+        const dy = y - cy;
+        const d = dx * dx + dy * dy;
+        if (d < bestDist) {
+          bestDist = d;
+          bestIdx = i;
+          if (y > r.bottom) after = true;
+          else if (y < r.top) after = false;
+          else after = x > cx;
+        }
+      }
+      insertBefore = bestIdx === -1 ? others.length : bestIdx + (after ? 1 : 0);
+    } else {
+      for (let i = 0; i < others.length; i++) {
+        const el = cardRefs.current.get(getKey(others[i]));
+        if (!el) continue;
+        const r = el.getBoundingClientRect();
+        if (y < r.top + r.height / 2) {
+          insertBefore = i;
+          break;
+        }
       }
     }
 

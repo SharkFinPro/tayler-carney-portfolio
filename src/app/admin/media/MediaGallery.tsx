@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -18,7 +18,7 @@ import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import type { MediaAsset } from "@/lib/getAssets";
 import { updateAsset, publishAsset, unpublishAsset, deleteAsset } from "@/app/admin/mediaActions";
 import MediaUploader from "./MediaUploader";
-import Modal from "@/components/Modal";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import styles from "./Media.module.scss";
 
 function formatBytes(bytes?: number): string {
@@ -277,10 +277,9 @@ export default function MediaGallery({ initialAssets }: { initialAssets: MediaAs
     if (firstError) setBulkError(firstError);
   }
 
-  async function confirmDelete() {
-    if (!pendingDelete) return;
-    setBulkBusy(true);
-    setBulkError(null);
+  // Returns an error string to keep the confirm dialog open, or null on success.
+  async function confirmDelete(): Promise<string | null> {
+    if (!pendingDelete) return null;
     let firstError: string | null = null;
     const deleted: string[] = [];
     for (const id of pendingDelete) {
@@ -297,15 +296,12 @@ export default function MediaGallery({ initialAssets }: { initialAssets: MediaAs
         return next;
       });
     }
-    setBulkBusy(false);
-    setPendingDelete(null);
-    if (firstError) setBulkError(firstError);
+    return firstError;
   }
 
   const draftCount = items.filter((a) => a.status === "draft").length;
   const selectedCount = selectedIds.length;
   const deleteCount = pendingDelete?.length ?? 0;
-  const deleteTitleId = useId();
 
   return (
     <div className={styles.wrap}>
@@ -414,16 +410,12 @@ export default function MediaGallery({ initialAssets }: { initialAssets: MediaAs
       )}
 
       {pendingDelete && (
-        <Modal onClose={() => { if (!bulkBusy) setPendingDelete(null); }} labelledBy={deleteTitleId} overlayClassName={styles.modalOverlay}>
-          <div className={`${styles.modal} ${styles.confirmModal}`}>
-            <h2 className={styles.modalTitle} id={deleteTitleId}>Delete {deleteCount} {deleteCount === 1 ? "asset" : "assets"}?</h2>
-            <p className={styles.stateBody}>This permanently removes {deleteCount === 1 ? "the asset" : "these assets"} from the CMS. This can&apos;t be undone.</p>
-            <div className={styles.modalActions}>
-              <button type="button" className={styles.unpublishBtn} onClick={() => setPendingDelete(null)} disabled={bulkBusy}>Cancel</button>
-              <button type="button" className={styles.dangerBtn} onClick={confirmDelete} disabled={bulkBusy}>{bulkBusy ? "Deleting…" : "Delete"}</button>
-            </div>
-          </div>
-        </Modal>
+        <ConfirmDialog
+          title={`Delete ${deleteCount} ${deleteCount === 1 ? "asset" : "assets"}?`}
+          message={`This permanently removes ${deleteCount === 1 ? "the asset" : "these assets"} from the CMS. This can't be undone.`}
+          onConfirm={confirmDelete}
+          onClose={() => setPendingDelete(null)}
+        />
       )}
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
-import { ReactNode, useEffect, useRef } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 const FOCUSABLE =
   'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
@@ -8,6 +9,22 @@ const FOCUSABLE =
 // Module-level stack so only the topmost dialog handles keys — nested dialogs
 // (e.g. picker → uploader) behave correctly.
 const stack: symbol[] = [];
+
+// Count of open dialogs so page scroll stays locked until the last one closes
+// (nested dialogs must not unlock the body when an inner one unmounts).
+let scrollLockCount = 0;
+
+function lockScroll() {
+  if (scrollLockCount++ === 0) {
+    document.body.style.overflow = "hidden";
+  }
+}
+
+function unlockScroll() {
+  if (--scrollLockCount === 0) {
+    document.body.style.overflow = "";
+  }
+}
 
 interface ModalProps {
   onClose: () => void;
@@ -25,6 +42,16 @@ interface ModalProps {
 export default function Modal({ onClose, labelledBy, overlayClassName, children }: ModalProps) {
   const ref = useRef<HTMLDivElement>(null);
 
+  // Portal to <body> so the fixed overlay covers the whole viewport regardless
+  // of ancestor transforms/filters (which would otherwise become its containing
+  // block). `mounted` gates the portal until the client has a document.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    lockScroll();
+    return unlockScroll;
+  }, []);
+
   // Keep the latest onClose without re-running the focus-trap effect: callers
   // routinely pass a fresh closure each render, and re-running the setup steals
   // focus away from inputs (the cleanup refocuses the previously-active element,
@@ -33,6 +60,9 @@ export default function Modal({ onClose, labelledBy, overlayClassName, children 
   onCloseRef.current = onClose;
 
   useEffect(() => {
+    // Wait until the portal has actually rendered the overlay (first client
+    // render returns null to match SSR), so focus-trap setup sees a real node.
+    if (!mounted) return;
     const overlay = ref.current;
     const prev = document.activeElement as HTMLElement | null;
     const token = Symbol();
@@ -73,12 +103,14 @@ export default function Modal({ onClose, labelledBy, overlayClassName, children 
       stack.splice(stack.indexOf(token), 1);
       prev?.focus?.();
     };
-    // Mount-once: onClose is read through a ref so a fresh closure each render
-    // doesn't re-run setup and disturb focus.
+    // Runs once the overlay mounts: onClose is read through a ref so a fresh
+    // closure each render doesn't re-run setup and disturb focus.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [mounted]);
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div
       ref={ref}
       className={overlayClassName}
@@ -91,6 +123,7 @@ export default function Modal({ onClose, labelledBy, overlayClassName, children 
       }}
     >
       {children}
-    </div>
+    </div>,
+    document.body
   );
 }

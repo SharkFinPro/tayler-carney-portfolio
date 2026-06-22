@@ -16,6 +16,7 @@ import {
   blockSummary,
 } from "./blocks";
 import { useDragReorder } from "./useDragReorder";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import { updateBlockLayout } from "@/app/admin/contentActions";
 
 interface Props {
@@ -44,6 +45,7 @@ export default function BlockEditor({ model, field, id, initialBlocks, onBlocksC
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const blocksRef = useRef(blocks);
   useEffect(() => {
@@ -121,10 +123,10 @@ export default function BlockEditor({ model, field, id, initialBlocks, onBlocksC
     if (!("error" in result)) collapseEdit();
   }
 
-  async function deleteBlock(blockId: string) {
-    if (!window.confirm("Delete this block? This can't be undone.")) return;
+  async function deleteBlock(blockId: string): Promise<string | null> {
     if (editingId === blockId) cancelEdit();
-    await persist(blocksRef.current.filter((b) => b.id !== blockId));
+    const result = await persist(blocksRef.current.filter((b) => b.id !== blockId));
+    return "error" in result ? result.error : null;
   }
 
   return (
@@ -185,7 +187,7 @@ export default function BlockEditor({ model, field, id, initialBlocks, onBlocksC
                         Edit
                       </button>
                     )}
-                    <button type="button" className={styles.iconBtn} aria-label={`Delete ${BLOCK_LABELS[block.type]} block`} onClick={() => deleteBlock(block.id)}>
+                    <button type="button" className={styles.iconBtn} aria-label={`Delete ${BLOCK_LABELS[block.type]} block`} onClick={() => setPendingDeleteId(block.id)}>
                       Delete
                     </button>
                   </div>
@@ -270,6 +272,15 @@ export default function BlockEditor({ model, field, id, initialBlocks, onBlocksC
           )}
         </AnimatePresence>
       </div>
+
+      {pendingDeleteId && (
+        <ConfirmDialog
+          title="Delete this block?"
+          message="This permanently removes the block from the CMS. This can't be undone."
+          onConfirm={() => deleteBlock(pendingDeleteId)}
+          onClose={() => setPendingDeleteId(null)}
+        />
+      )}
     </div>
   );
 }

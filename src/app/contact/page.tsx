@@ -7,7 +7,7 @@ import getSiteData from "@/components/SiteData"
 import { AnimatedSection } from "@/components/AnimatedSection";
 import { cmsQuery } from "@/lib/cms";
 import { isAuthed } from "@/lib/auth";
-import EditableText from "@/components/EditableText";
+import ContactEditor from "./ContactEditor";
 
 export const metadata: Metadata = {
   title: "Contact"
@@ -62,27 +62,13 @@ export default async function ContactPage() {
 
             {/* ── Left panel ─────────────────────────────────────────────── */}
             <div className={styles.left}>
-              <div className={styles.leftTop}>
-                <span className={styles.eyebrow}>Contact</span>
-                <h1 className={styles.headline}>
-                  <EditableText model="ContactPage" id={contactPage.id} field="header" value={contactPage.header} editable={isAdmin} floatEdit>
-                    {contactPage.header}
-                  </EditableText>
-                </h1>
-                <p className={styles.subtext}>
-                  <EditableText model="ContactPage" id={contactPage.id} field="subheader" value={contactPage.subheader} editable={isAdmin} multiline>
-                    {contactPage.subheader}
-                  </EditableText>
-                </p>
-              </div>
-              <div className={styles.availability}>
-                <span className={styles.availabilityDot} aria-hidden="true" />
-                <span className={styles.availabilityText}>
-                  <EditableText model="ContactPage" id={contactPage.id} field="availabilityMessage" value={contactPage.availabilityMessage} editable={isAdmin}>
-                    {contactPage.availabilityMessage}
-                  </EditableText>
-                </span>
-              </div>
+              <ContactEditor
+                id={contactPage.id}
+                header={contactPage.header}
+                subheader={contactPage.subheader}
+                availabilityMessage={contactPage.availabilityMessage}
+                editable={isAdmin}
+              />
             </div>
 
             {/* ── Right panel ────────────────────────────────────────────── */}
