@@ -5,6 +5,9 @@ import { faEnvelope } from "@fortawesome/free-solid-svg-icons";
 import { faLinkedin, faInstagram } from "@fortawesome/free-brands-svg-icons";
 import getSiteData from "@/components/SiteData"
 import { AnimatedSection } from "@/components/AnimatedSection";
+import { cmsQuery } from "@/lib/cms";
+import { isAuthed } from "@/lib/auth";
+import ContactEditor from "./ContactEditor";
 
 export const metadata: Metadata = {
   title: "Contact"
@@ -15,6 +18,7 @@ export const dynamic = "force-dynamic";
 const CONTACTPAGE_QUERY = `
   query ContactPage {
     contactPages {
+      id
       header
       subheader
       availabilityMessage
@@ -23,16 +27,8 @@ const CONTACTPAGE_QUERY = `
 `;
 
 async function getContactPage() {
-  const response = await fetch(process.env.CMS_ENDPOINT as string, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + process.env.CMS_TOKEN,
-    },
-    body: JSON.stringify({ query: CONTACTPAGE_QUERY }),
-  });
-  const json = await response.json();
-  return json.data.contactPages[0];
+  const data = await cmsQuery(CONTACTPAGE_QUERY);
+  return data.contactPages[0];
 }
 
 
@@ -40,6 +36,8 @@ export default async function ContactPage() {
   const contactPage = await getContactPage();
 
   const siteData = await getSiteData();
+
+  const isAdmin = await isAuthed();
 
   const socials = [
     {
@@ -64,15 +62,13 @@ export default async function ContactPage() {
 
             {/* ── Left panel ─────────────────────────────────────────────── */}
             <div className={styles.left}>
-              <div className={styles.leftTop}>
-                <span className={styles.eyebrow}>Contact</span>
-                <h1 className={styles.headline}>{contactPage.header}</h1>
-                <p className={styles.subtext}>{contactPage.subheader}</p>
-              </div>
-              <div className={styles.availability}>
-                <span className={styles.availabilityDot} aria-hidden="true" />
-                <span className={styles.availabilityText}>{contactPage.availabilityMessage}</span>
-              </div>
+              <ContactEditor
+                id={contactPage.id}
+                header={contactPage.header}
+                subheader={contactPage.subheader}
+                availabilityMessage={contactPage.availabilityMessage}
+                editable={isAdmin}
+              />
             </div>
 
             {/* ── Right panel ────────────────────────────────────────────── */}

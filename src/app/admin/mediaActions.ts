@@ -1,0 +1,130 @@
+"use server";
+
+import { isAuthed } from "@/lib/auth";
+import { cmsMutate, cmsUpload } from "@/lib/cms";
+import { getAssets, getAssetById, type MediaAsset } from "@/lib/getAssets";
+
+type Ok<T> = { ok: true } & T;
+type Err = { ok: false; error: string };
+
+async function requireAuth(): Promise<Err | null> {
+  return (await isAuthed()) ? null : { ok: false, error: "Not authorized." };
+}
+
+// Admin-gated read for client components (e.g. AssetPicker).
+export async function fetchAssets(): Promise<Ok<{ assets: MediaAsset[] }> | Err> {
+  const denied = await requireAuth();
+  if (denied) return denied;
+  try {
+    return { ok: true, assets: await getAssets() };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Failed to load assets." };
+  }
+}
+
+// Update an asset's display name / alt text. Stage-aware: only re-publishes when
+// the asset is already published, so editing metadata never silently publishes a
+// draft-only asset.
+export async function updateAsset(
+  id: string,
+  fields: { title?: string; altText?: string },
+  republish: boolean
+): Promise<Ok<object> | Err> {
+  const denied = await requireAuth();
+  if (denied) return denied;
+  try {
+    await cmsMutate(
+      `mutation Update($id: ID!, $data: AssetUpdateInput!) {
+         updateAsset(where: { id: $id }, data: $data) { id }
+       }`,
+      { id, data: { title: fields.title?.trim() || null, altText: fields.altText?.trim() || null } }
+    );
+    if (republish) {
+      await cmsMutate(`mutation Pub($id: ID!) { publishAsset(where: { id: $id }, to: PUBLISHED) { id } }`, { id });
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Update failed." };
+  }
+}
+
+export async function publishAsset(id: string): Promise<Ok<object> | Err> {
+  const denied = await requireAuth();
+  if (denied) return denied;
+  try {
+    await cmsMutate(`mutation Pub($id: ID!) { publishAsset(where: { id: $id }, to: PUBLISHED) { id } }`, { id });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Publish failed." };
+  }
+}
+
+export async function unpublishAsset(id: string): Promise<Ok<object> | Err> {
+  const denied = await requireAuth();
+  if (denied) return denied;
+  try {
+    await cmsMutate(`mutation Unpub($id: ID!) { unpublishAsset(where: { id: $id }, from: PUBLISHED) { id } }`, { id });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Unpublish failed." };
+  }
+}
+
+export async function deleteAsset(id: string): Promise<Ok<object> | Err> {
+  const denied = await requireAuth();
+  if (denied) return denied;
+  try {
+    // Unpublish first (a published asset can't be deleted); ignore if not published.
+    try {
+      await cmsMutate(`mutation Unpub($id: ID!) { unpublishAsset(where: { id: $id }, from: PUBLISHED) { id } }`, { id });
+    } catch {
+      /* not published — fine */
+    }
+    await cmsMutate(`mutation Del($id: ID!) { deleteAsset(where: { id: $id }) { id } }`, { id });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Delete failed." };
+  }
+}
+
+// Upload a new media asset (typically a client-cropped image) entirely
+// server-side via Hygraph's direct-upload flow. Lands as a DRAFT; an optional
+// display name is written to `title`. Polls until ingestion populates `size` so
+// the returned asset renders immediately. Returns the full asset for the gallery.
+export async function uploadAsset(formData: FormData): Promise<Ok<{ asset: MediaAsset }> | Err> {
+  const denied = await requireAuth();
+  if (denied) return denied;
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, error: "No file provided." };
+  }
+  const rawTitle = formData.get("title");
+  const title = typeof rawTitle === "string" ? rawTitle.trim() : "";
+  const rawAlt = formData.get("altText");
+  const altText = typeof rawAlt === "string" ? rawAlt.trim() : "";
+
+  try {
+    const { id } = await cmsUpload(file);
+
+    if (title || altText) {
+      await cmsMutate(
+        `mutation Update($id: ID!, $data: AssetUpdateInput!) { updateAsset(where: { id: $id }, data: $data) { id } }`,
+        { id, data: { ...(title ? { title } : {}), ...(altText ? { altText } : {}) } }
+      );
+    }
+
+    // Hygraph ingests asynchronously; poll until `size` populates (bounded).
+    let asset = await getAssetById(id);
+    for (let attempt = 0; attempt < 12 && asset && asset.size == null; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 750));
+      asset = await getAssetById(id);
+    }
+    if (!asset) {
+      return { ok: false, error: "Upload succeeded but the asset could not be loaded." };
+    }
+    return { ok: true, asset };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Failed to upload asset." };
+  }
+}

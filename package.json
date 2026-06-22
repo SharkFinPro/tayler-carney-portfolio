@@ -26,6 +26,7 @@
     "framer-motion": "^12.40.0",
     "next": "^16.2.9",
     "react": "^19.2.6",
+    "react-advanced-cropper": "^0.20.1",
     "react-dom": "^19.2.6",
     "sass": "^1.99.0",
     "sharp": "^0.34.5"

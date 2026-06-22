@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import ProjectPageClient from "./ProjectPageClient";
 import { Metadata } from "next";
+import { cmsQuery } from "@/lib/cms";
+import { isAuthed } from "@/lib/auth";
 
 interface ProjectPageProps {
   params: Promise<{ slug: string }>;
@@ -8,39 +10,41 @@ interface ProjectPageProps {
 
 async function getProject(slug: string) {
   try {
-    const response = await fetch(process.env.CMS_ENDPOINT as string, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + process.env.CMS_TOKEN,
-      },
-      body: JSON.stringify({
-        query: `
+    const data = await cmsQuery(
+      `
           query Projects($slug: String!) {
             projects(where: {slug: $slug}) {
+              id
               title
               slug
               description
+              projectPage
               sketches {
                 url
+                altText
               }
               digitalRendering {
                 url
+                altText
               }
               frontFlat {
                 url
+                altText
               }
               backFlat {
                 url
+                altText
               }
               sideFlat {
                 url
+                altText
               }
               coloredFlats {
                 title
                 description
                 image {
                   url
+                  altText
                 }
               }
               details {
@@ -48,16 +52,19 @@ async function getProject(slug: string) {
                 description
                 image {
                   url
+                  altText
                 }
               }
               patterns {
                 url
+                altText
               }
               materials {
                 title
                 description
                 image {
                   url
+                  altText
                 }
               }
               techPackHeader
@@ -66,6 +73,7 @@ async function getProject(slug: string) {
                 description
                 image {
                   url
+                  altText
                 }
               }
               looks {
@@ -73,23 +81,20 @@ async function getProject(slug: string) {
                 description
                 image {
                   url
+                  altText
                 }
               }
               finalProduct {
                 url
+                altText
               }
             }
           }
         `,
-        variables: {
-          slug: slug.toLowerCase(),
-        },
-      }),
-    });
+      { slug: slug.toLowerCase() }
+    );
 
-    const json = await response.json();
-
-    return json.data?.projects?.[0] ?? null;
+    return data?.projects?.[0] ?? null;
   } catch (error) {
     console.log("Error fetching project: ", error);
     notFound();
@@ -97,25 +102,15 @@ async function getProject(slug: string) {
 }
 
 async function getAllProjects() {
-  const response = await fetch(process.env.CMS_ENDPOINT as string, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + process.env.CMS_TOKEN,
-    },
-    body: JSON.stringify({
-      query: `
+  const data = await cmsQuery(`
         query {
           projects {
             slug
             title
           }
         }
-      `,
-    }),
-  });
-  const json = await response.json();
-  return json.data?.projects ?? [];
+      `);
+  return data?.projects ?? [];
 }
 
 export async function generateMetadata({
@@ -150,5 +145,14 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   const prevProject = currentIndex > 0 ? allProjects[currentIndex - 1] : null;
   const nextProject = currentIndex < allProjects.length - 1 ? allProjects[currentIndex + 1] : null;
 
-  return <ProjectPageClient project={project} prevProject={prevProject} nextProject={nextProject} />;
+  const isAdmin = await isAuthed();
+
+  return (
+    <ProjectPageClient
+      project={project}
+      prevProject={prevProject}
+      nextProject={nextProject}
+      isAdmin={isAdmin}
+    />
+  );
 }

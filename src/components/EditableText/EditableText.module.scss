@@ -1,0 +1,147 @@
+// The wrapper sits with the text it edits. position: relative anchors the
+// floated pencil and the compact control cluster.
+.wrap {
+  position: relative;
+}
+
+// While editing, let the field fill the line/area the text occupied.
+.editing {
+  display: block;
+}
+
+// For headings / gradient text that must not reflow: float the pencil out of
+// flow so a long value can't push it onto its own line.
+.wrapFloat {
+  .editBtn {
+    position: absolute;
+    top: 0;
+    left: 100%;
+    margin-left: 0.5rem;
+  }
+}
+
+// ── Edit affordance ─────────────────────────────────────────────────────────
+// A solid accent pill with a clear icon and a comfortable hit target — far
+// easier to see and click than the old faint glyph.
+.editBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+  font-size: 0.7rem;
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--ink-inverse);
+  // Gradient-text parents use -webkit-text-fill-color: transparent, which would
+  // otherwise hide the icon; force it visible.
+  -webkit-text-fill-color: var(--ink-inverse);
+  cursor: pointer;
+  box-shadow: 0 1px 3px var(--shadow);
+  opacity: 0.85;
+  transition: opacity 0.15s, transform 0.15s;
+
+  &:hover,
+  &:focus-visible {
+    opacity: 1;
+    transform: translateY(-1px);
+  }
+}
+
+// ── Inline field ────────────────────────────────────────────────────────────
+// Inherits the surrounding type and fills the same width, so editing happens
+// in place rather than in a popup. A subtle tint + ring marks it as active
+// without changing the box metrics meaningfully.
+.field {
+  display: block;
+  width: 100%;
+  margin: 0;
+  // Inherit the rendered type so the editor reads at the same size/weight.
+  font: inherit;
+  color: var(--ink);
+  -webkit-text-fill-color: var(--ink);
+  letter-spacing: inherit;
+  line-height: inherit;
+  text-align: inherit;
+  background: var(--canvas-soft);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  // Negative inline margin keeps the visual text aligned with where it was,
+  // compensating for the field's own padding.
+  padding: 0.1em 0.3em;
+  margin-inline: -0.3em;
+  outline: 2px solid transparent;
+  transition: outline-color 0.15s, background 0.15s;
+
+  &:focus {
+    outline-color: var(--accent);
+    background: var(--plate);
+  }
+}
+
+.textarea {
+  resize: none;
+  overflow: hidden;
+}
+
+// ── Controls ────────────────────────────────────────────────────────────────
+// Compact icon buttons floated to the field's top-right corner so they don't
+// add to the line box or shift the layout.
+.controls {
+  position: absolute;
+  top: -0.4rem;
+  right: -0.4rem;
+  z-index: 10;
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 0.7rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  background: var(--plate);
+  color: var(--ink);
+  -webkit-text-fill-color: var(--ink);
+  cursor: pointer;
+  box-shadow: 0 1px 3px var(--shadow);
+  transition: background 0.15s, transform 0.15s;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
+.save {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--ink-inverse);
+  -webkit-text-fill-color: var(--ink-inverse);
+
+  &:hover:not(:disabled) {
+    background: var(--accent-soft);
+  }
+}
+
+.error {
+  display: block;
+  margin-top: 0.25rem;
+  font-family: var(--ff-sans);
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: #b3261e;
+  -webkit-text-fill-color: #b3261e;
+}

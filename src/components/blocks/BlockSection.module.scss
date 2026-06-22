@@ -1,0 +1,728 @@
+// Published rendering of content blocks. Reusable across page types: holds the
+// per-block section chrome (the "01 / 05" counter heading) and the layouts for
+// each block type. The page shell (sidebar, header, modal) lives with the host
+// page; this module owns block presentation only.
+
+// ── Section wrapper + heading ──────────────────────────────────────────────
+
+.section {
+  width: 100%;
+  padding-bottom: 4rem;
+  counter-increment: section;
+  scroll-margin-top: calc(70px + 2rem); // accounts for sticky navbar
+
+  & > h2 {
+    font-family: var(--ff-serif);
+    font-size: clamp(22px, 2.5vw, 30px);
+    font-weight: 400;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+    line-height: 1.15;
+    margin-bottom: 2rem;
+
+    & > span {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 5px;
+      background: var(--ink);
+      color: var(--ink-inverse);
+      font-family: var(--ff-mono);
+      font-size: 11px;
+      font-weight: 500;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    &::before {
+      content: "0" counter(section) " / " var(--section-total);
+      font-family: var(--ff-mono);
+      font-size: 10px;
+      color: var(--ink-muted);
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    &:after {
+      border-bottom: 1px solid var(--line);
+      content: "";
+      display: block;
+      width: 100%;
+      padding-top: 1rem;
+    }
+  }
+}
+
+// ── Image gallery ──────────────────────────────────────────────────────────
+
+.galleryContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: start;
+
+  & > .galleryItem:nth-child(even) {
+    margin-top: 36px;
+  }
+}
+
+.galleryItem {
+  background-color: var(--plate);
+  border: 1px solid var(--line);
+  padding: 1rem;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  width: 20%;
+  min-width: 200px;
+
+  & > img {
+    width: 100%;
+    height: auto;
+    display: block;
+    transition: transform 0.35s ease;
+  }
+
+  &:hover {
+    border-color: var(--line-strong);
+    box-shadow: 0 4px 20px var(--shadow);
+
+    & > img {
+      transform: scale(1.03);
+    }
+  }
+}
+
+// ── Feature gallery (bold editorial layout, leads with one large image) ────
+
+.featureContainer {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 16px;
+
+  @media (max-width: 700px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.featureItem {
+  border: 1px solid var(--line);
+  padding: 2rem;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  // The first image leads: large, spanning both rows of the right column.
+  &:nth-child(1) {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  &:nth-child(2) {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  &:nth-child(3) {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  & > img {
+    width: 100%;
+    height: auto;
+    display: block;
+    transition: transform 0.35s ease;
+  }
+
+  &:hover {
+    border-color: var(--line-strong);
+    box-shadow: 0 4px 20px var(--shadow);
+
+    & > img {
+      transform: scale(1.02);
+    }
+  }
+
+  @media (max-width: 700px) {
+    &:nth-child(n) {
+      grid-column: 1;
+      grid-row: auto;
+    }
+  }
+}
+
+// ── Media showcase — cards (image + caption below) ─────────────────────────
+
+.cardsContainer {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.card {
+  border: 1px solid var(--line);
+  background: var(--plate);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:hover {
+    border-color: var(--line-strong);
+    box-shadow: 0 4px 20px var(--shadow);
+
+    .cardImage > img {
+      transform: scale(1.03);
+    }
+  }
+}
+
+.cardImage {
+  overflow: hidden;
+  background: var(--canvas-soft);
+
+  & > img {
+    width: 100%;
+    height: auto;
+    display: block;
+    transition: transform 0.35s ease;
+  }
+}
+
+.cardInfo {
+  padding: 12px 14px;
+  border-top: 1px solid var(--line);
+
+  & > h3 {
+    font-family: var(--ff-sans);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+
+  & > p {
+    font-family: var(--ff-sans);
+    font-size: 11px;
+    color: var(--ink-muted);
+    line-height: 1.5;
+  }
+}
+
+// ── Media showcase — grid (title + description above image) ────────────────
+
+.gridContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: start;
+}
+
+.gridCard {
+  width: 30%;
+  min-width: 240px;
+  background-color: var(--plate);
+  border: 1px solid var(--line);
+  padding: 1rem;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  & > h3 {
+    font-family: var(--ff-sans);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+
+  & > p {
+    font-family: var(--ff-sans);
+    font-size: 12px;
+    color: var(--ink-muted);
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+
+  & > img {
+    width: 100%;
+    height: auto;
+    display: block;
+    transition: transform 0.35s ease;
+  }
+
+  &:hover {
+    border-color: var(--line-strong);
+    box-shadow: 0 4px 20px var(--shadow);
+
+    & > img {
+      transform: scale(1.03);
+    }
+  }
+}
+
+// ── Single image ───────────────────────────────────────────────────────────
+
+.singleImage {
+  border: 1px solid var(--line);
+  background: var(--plate);
+  overflow: hidden;
+  cursor: pointer;
+  width: fit-content;
+  max-width: 100%;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  & > img {
+    display: block;
+    max-height: 70vh;
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+    transition: transform 0.35s ease;
+  }
+
+  &:hover {
+    border-color: var(--line-strong);
+    box-shadow: 0 4px 20px var(--shadow);
+
+    & > img {
+      transform: scale(1.02);
+    }
+  }
+}
+
+// ── Comparison (labeled views, shown one at a time) ────────────────────────
+
+.comparisonSelector {
+  display: flex;
+  width: fit-content;
+  border: 1px solid var(--line);
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+
+  & > button {
+    font-family: var(--ff-sans);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    background: transparent;
+    color: var(--ink);
+    border: none;
+    padding: 10px 22px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+
+    & + button {
+      border-left: 1px solid var(--line);
+    }
+
+    &[aria-pressed="true"] {
+      background-color: var(--plate-dark);
+      color: var(--ink-inverse);
+    }
+
+    &:hover:not([aria-pressed="true"]) {
+      background-color: var(--canvas-soft);
+    }
+  }
+}
+
+.comparisonDisplay {
+  display: flex;
+  gap: 16px;
+  align-items: start;
+
+  @media (max-width: 600px) {
+    flex-direction: column;
+  }
+}
+
+.comparisonView {
+  border: 1px solid var(--line);
+  width: fit-content;
+  max-width: 100%;
+  cursor: pointer;
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  &:hover img {
+    transform: scale(1.02);
+  }
+
+  & > h3 {
+    position: relative;
+    z-index: 1; // keep the title bar above the image as it scales on hover
+    width: 100%;
+    background: var(--plate-dark);
+    color: var(--ink-inverse);
+    padding: 9px 16px;
+    font-family: var(--ff-sans);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+  }
+
+  & > img {
+    position: relative;
+    z-index: 0; // scale behind the title bar, not over it
+    display: block;
+    max-height: 65vh;
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+    transition: transform 0.35s ease;
+  }
+}
+
+// ── Specs table ────────────────────────────────────────────────────────────
+
+.specsTable {
+  width: 100%;
+  max-width: 520px;
+  background: var(--plate);
+  border: 1px solid var(--line);
+}
+
+// ── Split container (two child blocks side-by-side) ────────────────────────
+// The left column is content-sized (e.g. a specs table); the right column takes
+// the remaining space (e.g. a document viewer). Stacks on narrow screens.
+
+.splitLayout {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) 1fr;
+  gap: 2rem;
+  align-items: start;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.splitColumn {
+  min-width: 0;
+
+  // Let a specs table fill its column rather than cap at its standalone width.
+  .specsTable {
+    max-width: none;
+  }
+}
+
+.splitColHeading {
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-bottom: 0.75rem;
+}
+
+// ── Document / sheet viewer (dropdown-paginated large image) ───────────────
+
+.sheetViewer {
+  width: 100%;
+}
+
+.sheetToolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid var(--line);
+  background: var(--plate);
+  padding: 12px 16px;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.sheetToolbarLabel {
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.sheetCounter {
+  margin-left: auto;
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  color: var(--ink-muted);
+}
+
+.sheetSelect {
+  appearance: none;
+  min-width: 220px;
+  border: 1px solid var(--line);
+  background: var(--canvas);
+  color: var(--ink);
+  padding: 10px 14px;
+  font-family: var(--ff-sans);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+
+  &:focus {
+    outline: none;
+    border-color: var(--line-strong);
+  }
+}
+
+.sheet {
+  border: 1px solid var(--line);
+  background: var(--plate);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  padding: 1.5rem;
+  margin-inline: auto;
+  cursor: pointer;
+  transition: border-color 0.25s, box-shadow 0.25s;
+
+  &:hover {
+    border-color: var(--line-strong);
+    box-shadow: 0 4px 20px var(--shadow);
+
+    img {
+      transform: scale(1.015);
+    }
+  }
+
+  img {
+    display: block;
+    height: min(60vh, 900px);
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+    transition: transform 0.35s ease;
+  }
+}
+
+.specRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.specLabel {
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.specValue {
+  font-family: var(--ff-serif);
+  font-size: 16px;
+  line-height: 1.3;
+  color: var(--ink);
+}
+
+// ── Callout ────────────────────────────────────────────────────────────────
+
+.callout {
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  background: var(--plate);
+  padding: clamp(1.25rem, 3vw, 2rem);
+
+  & > p {
+    margin: 0;
+    font-family: var(--ff-sans);
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--ink-soft);
+  }
+}
+
+.calloutQuote {
+  border-left-color: var(--accent);
+
+  & > p {
+    font-family: var(--ff-serif);
+    font-size: clamp(1.15rem, 2vw, 1.5rem);
+    line-height: 1.45;
+    color: var(--ink);
+  }
+}
+
+.calloutInfo { border-left-color: var(--line-strong); }
+.calloutSuccess { border-left-color: #2f7d55; }
+.calloutWarning { border-left-color: #b3791e; }
+
+.calloutAttribution {
+  display: block;
+  margin-top: 0.85rem;
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+
+  &::before {
+    content: "— ";
+  }
+}
+
+// ── Editorial entry block (atelier "studio process" layout) ────────────────
+// A narrow, auto-numbered text rail beside a captioned image grid. The index is
+// driven by a CSS counter so numbering stays correct as entries are reordered.
+
+.entry {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 3rem;
+  align-items: start;
+  counter-increment: atelierEntry;
+  border-top: 1px solid var(--line);
+  padding-top: 3rem;
+
+  @media (max-width: 860px) {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}
+
+.entryText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.entryIndex {
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  color: var(--ink-muted);
+  margin-bottom: 0.25rem;
+
+  &::before {
+    content: counter(atelierEntry, decimal-leading-zero);
+  }
+}
+
+.entryTitle {
+  font-family: var(--ff-serif);
+  font-size: clamp(18px, 1.8vw, 24px);
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+  color: var(--ink);
+}
+
+.entryDesc {
+  font-family: var(--ff-sans);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--ink-muted);
+}
+
+.entryCount {
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-top: 0.5rem;
+}
+
+.imageStrip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  column-gap: 1px;
+  row-gap: 2rem;
+  background: transparent;
+
+  @media (max-width: 1100px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.imageItem {
+  background: var(--canvas);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  cursor: pointer;
+
+  &:hover .imageNatural {
+    transform: scale(1.03);
+  }
+}
+
+.imageWrap {
+  overflow: hidden;
+  background: var(--canvas-deep);
+}
+
+.imageNatural {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 480px;
+  object-fit: contain;
+  object-position: top;
+  transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+
+  @media (max-width: 860px) {
+    max-height: 320px;
+  }
+
+  @media (max-width: 480px) {
+    max-height: 240px;
+  }
+}
+
+.imageCaption {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0.85rem 1rem;
+  border-top: 1px solid var(--line);
+  background: var(--canvas-soft);
+  align-self: stretch;
+}
+
+.imageCaptionTitle {
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.imageCaptionDesc {
+  font-family: var(--ff-sans);
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--ink-muted);
+  font-style: italic;
+}

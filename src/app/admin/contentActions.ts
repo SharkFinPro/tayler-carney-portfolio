@@ -1,0 +1,143 @@
+"use server";
+
+import { isAuthed } from "@/lib/auth";
+import { cmsMutate } from "@/lib/cms";
+import { sanitizeBlocks, type Block } from "@/components/blocks/blocks";
+import { sanitizeHome, type HomeContent } from "@/lib/home";
+
+// Whitelist of inline-editable scalar/list fields, keyed by Hygraph model.
+// Model names are interpolated into the mutation string, so a value is only
+// ever used after it passes this check. Relations are NOT inline-editable.
+const EDITABLE_FIELDS: Record<string, string[]> = {
+  Project: ["title", "description"],
+  AboutPage: ["title", "subtitle"],
+  ContactPage: ["header", "subheader", "availabilityMessage"],
+  SiteData: ["displayName", "focus", "email", "linkedInHandle", "instagramHandle"],
+};
+
+type Result = { ok: true } | { ok: false; error: string };
+
+async function requireAuth(): Promise<{ ok: false; error: string } | null> {
+  return (await isAuthed()) ? null : { ok: false, error: "Not authorized." };
+}
+
+async function updateAndPublish(model: string, id: string, data: Record<string, unknown>) {
+  await cmsMutate(
+    `mutation Update($id: ID!, $data: ${model}UpdateInput!) {
+       update${model}(where: { id: $id }, data: $data) { id }
+     }`,
+    { id, data }
+  );
+  await cmsMutate(
+    `mutation Publish($id: ID!) {
+       publish${model}(where: { id: $id }, to: PUBLISHED) { id }
+     }`,
+    { id }
+  );
+}
+
+export async function updateContentField(
+  model: string,
+  id: string,
+  field: string,
+  value: string | string[]
+): Promise<Result> {
+  const denied = await requireAuth();
+  if (denied) return denied;
+
+  if (!EDITABLE_FIELDS[model]?.includes(field)) {
+    return { ok: false, error: `Field "${field}" is not editable.` };
+  }
+
+  try {
+    await updateAndPublish(model, id, { [field]: value });
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Update failed." };
+  }
+  return { ok: true };
+}
+
+// Site-wide singleton scalar fields. These are surfaced in multiple places
+// across the site (footer, contact, etc.), so they are edited from a dedicated
+// admin settings page rather than inline. The whitelist is reused from
+// EDITABLE_FIELDS.SiteData so there is a single source of truth.
+const SITE_SETTINGS_FIELDS = EDITABLE_FIELDS.SiteData;
+
+export async function updateSiteSettings(
+  id: string,
+  values: Record<string, unknown>
+): Promise<Result> {
+  const denied = await requireAuth();
+  if (denied) return denied;
+
+  const data: Record<string, string> = {};
+  for (const [field, value] of Object.entries(values)) {
+    if (!SITE_SETTINGS_FIELDS.includes(field)) {
+      return { ok: false, error: `Field "${field}" is not editable.` };
+    }
+    if (typeof value !== "string") {
+      return { ok: false, error: `Field "${field}" must be text.` };
+    }
+    data[field] = value.trim();
+  }
+
+  try {
+    await updateAndPublish("SiteData", id, data);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Update failed." };
+  }
+  return { ok: true };
+}
+
+// Persist the homepage content singleton (SiteData.home). The whole object is
+// sanitized server-side with the same validator the renderer uses, so the client
+// can never store an invalid or unsafe layout. Returns the sanitized content so
+// the editor can sync its optimistic state.
+type HomeResult = { ok: true; home: HomeContent } | { ok: false; error: string };
+
+export async function updateHome(id: string, rawHome: unknown): Promise<HomeResult> {
+  const denied = await requireAuth();
+  if (denied) return denied;
+
+  const home = sanitizeHome(rawHome);
+  try {
+    await updateAndPublish("SiteData", id, { home });
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Save failed." };
+  }
+  return { ok: true, home };
+}
+
+// Whitelist of JSON block-layout fields, keyed by model.
+const BLOCK_LAYOUT_FIELDS: Record<string, string[]> = {
+  Project: ["projectPage"],
+  SiteData: ["atelier"],
+};
+
+type BlockResult = { ok: true; blocks: Block[] } | { ok: false; error: string };
+
+// Persist a block layout. The raw array is sanitized server-side (the same
+// validator the renderer uses) before it is written, so the client can never
+// store an invalid or unsafe layout. Returns the sanitized blocks so the editor
+// can sync its optimistic state.
+export async function updateBlockLayout(
+  model: string,
+  id: string,
+  field: string,
+  rawBlocks: unknown
+): Promise<BlockResult> {
+  const denied = await requireAuth();
+  if (denied) return denied;
+
+  if (!BLOCK_LAYOUT_FIELDS[model]?.includes(field)) {
+    return { ok: false, error: `Field "${field}" is not editable.` };
+  }
+
+  const blocks = sanitizeBlocks(rawBlocks);
+  try {
+    await updateAndPublish(model, id, { [field]: blocks });
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Save failed." };
+  }
+  return { ok: true, blocks };
+}

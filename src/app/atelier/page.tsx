@@ -1,7 +1,7 @@
 import { Metadata } from "next";
-import Image from "next/image";
-import styles from "./Atelier.module.scss";
-import { AnimatedSection } from "@/components/AnimatedSection";
+import AtelierPageClient from "./AtelierPageClient";
+import { cmsQuery } from "@/lib/cms";
+import { isAuthed } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Atelier"
@@ -9,125 +9,32 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-const ATELIERS_QUERY = `
-  query Ateliers {
-    ateliers {
-      title
-      description
-      image {
-        title
-        description
-        image {
-          url
-        }
-      }
+// The atelier page is a singleton stored on the one SiteData entry: its block
+// layout lives in the `atelier` JSON field, edited with the same block editor
+// the project pages use.
+const ATELIER_QUERY = `
+  query Atelier {
+    siteDatas {
+      id
+      atelier
     }
   }
 `;
 
-interface AtelierImageEntry {
-  title: string;
-  description: string;
-  image: {
-    url: string;
-  };
-}
-
-interface Atelier {
-  title: string;
-  description: string;
-  image: AtelierImageEntry[];
-}
-
-async function getAteliers(): Promise<Atelier[]> {
-  const response = await fetch(process.env.CMS_ENDPOINT as string, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + process.env.CMS_TOKEN,
-    },
-    body: JSON.stringify({ query: ATELIERS_QUERY }),
-  });
-  const json = await response.json();
-  return json.data.ateliers;
+async function getAtelier(): Promise<{ id: string; atelier: unknown } | null> {
+  const data = await cmsQuery(ATELIER_QUERY);
+  return data?.siteDatas?.[0] ?? null;
 }
 
 export default async function Atelier() {
-  const ateliers = await getAteliers();
+  const siteData = await getAtelier();
+  const isAdmin = await isAuthed();
 
   return (
-    <div className={styles.pageWrapper}>
-      <div className={styles.pageContainer}>
-
-        <AnimatedSection>
-          <div className={styles.header}>
-            <span className={styles.headerEyebrow}>Studio Process</span>
-            <h1 className={styles.headerTitle}>Atelier</h1>
-          </div>
-        </AnimatedSection>
-
-        {ateliers.length === 0 ? (
-          <p className={styles.empty}>No entries found</p>
-        ) : (
-          <div className={styles.entries}>
-            {ateliers.map((atelier, i) => {
-              const validImages = (atelier.image ?? []).filter((e) => e?.image?.url);
-              return (
-                <AnimatedSection key={i} delay={i * 0.05}>
-                  <article className={styles.entry}>
-
-                    <div className={styles.entryText}>
-                    <span className={styles.entryIndex}>
-                      {String(i + 1).padStart(2, "0")}
-                    </span>
-                      <h2 className={styles.entryTitle}>{atelier.title}</h2>
-                      {atelier.description && (
-                        <p className={styles.entryDesc}>{atelier.description}</p>
-                      )}
-                      {validImages.length > 0 && (
-                        <span className={styles.entryCount}>
-                        {validImages.length} {validImages.length === 1 ? "image" : "images"}
-                      </span>
-                      )}
-                    </div>
-
-                    {validImages.length > 0 && (
-                      <div className={styles.imageStrip}>
-                        {validImages.map((entry, j) => (
-                          <figure key={j} className={styles.imageItem}>
-                            <div className={styles.imageWrap}>
-                              <Image
-                                src={entry.image.url}
-                                alt={entry.title ?? atelier.title}
-                                width={0}
-                                height={0}
-                                sizes="(max-width: 860px) 90vw, 40vw"
-                                className={styles.imageNatural}
-                              />
-                            </div>
-                            {(entry.title || entry.description) && (
-                              <figcaption className={styles.imageCaption}>
-                                {entry.title && (
-                                  <span className={styles.imageCaptionTitle}>{entry.title}</span>
-                                )}
-                                {entry.description && (
-                                  <span className={styles.imageCaptionDesc}>{entry.description}</span>
-                                )}
-                              </figcaption>
-                            )}
-                          </figure>
-                        ))}
-                      </div>
-                    )}
-
-                  </article>
-                </AnimatedSection>
-              );
-            })}
-          </div>
-        )}
-
-      </div>
-    </div>
+    <AtelierPageClient
+      siteId={siteData?.id ?? ""}
+      atelier={siteData?.atelier ?? null}
+      isAdmin={isAdmin}
+    />
   );
 }
