@@ -51,7 +51,19 @@ export default async function AdminDashboard() {
         </section>
 
         <section className={styles.panel}>
-          <span className={styles.panelIndex}>03 / Session</span>
+          <span className={styles.panelIndex}>03 / Settings</span>
+          <h2 className={styles.panelTitle}>Site Settings</h2>
+          <p className={styles.panelBody}>
+            Edit site-wide details used across the site — display name, tagline, email,
+            and social handles.
+          </p>
+          <Link href="/admin/settings" className={styles.link}>
+            Open Site Settings →
+          </Link>
+        </section>
+
+        <section className={styles.panel}>
+          <span className={styles.panelIndex}>04 / Session</span>
           <h2 className={styles.panelTitle}>Session</h2>
           <p className={styles.panelBody}>Sign out of admin mode on this device.</p>
           <form action={logout}>

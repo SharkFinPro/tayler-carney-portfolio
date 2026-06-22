@@ -97,11 +97,7 @@ export default async function ContactPage() {
                     <span className={styles.emailButtonArrow}>↗</span>
                   </div>
                 </a>
-                <span className={styles.emailAddress}>
-                  <EditableText model="SiteData" id={siteData.id} field="email" value={siteData.email} editable={isAdmin}>
-                    {siteData.email}
-                  </EditableText>
-                </span>
+                <span className={styles.emailAddress}>{siteData.email}</span>
               </div>
 
               <div className={styles.contactItem}>

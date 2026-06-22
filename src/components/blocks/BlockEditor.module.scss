@@ -232,20 +232,50 @@
   line-height: 1;
   cursor: grab;
   user-select: none;
+  touch-action: none;
   transition: border-color 0.15s, color 0.15s, background 0.15s;
 
   &:hover { border-color: var(--line-strong); color: var(--ink); }
   &:active { cursor: grabbing; }
 }
 
-// The row currently being dragged is dimmed; the row under the pointer shows an
-// accent edge marking where the dragged entry will land on drop.
-.rowDragging { opacity: 0.45; }
+// While a row is being dragged it is lifted out of the list entirely (no ghost
+// left behind); a small floating chip follows the cursor and a dashed box marks
+// the drop gap.
+.rowDragging { display: none; }
 
-.rowDragOver {
-  border-top: 2px solid var(--accent);
-  // Keep the layout from shifting when the 2px marker appears.
-  margin-top: -1px;
+.rowPlaceholder {
+  border: 2px dashed var(--accent);
+  border-radius: 4px;
+  background: var(--plate-muted);
+}
+
+.rowFloatingLayer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+// The lifted row "in hand": the full row width collapsed to a thin crisp bar
+// (no text), so it reads as the row itself rather than a blurry scaled clone.
+.rowFloatingBar {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  height: 2rem;
+  padding: 0 0.5rem;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--plate);
+  box-shadow: 0 10px 24px var(--shadow);
+
+  .listDragHandle {
+    width: 1.3rem;
+    height: 1.3rem;
+    cursor: grabbing;
+  }
 }
 
 // Stacked up/down reorder buttons sitting beside an entry's remove button.

@@ -56,6 +56,38 @@ export async function updateContentField(
   return { ok: true };
 }
 
+// Site-wide singleton scalar fields. These are surfaced in multiple places
+// across the site (footer, contact, etc.), so they are edited from a dedicated
+// admin settings page rather than inline. The whitelist is reused from
+// EDITABLE_FIELDS.SiteData so there is a single source of truth.
+const SITE_SETTINGS_FIELDS = EDITABLE_FIELDS.SiteData;
+
+export async function updateSiteSettings(
+  id: string,
+  values: Record<string, unknown>
+): Promise<Result> {
+  const denied = await requireAuth();
+  if (denied) return denied;
+
+  const data: Record<string, string> = {};
+  for (const [field, value] of Object.entries(values)) {
+    if (!SITE_SETTINGS_FIELDS.includes(field)) {
+      return { ok: false, error: `Field "${field}" is not editable.` };
+    }
+    if (typeof value !== "string") {
+      return { ok: false, error: `Field "${field}" must be text.` };
+    }
+    data[field] = value.trim();
+  }
+
+  try {
+    await updateAndPublish("SiteData", id, data);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Update failed." };
+  }
+  return { ok: true };
+}
+
 // Whitelist of JSON block-layout fields, keyed by model.
 const BLOCK_LAYOUT_FIELDS: Record<string, string[]> = {
   Project: ["projectPage"],

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import type { DragEvent } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import styles from "./BlockEditor.module.scss";
 import AssetPicker from "@/components/AssetPicker";
 import RichTextEditor from "./richText/RichTextEditor";
@@ -30,53 +30,180 @@ function move<T>(arr: T[], from: number, to: number): T[] {
   return next;
 }
 
-// Native drag-and-drop reordering for an index-keyed list. The list only
-// reorders on drop (not live as the pointer passes over rows), so React keys
-// stay stable through the drag — which is what lets these id-less lists use
-// plain array indices as keys. Only a drag handle starts a drag; each row is a
-// drop target. Pairs with the up/down ReorderControls for accessibility.
+// Pointer-based "card in hand" reordering for an index-keyed list, mirroring the
+// top-level block reordering: the grabbed row is lifted out of the list (leaving
+// no gap) into a floating collapsed bar that follows the cursor, while a dashed
+// box marks where it will land. The list only commits the new order on drop — so
+// React keys stay stable through the drag and these id-less lists can keep using
+// plain array indices as keys. Pairs with the up/down ReorderControls for
+// keyboard accessibility.
 function useRowDrag(onReorder: (from: number, to: number) => void) {
+  // `dragIndex` is the row being dragged; `insertBefore` is the gap (0..length)
+  // where it would drop. Both drive only the visuals — the commit happens once
+  // on pointer-up.
   const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [overIndex, setOverIndex] = useState<number | null>(null);
+  const [insertBefore, setInsertBefore] = useState<number | null>(null);
+  const [size, setSize] = useState({ w: 0, h: 0 });
 
-  const handleProps = (index: number) => ({
-    draggable: true,
-    onDragStart: (e: DragEvent) => {
-      setDragIndex(index);
-      e.dataTransfer.effectAllowed = "move";
-      // Firefox requires data to be set for a drag to begin.
-      e.dataTransfer.setData("text/plain", String(index));
-    },
-    onDragEnd: () => {
-      setDragIndex(null);
-      setOverIndex(null);
-    },
-  });
+  const rowRefs = useRef<Map<number, HTMLElement>>(new Map());
+  const layerRef = useRef<HTMLDivElement | null>(null);
+  const dragIndexRef = useRef<number | null>(null);
+  const insertBeforeRef = useRef<number | null>(null);
+  const offsetRef = useRef({ x: 0, y: 0 });
+  const pointerRef = useRef({ x: 0, y: 0 });
+  const autoScrollRef = useRef<number | null>(null);
 
-  const rowProps = (index: number) => ({
-    onDragOver: (e: DragEvent) => {
-      if (dragIndex === null) return;
-      e.preventDefault();
-      e.dataTransfer.dropEffect = "move";
-      if (overIndex !== index) setOverIndex(index);
-    },
-    onDrop: (e: DragEvent) => {
-      e.preventDefault();
-      if (dragIndex !== null && dragIndex !== index) onReorder(dragIndex, index);
-      setDragIndex(null);
-      setOverIndex(null);
-    },
-  });
+  const registerRow = (index: number) => (el: HTMLElement | null) => {
+    if (el) rowRefs.current.set(index, el);
+    else rowRefs.current.delete(index);
+  };
 
-  return { dragIndex, overIndex, handleProps, rowProps };
+  // Recompute the drop gap from the midpoints of every row: the first row whose
+  // midpoint sits below the pointer is what we'd insert before (or the end of
+  // the list if the pointer is past them all).
+  function updateInsert(y: number) {
+    const dragging = dragIndexRef.current;
+    if (dragging === null) return;
+    // The lifted row is hidden (zero-height), so skip it and measure against the
+    // rows still occupying space.
+    const entries = [...rowRefs.current.entries()].filter(([i]) => i !== dragging).sort((a, b) => a[0] - b[0]);
+    let before = rowRefs.current.size;
+    for (const [index, el] of entries) {
+      const r = el.getBoundingClientRect();
+      if (y < r.top + r.height / 2) {
+        before = index;
+        break;
+      }
+    }
+    if (before !== insertBeforeRef.current) {
+      insertBeforeRef.current = before;
+      setInsertBefore(before);
+    }
+  }
+
+  function moveLayer() {
+    const layer = layerRef.current;
+    if (!layer) return;
+    layer.style.left = `${pointerRef.current.x - offsetRef.current.x}px`;
+    layer.style.top = `${pointerRef.current.y - offsetRef.current.y}px`;
+  }
+
+  function handlePointerMove(e: PointerEvent) {
+    if (dragIndexRef.current === null) return;
+    pointerRef.current = { x: e.clientX, y: e.clientY };
+    moveLayer();
+    updateInsert(e.clientY);
+  }
+
+  function startAutoScroll() {
+    const EDGE = 90;
+    const MAX_SPEED = 18;
+    function step() {
+      const { y } = pointerRef.current;
+      const h = window.innerHeight;
+      let dy = 0;
+      if (y < EDGE) dy = -MAX_SPEED * ((EDGE - y) / EDGE);
+      else if (y > h - EDGE) dy = MAX_SPEED * ((y - (h - EDGE)) / EDGE);
+      if (dy !== 0) {
+        window.scrollBy(0, dy);
+        updateInsert(y);
+      }
+      autoScrollRef.current = requestAnimationFrame(step);
+    }
+    autoScrollRef.current = requestAnimationFrame(step);
+  }
+
+  function endDrag() {
+    if (autoScrollRef.current !== null) {
+      cancelAnimationFrame(autoScrollRef.current);
+      autoScrollRef.current = null;
+    }
+    const from = dragIndexRef.current;
+    const before = insertBeforeRef.current;
+    dragIndexRef.current = null;
+    insertBeforeRef.current = null;
+    setDragIndex(null);
+    setInsertBefore(null);
+    document.body.style.userSelect = "";
+    if (from === null || before === null) return;
+    // A gap on either side of the dragged row is a no-op; otherwise the target
+    // index shifts down by one when the row is lifted out from above it.
+    if (before === from || before === from + 1) return;
+    onReorder(from, before > from ? before - 1 : before);
+  }
+
+  useEffect(() => {
+    if (dragIndex === null) return;
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", endDrag);
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", endDrag);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dragIndex]);
+
+  function startDrag(index: number, e: React.PointerEvent) {
+    if (e.button !== 0) return;
+    const el = rowRefs.current.get(index);
+    if (!el) return;
+    e.preventDefault();
+    const rect = el.getBoundingClientRect();
+    // Keep the bar aligned with the row horizontally (cursor stays over the grab
+    // point), but ride near the top of the collapsed bar vertically.
+    offsetRef.current = { x: e.clientX - rect.left, y: 16 };
+    pointerRef.current = { x: e.clientX, y: e.clientY };
+    setSize({ w: rect.width, h: rect.height });
+    dragIndexRef.current = index;
+    insertBeforeRef.current = null;
+    setDragIndex(index);
+    setInsertBefore(null);
+    document.body.style.userSelect = "none";
+    moveLayer();
+    startAutoScroll();
+  }
+
+  // Show the drop box at whichever gap the pointer is over — including the
+  // dragged row's original spot, so there's always feedback (the commit itself
+  // no-ops when the position is unchanged).
+  const showBoxBefore = (index: number) => dragIndex !== null && insertBefore === index;
+
+  return {
+    dragIndex,
+    size,
+    registerRow,
+    layerRef,
+    showBoxBefore,
+    handleProps: (index: number) => ({ onPointerDown: (e: React.PointerEvent) => startDrag(index, e) }),
+  };
 }
 
 // Grab handle that initiates a drag. Spread the per-row handleProps onto it.
-function DragHandle(props: ReturnType<ReturnType<typeof useRowDrag>["handleProps"]>) {
+function DragHandle({ onPointerDown }: { onPointerDown: (e: React.PointerEvent) => void }) {
   return (
-    <span className={styles.listDragHandle} title="Drag to reorder" aria-hidden="true" {...props}>
+    <span className={styles.listDragHandle} title="Drag to reorder" aria-hidden="true" onPointerDown={onPointerDown}>
       ⠿
     </span>
+  );
+}
+
+// The floating clone lives in a fixed layer portaled to <body>, so its position
+// is anchored to the viewport rather than to a transformed editor ancestor. The
+// drag image is the full-width row collapsed to a thin bar (no text) — crisp,
+// and it reads as the row itself lifted out of the list.
+function RowDragLayer({ drag }: { drag: ReturnType<typeof useRowDrag> }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+  return createPortal(
+    <div ref={drag.layerRef} className={styles.rowFloatingLayer} aria-hidden="true">
+      {drag.dragIndex !== null && (
+        <div className={styles.rowFloatingBar} style={{ width: drag.size.w }}>
+          <span className={styles.listDragHandle}>⠿</span>
+        </div>
+      )}
+    </div>,
+    document.body,
   );
 }
 
@@ -167,17 +294,21 @@ function ImageRefList({ value, onChange }: { value: ImageRef[]; onChange: (v: Im
   return (
     <div className={styles.subGroup}>
       {value.map((ref, i) => (
-        <div
-          key={i}
-          className={`${styles.row} ${drag.dragIndex === i ? styles.rowDragging : ""} ${drag.overIndex === i ? styles.rowDragOver : ""}`}
-          {...drag.rowProps(i)}
-        >
-          <DragHandle {...drag.handleProps(i)} />
-          <ImageRefFields value={ref} onChange={(r) => update(i, r)} />
-          <ReorderControls index={i} count={value.length} onMove={(to) => onChange(move(value, i, to))} />
-          <button type="button" className={styles.iconBtn} onClick={() => update(i, null)} aria-label="Remove image">Remove</button>
-        </div>
+        <Fragment key={i}>
+          {drag.showBoxBefore(i) && <div className={styles.rowPlaceholder} style={{ height: drag.size.h }} />}
+          <div
+            ref={drag.registerRow(i)}
+            className={`${styles.row} ${drag.dragIndex === i ? styles.rowDragging : ""}`}
+          >
+            <DragHandle {...drag.handleProps(i)} />
+            <ImageRefFields value={ref} onChange={(r) => update(i, r)} />
+            <ReorderControls index={i} count={value.length} onMove={(to) => onChange(move(value, i, to))} />
+            <button type="button" className={styles.iconBtn} onClick={() => update(i, null)} aria-label="Remove image">Remove</button>
+          </div>
+        </Fragment>
       ))}
+      {drag.showBoxBefore(value.length) && <div className={styles.rowPlaceholder} style={{ height: drag.size.h }} />}
+      <RowDragLayer drag={drag} />
       <div className={styles.addRow}>
         <button type="button" className={styles.iconBtn} onClick={() => onChange([...value, { url: "" }])}>+ Add image</button>
       </div>
@@ -196,21 +327,25 @@ function ImageItemList({ value, onChange }: { value: ImageItem[]; onChange: (v: 
   return (
     <div className={styles.subGroup}>
       {value.map((item, i) => (
-        <div
-          key={i}
-          className={`${styles.subGroup} ${drag.dragIndex === i ? styles.rowDragging : ""} ${drag.overIndex === i ? styles.rowDragOver : ""}`}
-          {...drag.rowProps(i)}
-        >
-          <div className={styles.row}>
-            <DragHandle {...drag.handleProps(i)} />
-            <Field label="Title" value={item.title ?? ""} onChange={(v) => update(i, { title: v || undefined })} />
-            <ReorderControls index={i} count={value.length} onMove={(to) => onChange(move(value, i, to))} />
-            <button type="button" className={styles.iconBtn} onClick={() => update(i, null)} aria-label="Remove item">Remove</button>
+        <Fragment key={i}>
+          {drag.showBoxBefore(i) && <div className={styles.rowPlaceholder} style={{ height: drag.size.h }} />}
+          <div
+            ref={drag.registerRow(i)}
+            className={`${styles.subGroup} ${drag.dragIndex === i ? styles.rowDragging : ""}`}
+          >
+            <div className={styles.row}>
+              <DragHandle {...drag.handleProps(i)} />
+              <Field label="Title" value={item.title ?? ""} onChange={(v) => update(i, { title: v || undefined })} />
+              <ReorderControls index={i} count={value.length} onMove={(to) => onChange(move(value, i, to))} />
+              <button type="button" className={styles.iconBtn} onClick={() => update(i, null)} aria-label="Remove item">Remove</button>
+            </div>
+            <Field label="Description" value={item.description ?? ""} onChange={(v) => update(i, { description: v || undefined })} multiline />
+            <ImageRefFields value={item.image} onChange={(r) => update(i, { image: r ?? { url: "" } })} />
           </div>
-          <Field label="Description" value={item.description ?? ""} onChange={(v) => update(i, { description: v || undefined })} multiline />
-          <ImageRefFields value={item.image} onChange={(r) => update(i, { image: r ?? { url: "" } })} />
-        </div>
+        </Fragment>
       ))}
+      {drag.showBoxBefore(value.length) && <div className={styles.rowPlaceholder} style={{ height: drag.size.h }} />}
+      <RowDragLayer drag={drag} />
       <div className={styles.addRow}>
         <button type="button" className={styles.iconBtn} onClick={() => onChange([...value, { image: { url: "" } }])}>+ Add item</button>
       </div>
@@ -229,20 +364,24 @@ function ViewList({ value, onChange }: { value: ComparisonView[]; onChange: (v: 
   return (
     <div className={styles.subGroup}>
       {value.map((view, i) => (
-        <div
-          key={i}
-          className={`${styles.subGroup} ${drag.dragIndex === i ? styles.rowDragging : ""} ${drag.overIndex === i ? styles.rowDragOver : ""}`}
-          {...drag.rowProps(i)}
-        >
-          <div className={styles.row}>
-            <DragHandle {...drag.handleProps(i)} />
-            <Field label="Label" value={view.label} onChange={(v) => update(i, { label: v })} />
-            <ReorderControls index={i} count={value.length} onMove={(to) => onChange(move(value, i, to))} />
-            <button type="button" className={styles.iconBtn} onClick={() => update(i, null)} aria-label="Remove view">Remove</button>
+        <Fragment key={i}>
+          {drag.showBoxBefore(i) && <div className={styles.rowPlaceholder} style={{ height: drag.size.h }} />}
+          <div
+            ref={drag.registerRow(i)}
+            className={`${styles.subGroup} ${drag.dragIndex === i ? styles.rowDragging : ""}`}
+          >
+            <div className={styles.row}>
+              <DragHandle {...drag.handleProps(i)} />
+              <Field label="Label" value={view.label} onChange={(v) => update(i, { label: v })} />
+              <ReorderControls index={i} count={value.length} onMove={(to) => onChange(move(value, i, to))} />
+              <button type="button" className={styles.iconBtn} onClick={() => update(i, null)} aria-label="Remove view">Remove</button>
+            </div>
+            <ImageRefFields value={view.image} onChange={(r) => update(i, { image: r ?? { url: "" } })} />
           </div>
-          <ImageRefFields value={view.image} onChange={(r) => update(i, { image: r ?? { url: "" } })} />
-        </div>
+        </Fragment>
       ))}
+      {drag.showBoxBefore(value.length) && <div className={styles.rowPlaceholder} style={{ height: drag.size.h }} />}
+      <RowDragLayer drag={drag} />
       <div className={styles.addRow}>
         <button type="button" className={styles.iconBtn} onClick={() => onChange([...value, { label: "View", image: { url: "" } }])}>+ Add view</button>
       </div>
@@ -261,18 +400,22 @@ function RowList({ value, onChange }: { value: SpecRow[]; onChange: (v: SpecRow[
   return (
     <div className={styles.subGroup}>
       {value.map((row, i) => (
-        <div
-          key={i}
-          className={`${styles.row} ${drag.dragIndex === i ? styles.rowDragging : ""} ${drag.overIndex === i ? styles.rowDragOver : ""}`}
-          {...drag.rowProps(i)}
-        >
-          <DragHandle {...drag.handleProps(i)} />
-          <Field label="Label" value={row.label} onChange={(v) => update(i, { label: v })} />
-          <Field label="Value" value={row.value} onChange={(v) => update(i, { value: v })} />
-          <ReorderControls index={i} count={value.length} onMove={(to) => onChange(move(value, i, to))} />
-          <button type="button" className={styles.iconBtn} onClick={() => update(i, null)} aria-label="Remove row">Remove</button>
-        </div>
+        <Fragment key={i}>
+          {drag.showBoxBefore(i) && <div className={styles.rowPlaceholder} style={{ height: drag.size.h }} />}
+          <div
+            ref={drag.registerRow(i)}
+            className={`${styles.row} ${drag.dragIndex === i ? styles.rowDragging : ""}`}
+          >
+            <DragHandle {...drag.handleProps(i)} />
+            <Field label="Label" value={row.label} onChange={(v) => update(i, { label: v })} />
+            <Field label="Value" value={row.value} onChange={(v) => update(i, { value: v })} />
+            <ReorderControls index={i} count={value.length} onMove={(to) => onChange(move(value, i, to))} />
+            <button type="button" className={styles.iconBtn} onClick={() => update(i, null)} aria-label="Remove row">Remove</button>
+          </div>
+        </Fragment>
       ))}
+      {drag.showBoxBefore(value.length) && <div className={styles.rowPlaceholder} style={{ height: drag.size.h }} />}
+      <RowDragLayer drag={drag} />
       <div className={styles.addRow}>
         <button type="button" className={styles.iconBtn} onClick={() => onChange([...value, { label: "", value: "" }])}>+ Add row</button>
       </div>
