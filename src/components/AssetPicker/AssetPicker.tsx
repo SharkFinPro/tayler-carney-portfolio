@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Modal from "@/components/Modal";
 import styles from "./AssetPicker.module.scss";
-import { fetchAssets, createUploadTarget, finalizeAsset } from "@/app/admin/mediaActions";
+import { fetchAssets, uploadAsset } from "@/app/admin/mediaActions";
 import type { MediaAsset } from "@/lib/getAssets";
 
 interface Props {
@@ -41,29 +41,14 @@ export default function AssetPicker({ onClose, onSelect }: Props) {
     setBusy(true);
     setStatus({ msg: "Uploading…" });
     try {
-      const init = await createUploadTarget(file.name);
-      if ("error" in init) throw new Error(init.error);
-
-      const { id, target } = init;
       const form = new FormData();
-      form.append("X-Amz-Date", target.date);
-      form.append("key", target.key);
-      form.append("X-Amz-Signature", target.signature);
-      form.append("X-Amz-Algorithm", target.algorithm);
-      form.append("policy", target.policy);
-      form.append("X-Amz-Credential", target.credential);
-      if (target.securityToken) form.append("X-Amz-Security-Token", target.securityToken);
       form.append("file", file);
-
-      const up = await fetch(target.url, { method: "POST", body: form });
-      if (!up.ok) throw new Error("S3 upload failed.");
-
-      setStatus({ msg: "Processing…" });
-      const fin = await finalizeAsset(id, { title: file.name });
-      if ("error" in fin) throw new Error(fin.error);
+      form.append("title", file.name);
+      const res = await uploadAsset(form);
+      if ("error" in res) throw new Error(res.error);
 
       setStatus({ msg: "Uploaded." });
-      onSelect({ url: fin.url });
+      onSelect({ url: res.asset.url, altText: res.asset.altText });
       onClose();
     } catch (e) {
       setStatus({ msg: e instanceof Error ? e.message : "Upload failed.", error: true });

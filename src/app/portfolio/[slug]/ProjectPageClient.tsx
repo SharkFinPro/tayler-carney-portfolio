@@ -56,11 +56,12 @@ export default function ProjectPageClient({ project, prevProject, nextProject, i
     [project]
   );
   const [blocks, setBlocks] = useState<Block[]>(initialBlocks);
-  const [editing, setEditing] = useState(false);
+  // Admins land in edit mode by default; the read view below is the "preview".
+  const [editing, setEditing] = useState(isAdmin);
   useEffect(() => {
     setBlocks(initialBlocks);
-    setEditing(false);
-  }, [initialBlocks]);
+    setEditing(isAdmin);
+  }, [initialBlocks, isAdmin]);
   const sectionBlocks = useMemo(() => blocks.filter(blockHasData), [blocks]);
   const activeSections = useMemo(
     () => sectionBlocks.map((b) => ({ id: SECTION_META[b.type].id, label: SECTION_META[b.type].label })),

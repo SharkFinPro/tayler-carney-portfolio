@@ -78,6 +78,19 @@ export const BLOCK_TYPES: BlockType[] = [
   "finalProduct",
 ];
 
+// One-line descriptions shown in the editor's "add block" palette.
+export const BLOCK_DESCRIPTIONS: Record<BlockType, string> = {
+  sketches: "A gallery of concept sketches.",
+  digitalRendering: "A single large digital rendering.",
+  flats: "Front/back/side technical flats with optional colored flats.",
+  looks: "Styled looks with captions.",
+  details: "Close-up construction or design details.",
+  patterns: "Pattern-drafting images.",
+  materials: "Materials and fabrications with notes.",
+  techPack: "Tech-pack info table plus sheets.",
+  finalProduct: "Final finished-garment photos.",
+};
+
 const DEFAULT_HEADINGS: Record<BlockType, string> = {
   sketches: "Initial Sketches",
   digitalRendering: "Digital Rendering",

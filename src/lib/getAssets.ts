@@ -3,30 +3,52 @@
 // documentInStages.
 import { cmsQueryAuthed } from "@/lib/cms";
 
+export type MediaStatus = "published" | "draft";
+
 export interface MediaAsset {
   id: string;
   url: string;
   fileName: string;
+  /** Custom Asset field: human-friendly display name. */
+  title?: string;
+  /** Custom Asset field: alt text for accessibility. */
+  altText?: string;
   mimeType?: string;
   width?: number;
   height?: number;
-  title?: string;
-  altText?: string;
-  status: "published" | "draft";
+  size?: number;
+  createdAt: string;
+  updatedAt: string;
+  status: MediaStatus;
 }
+
+const ASSET_FIELDS = `
+  id
+  fileName
+  title
+  altText
+  url
+  mimeType
+  width
+  height
+  size
+  createdAt
+  updatedAt
+  documentInStages(stages: [PUBLISHED]) { stage }
+`;
 
 const ASSETS_QUERY = `
   query MediaAssets {
-    assets(stage: DRAFT, orderBy: createdAt_DESC, first: 200) {
-      id
-      fileName
-      url
-      mimeType
-      width
-      height
-      title
-      altText
-      documentInStages(stages: [PUBLISHED]) { id }
+    assets(stage: DRAFT, first: 100, orderBy: createdAt_DESC) {
+      ${ASSET_FIELDS}
+    }
+  }
+`;
+
+const ASSET_BY_ID_QUERY = `
+  query MediaAsset($id: ID!) {
+    asset(stage: DRAFT, where: { id: $id }) {
+      ${ASSET_FIELDS}
     }
   }
 `;
@@ -34,27 +56,45 @@ const ASSETS_QUERY = `
 interface RawAsset {
   id: string;
   fileName: string;
+  title?: string;
+  altText?: string;
   url: string;
   mimeType?: string;
   width?: number;
   height?: number;
-  title?: string;
-  altText?: string;
-  documentInStages?: { id: string }[];
+  size?: number;
+  createdAt: string;
+  updatedAt: string;
+  documentInStages?: { stage: string }[];
 }
 
-export async function getAssets(): Promise<MediaAsset[]> {
-  const data = await cmsQueryAuthed(ASSETS_QUERY);
-  const assets: RawAsset[] = data?.assets ?? [];
-  return assets.map((a) => ({
+function toMediaAsset(a: RawAsset): MediaAsset {
+  return {
     id: a.id,
     url: a.url,
     fileName: a.fileName,
-    mimeType: a.mimeType,
-    width: a.width,
-    height: a.height,
     title: a.title ?? undefined,
     altText: a.altText ?? undefined,
-    status: (a.documentInStages?.length ?? 0) > 0 ? "published" : "draft",
-  }));
+    mimeType: a.mimeType ?? undefined,
+    width: a.width ?? undefined,
+    height: a.height ?? undefined,
+    size: a.size ?? undefined,
+    createdAt: a.createdAt,
+    updatedAt: a.updatedAt,
+    status: a.documentInStages?.some((s) => s.stage === "PUBLISHED") ? "published" : "draft",
+  };
+}
+
+/** Fetch all media assets (draft + published), newest first. */
+export async function getAssets(): Promise<MediaAsset[]> {
+  const data = await cmsQueryAuthed(ASSETS_QUERY);
+  const assets: RawAsset[] = data?.assets ?? [];
+  return assets.map(toMediaAsset);
+}
+
+/** Fetch a single asset by id at the DRAFT stage (resolves freshly uploaded assets). */
+export async function getAssetById(id: string): Promise<MediaAsset | null> {
+  const data = await cmsQueryAuthed(ASSET_BY_ID_QUERY, { id });
+  const raw: RawAsset | null = data?.asset ?? null;
+  return raw ? toMediaAsset(raw) : null;
 }
