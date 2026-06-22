@@ -1,0 +1,109 @@
+.wrap {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 2rem 1.5rem 6rem;
+  font-family: var(--ff-sans);
+  color: var(--ink);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.title {
+  font-family: var(--ff-serif);
+  font-size: 1.6rem;
+  margin-right: auto;
+}
+
+.btn {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  background: var(--plate);
+  color: var(--ink);
+  cursor: pointer;
+
+  &:disabled { opacity: 0.5; cursor: default; }
+}
+
+.btnPrimary { background: var(--accent); color: var(--ink-inverse); border-color: var(--accent); }
+
+.status { font-size: 0.8rem; color: var(--ink-muted); }
+.statusError { color: #b3261e; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--plate);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.thumb {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: var(--plate-muted);
+}
+
+.cardBody {
+  padding: 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.badge {
+  align-self: flex-start;
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  border: 1px solid var(--line);
+  color: var(--ink-muted);
+}
+
+.badgePublished { color: var(--accent); border-color: var(--accent); }
+
+.field { display: flex; flex-direction: column; gap: 0.2rem; }
+.fieldLabel { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-muted); }
+
+.input {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--canvas);
+  color: var(--ink);
+}
+
+.actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+
+.iconBtn {
+  font: inherit;
+  font-size: 0.78rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--plate);
+  color: var(--ink);
+  cursor: pointer;
+
+  &:disabled { opacity: 0.4; cursor: default; }
+}

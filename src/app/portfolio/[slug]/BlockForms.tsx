@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import styles from "./Editor.module.scss";
+import AssetPicker from "@/components/AssetPicker";
 import type { Block, ImageItem, ImageRef, TechPackInfo } from "@/components/ProjectBlocks/blocks";
 
 // ── Small field primitives ────────────────────────────────────────────────
@@ -24,6 +26,7 @@ function Field({ label, value, onChange, multiline }: {
 }
 
 function ImageRefFields({ value, onChange }: { value: ImageRef | null; onChange: (v: ImageRef | null) => void }) {
+  const [picking, setPicking] = useState(false);
   const url = value?.url ?? "";
   const alt = value?.altText ?? "";
   const set = (next: { url?: string; altText?: string }) => {
@@ -34,9 +37,17 @@ function ImageRefFields({ value, onChange }: { value: ImageRef | null; onChange:
   };
   return (
     <div className={styles.row}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       {url && <img src={url} alt="" className={styles.thumb} />}
       <Field label="Image URL" value={url} onChange={(v) => set({ url: v })} />
       <Field label="Alt text" value={alt} onChange={(v) => set({ altText: v })} />
+      <button type="button" className={styles.iconBtn} onClick={() => setPicking(true)}>Choose…</button>
+      {picking && (
+        <AssetPicker
+          onClose={() => setPicking(false)}
+          onSelect={(asset) => onChange({ url: asset.url, altText: asset.altText || alt || undefined })}
+        />
+      )}
     </div>
   );
 }

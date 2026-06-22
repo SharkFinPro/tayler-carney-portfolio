@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { isAuthed } from "@/lib/auth";
 import { logout } from "@/app/admin/actions";
 import styles from "./AdminBar.module.scss";
@@ -10,6 +11,9 @@ export default async function AdminBar() {
   return (
     <div className={styles.bar}>
       <span className={styles.label}>Editing mode — changes publish on save</span>
+      <Link href="/admin/media" className={styles.logout}>
+        Media Library
+      </Link>
       <form action={logout}>
         <button type="submit" className={styles.logout}>
           Sign out
