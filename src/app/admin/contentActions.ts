@@ -2,7 +2,7 @@
 
 import { isAuthed } from "@/lib/auth";
 import { cmsMutate } from "@/lib/cms";
-import { sanitizeProjectPage, type Block } from "@/components/ProjectBlocks/blocks";
+import { sanitizeBlocks, type Block } from "@/components/blocks/blocks";
 
 // Whitelist of inline-editable scalar/list fields, keyed by Hygraph model.
 // Model names are interpolated into the mutation string, so a value is only
@@ -79,7 +79,7 @@ export async function updateBlockLayout(
     return { ok: false, error: `Field "${field}" is not editable.` };
   }
 
-  const blocks = sanitizeProjectPage(rawBlocks);
+  const blocks = sanitizeBlocks(rawBlocks);
   try {
     await updateAndPublish(model, id, { [field]: blocks });
   } catch (e) {

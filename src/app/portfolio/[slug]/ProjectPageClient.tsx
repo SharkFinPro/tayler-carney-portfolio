@@ -3,20 +3,20 @@ import styles from "./Project.module.scss";
 import Link from "next/link";
 import { CSSProperties, useEffect, useState, useCallback, useMemo } from "react";
 import { motion, type Variants } from "framer-motion";
-import { ImageGridItem } from "./ImageGrid";
+import { ImageGridItem } from "@/components/blocks/ImageGrid";
 import ProjectModal from "./ProjectModal";
 import ProjectSidebar from "./ProjectSidebar";
-import ProjectBlockSection from "./ProjectBlockSection";
-import ProjectPageEditor from "./ProjectPageEditor";
+import BlockSection from "@/components/blocks/BlockSection";
+import BlockEditor from "@/components/blocks/BlockEditor";
 import EditableText from "@/components/EditableText";
 import {
-  sanitizeProjectPage,
+  sanitizeBlocks,
   projectToBlocks,
   blockHasData,
-  SECTION_META,
+  BLOCK_LABELS,
   type Block,
   type LegacyProject,
-} from "@/components/ProjectBlocks/blocks";
+} from "@/components/blocks/blocks";
 
 interface Project extends LegacyProject {
   id: string;
@@ -52,7 +52,7 @@ export default function ProjectPageClient({ project, prevProject, nextProject, i
   // Render from the projectPage block layout when present; otherwise derive
   // blocks from the legacy fixed fields (identical output by construction).
   const initialBlocks = useMemo(
-    () => (project.projectPage != null ? sanitizeProjectPage(project.projectPage) : projectToBlocks(project)),
+    () => (project.projectPage != null ? sanitizeBlocks(project.projectPage) : projectToBlocks(project)),
     [project]
   );
   const [blocks, setBlocks] = useState<Block[]>(initialBlocks);
@@ -64,7 +64,7 @@ export default function ProjectPageClient({ project, prevProject, nextProject, i
   }, [initialBlocks, isAdmin]);
   const sectionBlocks = useMemo(() => blocks.filter(blockHasData), [blocks]);
   const activeSections = useMemo(
-    () => sectionBlocks.map((b) => ({ id: SECTION_META[b.type].id, label: SECTION_META[b.type].label })),
+    () => sectionBlocks.map((b) => ({ id: b.id, label: b.heading || BLOCK_LABELS[b.type] })),
     [sectionBlocks]
   );
 
@@ -198,14 +198,16 @@ export default function ProjectPageClient({ project, prevProject, nextProject, i
             </motion.div>
 
             {editing ? (
-              <ProjectPageEditor
-                projectId={project.id}
+              <BlockEditor
+                model="Project"
+                field="projectPage"
+                id={project.id}
                 initialBlocks={blocks}
                 onBlocksChange={setBlocks}
               />
             ) : (
               sectionBlocks.map((block) => (
-                <ProjectBlockSection key={block.id} block={block} onOpen={openModal} />
+                <BlockSection key={block.id} block={block} onOpen={openModal} />
               ))
             )}
 

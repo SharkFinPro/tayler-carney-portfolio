@@ -1,12 +1,16 @@
-// The wrapper anchors the floating edit panel; keep it inline so it sits with
-// the text it edits.
+// The wrapper sits with the text it edits. position: relative anchors the
+// floated pencil and the compact control cluster.
 .wrap {
   position: relative;
 }
 
+// While editing, let the field fill the line/area the text occupied.
+.editing {
+  display: block;
+}
+
 // For headings / gradient text that must not reflow: float the pencil out of
-// flow so a long value can't push it onto its own line. The editable element
-// is already position: relative via .wrap.
+// flow so a long value can't push it onto its own line.
 .wrapFloat {
   .editBtn {
     position: absolute;
@@ -47,73 +51,72 @@
   }
 }
 
-// ── Floating editor panel ───────────────────────────────────────────────────
-// Anchored below the text and taken out of flow so opening it never reflows the
-// page. Sized to be genuinely usable rather than squeezed into the text run.
-.panel {
-  position: absolute;
-  top: calc(100% + 0.4rem);
-  left: 0;
-  z-index: 50;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  width: max-content;
-  min-width: 18rem;
-  max-width: min(32rem, 90vw);
-  padding: 0.75rem;
-  background: var(--plate);
-  border: 1px solid var(--line-strong);
-  border-radius: 8px;
-  box-shadow: 0 8px 24px var(--shadow);
-  text-align: left;
-  // Reset any inherited gradient/heading text styling so the controls render
-  // normally.
-  -webkit-text-fill-color: initial;
-  white-space: normal;
-}
-
-.input,
-.textarea {
+// ── Inline field ────────────────────────────────────────────────────────────
+// Inherits the surrounding type and fills the same width, so editing happens
+// in place rather than in a popup. A subtle tint + ring marks it as active
+// without changing the box metrics meaningfully.
+.field {
+  display: block;
   width: 100%;
-  font-family: var(--ff-sans);
-  font-size: 0.95rem;
-  line-height: 1.4;
+  margin: 0;
+  // Inherit the rendered type so the editor reads at the same size/weight.
+  font: inherit;
   color: var(--ink);
   -webkit-text-fill-color: var(--ink);
-  background: var(--canvas);
-  border: 1px solid var(--line-strong);
-  border-radius: 5px;
-  padding: 0.5rem 0.6rem;
+  letter-spacing: inherit;
+  line-height: inherit;
+  text-align: inherit;
+  background: var(--canvas-soft);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  // Negative inline margin keeps the visual text aligned with where it was,
+  // compensating for the field's own padding.
+  padding: 0.1em 0.3em;
+  margin-inline: -0.3em;
+  outline: 2px solid transparent;
+  transition: outline-color 0.15s, background 0.15s;
+
+  &:focus {
+    outline-color: var(--accent);
+    background: var(--plate);
+  }
 }
 
 .textarea {
-  min-height: 7rem;
-  resize: vertical;
+  resize: none;
+  overflow: hidden;
 }
 
+// ── Controls ────────────────────────────────────────────────────────────────
+// Compact icon buttons floated to the field's top-right corner so they don't
+// add to the line box or shift the layout.
 .controls {
+  position: absolute;
+  top: -0.4rem;
+  right: -0.4rem;
+  z-index: 10;
   display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
+  gap: 0.25rem;
 }
 
 .actionBtn {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.4rem 0.7rem;
-  font-family: var(--ff-sans);
-  font-size: 0.85rem;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 0.7rem;
   border: 1px solid var(--line-strong);
-  border-radius: 5px;
-  background: var(--plate-muted);
+  border-radius: 50%;
+  background: var(--plate);
   color: var(--ink);
+  -webkit-text-fill-color: var(--ink);
   cursor: pointer;
-  transition: background 0.15s;
+  box-shadow: 0 1px 3px var(--shadow);
+  transition: background 0.15s, transform 0.15s;
 
   &:hover:not(:disabled) {
-    background: var(--canvas-deep);
+    transform: translateY(-1px);
   }
 
   &:disabled {
@@ -126,20 +129,19 @@
   background: var(--accent);
   border-color: var(--accent);
   color: var(--ink-inverse);
+  -webkit-text-fill-color: var(--ink-inverse);
 
   &:hover:not(:disabled) {
     background: var(--accent-soft);
   }
 }
 
-.hint {
-  font-family: var(--ff-sans);
-  font-size: 0.7rem;
-  color: var(--ink-muted);
-}
-
 .error {
+  display: block;
+  margin-top: 0.25rem;
   font-family: var(--ff-sans);
   font-size: 0.8rem;
+  font-weight: 400;
   color: #b3261e;
+  -webkit-text-fill-color: #b3261e;
 }

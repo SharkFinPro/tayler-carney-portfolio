@@ -22,10 +22,10 @@ interface EditableTextProps {
 /**
  * Wraps a whitelisted CMS scalar/list field with an inline edit affordance.
  * When `editable` is false it simply renders `children`, so visitors see no
- * change. While editing, the original text stays in place and a floating panel
- * holds a roomy input — this keeps the page layout from reflowing. After a
- * successful save the optimistic `display` value masks the read-CDN lag (we
- * deliberately do not revalidate).
+ * change. While editing, the field is swapped in place — it inherits the
+ * surrounding type and fills the same visual area, so there is no popup and no
+ * major layout shift. After a successful save the optimistic `display` value
+ * masks the read-CDN lag (we deliberately do not revalidate).
  */
 export default function EditableText({
   model,
@@ -43,12 +43,25 @@ export default function EditableText({
   const [display, setDisplay] = useState<React.ReactNode | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const fieldRef = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Focus the field (and select its contents) when the panel opens.
+  // Grow the textarea to fit its content so multiline edits occupy the same
+  // space the rendered text would.
+  function autosize(el: HTMLTextAreaElement | null) {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }
+
+  // Focus (and select) the field when editing begins.
   useEffect(() => {
-    if (editing) fieldRef.current?.select();
-  }, [editing]);
+    if (!editing) return;
+    const el = multiline ? textareaRef.current : inputRef.current;
+    el?.focus();
+    el?.select();
+    if (multiline) autosize(textareaRef.current);
+  }, [editing, multiline]);
 
   if (!editable) return <>{children}</>;
 
@@ -85,11 +98,10 @@ export default function EditableText({
     }
   }
 
-  return (
-    <span className={`${styles.wrap} ${floatEdit ? styles.wrapFloat : ""}`}>
-      {display ?? children}
-
-      {!editing && (
+  if (!editing) {
+    return (
+      <span className={`${styles.wrap} ${floatEdit ? styles.wrapFloat : ""}`}>
+        {display ?? children}
         <button
           type="button"
           className={styles.editBtn}
@@ -99,58 +111,62 @@ export default function EditableText({
         >
           <FontAwesomeIcon icon={faPen} />
         </button>
+      </span>
+    );
+  }
+
+  return (
+    <span className={`${styles.wrap} ${styles.editing}`}>
+      {multiline ? (
+        <textarea
+          ref={textareaRef}
+          className={`${styles.field} ${styles.textarea}`}
+          value={draft}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            autosize(e.target);
+          }}
+          onKeyDown={onKeyDown}
+          rows={1}
+          aria-label={`Edit ${field}`}
+        />
+      ) : (
+        <input
+          ref={inputRef}
+          className={styles.field}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={onKeyDown}
+          aria-label={`Edit ${field}`}
+        />
       )}
 
-      {editing && (
-        // eslint-disable-next-line jsx-a11y/no-static-element-interactions
-        <span className={styles.panel} role="dialog" aria-label={`Edit ${field}`} onKeyDown={onKeyDown}>
-          {multiline ? (
-            <textarea
-              ref={fieldRef}
-              className={styles.textarea}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              aria-label={`Edit ${field}`}
-            />
-          ) : (
-            <input
-              ref={fieldRef}
-              className={styles.input}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              aria-label={`Edit ${field}`}
-            />
-          )}
+      <span className={styles.controls} contentEditable={false}>
+        <button
+          type="button"
+          className={`${styles.actionBtn} ${styles.save}`}
+          onClick={save}
+          disabled={saving}
+          aria-label="Save"
+          title="Save (Enter)"
+        >
+          <FontAwesomeIcon icon={faCheck} />
+        </button>
+        <button
+          type="button"
+          className={styles.actionBtn}
+          onClick={cancel}
+          disabled={saving}
+          aria-label="Cancel"
+          title="Cancel (Esc)"
+        >
+          <FontAwesomeIcon icon={faXmark} />
+        </button>
+      </span>
 
-          <span className={styles.controls}>
-            <button
-              type="button"
-              className={`${styles.actionBtn} ${styles.save}`}
-              onClick={save}
-              disabled={saving}
-            >
-              <FontAwesomeIcon icon={faCheck} />
-              {saving ? "Saving…" : "Save"}
-            </button>
-            <button
-              type="button"
-              className={styles.actionBtn}
-              onClick={cancel}
-              disabled={saving}
-              aria-label="Cancel"
-            >
-              <FontAwesomeIcon icon={faXmark} />
-            </button>
-          </span>
-
-          {error && (
-            <span className={styles.error} role="alert">
-              {error}
-            </span>
-          )}
-          <span className={styles.hint}>
-            {multiline ? "⌘/Ctrl+Enter to save · Esc to cancel" : "Enter to save · Esc to cancel"}
-          </span>
+      {error && (
+        <span className={styles.error} role="alert">
+          {error}
         </span>
       )}
     </span>

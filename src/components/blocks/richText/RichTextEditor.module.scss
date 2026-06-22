@@ -1,0 +1,181 @@
+// Inline rich-text field used inside the block editor. Styled to the editor's
+// own surface tokens; the editable area mirrors the published prose so editing
+// looks like the result.
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  text-align: left;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--plate-muted);
+}
+
+.blockSelect {
+  padding: 0.3rem 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--canvas);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.toolBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+
+  &:hover {
+    background: var(--plate);
+    color: var(--ink);
+  }
+}
+
+.toolBtnActive {
+  background: var(--accent);
+  color: var(--ink-inverse);
+
+  &:hover {
+    background: var(--accent);
+    color: var(--ink-inverse);
+  }
+}
+
+.toolDivider {
+  width: 1px;
+  align-self: stretch;
+  margin: 0.15rem 0.2rem;
+  background: var(--line);
+}
+
+.surface {
+  min-height: 220px;
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--canvas);
+  color: var(--ink-soft);
+  font-family: var(--ff-sans);
+  line-height: 1.7;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:focus {
+    border-color: var(--line-strong);
+    box-shadow: 0 0 0 3px var(--frame);
+  }
+
+  > :first-child { margin-top: 0; }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--ff-serif);
+    font-weight: 400;
+    line-height: 1.2;
+    color: var(--ink);
+    margin: 1.25rem 0 0.5rem;
+  }
+
+  h1 { font-size: 1.8rem; }
+  h2 { font-size: 1.55rem; }
+  h3 { font-size: 1.3rem; }
+  h4 { font-size: 1.1rem; }
+  h5, h6 {
+    font-family: var(--ff-mono);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-muted);
+  }
+
+  p { margin: 0 0 0.65rem; }
+
+  ul, ol { margin: 0 0 0.75rem; padding-left: 1.6rem; }
+  ul { list-style-type: disc; }
+  ol { list-style-type: decimal; }
+  li { margin-bottom: 0.25rem; }
+
+  a {
+    color: var(--ink);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  blockquote {
+    margin: 1rem 0;
+    padding: 0.4rem 0 0.4rem 1rem;
+    border-left: 2px solid var(--accent);
+    font-family: var(--ff-serif);
+    color: var(--ink);
+  }
+
+  code {
+    font-family: var(--ff-mono);
+    font-size: 0.85em;
+    background: var(--plate-muted);
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+  }
+
+  pre {
+    margin: 1rem 0;
+    padding: 0.85rem 1rem;
+    background: var(--plate-muted);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    font-family: var(--ff-mono);
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    overflow-x: auto;
+
+    code { background: none; padding: 0; }
+  }
+
+  figure {
+    margin: 1rem 0;
+    text-align: center;
+    cursor: pointer;
+
+    img {
+      max-width: 100%;
+      height: auto;
+      border: 1px solid var(--line);
+      outline: 2px solid transparent;
+      outline-offset: 2px;
+    }
+
+    &:hover img {
+      outline-color: var(--line);
+    }
+  }
+}
+
+.imageSelected img {
+  outline-color: var(--accent) !important;
+  outline-width: 3px !important;
+}
+
+.error {
+  margin: 0;
+  color: #b3261e;
+  font-size: 0.85rem;
+}
