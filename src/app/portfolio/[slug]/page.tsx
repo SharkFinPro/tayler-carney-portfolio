@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import ProjectPageClient from "./ProjectPageClient";
 import { Metadata } from "next";
+import { cmsQuery } from "@/lib/cms";
 
 interface ProjectPageProps {
   params: Promise<{ slug: string }>;
@@ -8,14 +9,8 @@ interface ProjectPageProps {
 
 async function getProject(slug: string) {
   try {
-    const response = await fetch(process.env.CMS_ENDPOINT as string, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + process.env.CMS_TOKEN,
-      },
-      body: JSON.stringify({
-        query: `
+    const data = await cmsQuery(
+      `
           query Projects($slug: String!) {
             projects(where: {slug: $slug}) {
               title
@@ -81,15 +76,10 @@ async function getProject(slug: string) {
             }
           }
         `,
-        variables: {
-          slug: slug.toLowerCase(),
-        },
-      }),
-    });
+      { slug: slug.toLowerCase() }
+    );
 
-    const json = await response.json();
-
-    return json.data?.projects?.[0] ?? null;
+    return data?.projects?.[0] ?? null;
   } catch (error) {
     console.log("Error fetching project: ", error);
     notFound();
@@ -97,25 +87,15 @@ async function getProject(slug: string) {
 }
 
 async function getAllProjects() {
-  const response = await fetch(process.env.CMS_ENDPOINT as string, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + process.env.CMS_TOKEN,
-    },
-    body: JSON.stringify({
-      query: `
+  const data = await cmsQuery(`
         query {
           projects {
             slug
             title
           }
         }
-      `,
-    }),
-  });
-  const json = await response.json();
-  return json.data?.projects ?? [];
+      `);
+  return data?.projects ?? [];
 }
 
 export async function generateMetadata({

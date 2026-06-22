@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import Image from "next/image";
 import styles from "./Atelier.module.scss";
 import { AnimatedSection } from "@/components/AnimatedSection";
+import { cmsQuery } from "@/lib/cms";
 
 export const metadata: Metadata = {
   title: "Atelier"
@@ -40,16 +41,8 @@ interface Atelier {
 }
 
 async function getAteliers(): Promise<Atelier[]> {
-  const response = await fetch(process.env.CMS_ENDPOINT as string, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + process.env.CMS_TOKEN,
-    },
-    body: JSON.stringify({ query: ATELIERS_QUERY }),
-  });
-  const json = await response.json();
-  return json.data.ateliers;
+  const data = await cmsQuery(ATELIERS_QUERY);
+  return data.ateliers;
 }
 
 export default async function Atelier() {

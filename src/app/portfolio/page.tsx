@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import styles from "./Portfolio.module.scss";
+import { cmsQuery } from "@/lib/cms";
 
 export const metadata: Metadata = {
   title: "Portfolio"
@@ -19,16 +20,8 @@ const PROJECTS_QUERY = `
 `;
 
 async function getProjects() {
-  const response = await fetch(process.env.CMS_ENDPOINT as string, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + process.env.CMS_TOKEN,
-    },
-    body: JSON.stringify({ query: PROJECTS_QUERY }),
-  });
-  const json = await response.json();
-  return json.data?.projects ?? [];
+  const data = await cmsQuery(PROJECTS_QUERY);
+  return data?.projects ?? [];
 }
 
 export default async function Portfolio() {

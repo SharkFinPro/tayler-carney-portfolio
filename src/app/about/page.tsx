@@ -4,6 +4,7 @@ import Link from "next/link";
 import styles from "./About.module.scss";
 import { RichText } from '@graphcms/rich-text-react-renderer';
 import { AnimatedSection } from "@/components/AnimatedSection";
+import { cmsQuery } from "@/lib/cms";
 
 export const metadata: Metadata = {
   title: "About"
@@ -30,16 +31,8 @@ const ABOUT_QUERY = `
 `;
 
 async function getAbout() {
-  const response = await fetch(process.env.CMS_ENDPOINT as string, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + process.env.CMS_TOKEN,
-    },
-    body: JSON.stringify({ query: ABOUT_QUERY }),
-  });
-  const json = await response.json();
-  return json.data.aboutPages[0];
+  const data = await cmsQuery(ABOUT_QUERY);
+  return data.aboutPages[0];
 }
 
 export default async function About() {
