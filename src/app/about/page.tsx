@@ -5,6 +5,8 @@ import styles from "./About.module.scss";
 import { RichText } from '@graphcms/rich-text-react-renderer';
 import { AnimatedSection } from "@/components/AnimatedSection";
 import { cmsQuery } from "@/lib/cms";
+import { isAuthed } from "@/lib/auth";
+import EditableText from "@/components/EditableText";
 
 export const metadata: Metadata = {
   title: "About"
@@ -15,6 +17,7 @@ export const dynamic = "force-dynamic";
 const ABOUT_QUERY = `
   query AboutPage {
     aboutPages {
+      id
       title
       subtitle
       portrait {
@@ -37,6 +40,7 @@ async function getAbout() {
 
 export default async function About() {
   const about = await getAbout();
+  const isAdmin = await isAuthed();
 
   return (
     <div className={styles.pageWrapper}>
@@ -53,8 +57,16 @@ export default async function About() {
                 className={styles.portraitImage}
               />
               <div className={styles.portraitBadge}>
-                <span className={styles.portraitName}>{about.title}</span>
-                <span className={styles.portraitTitle}>{about.subtitle}</span>
+                <span className={styles.portraitName}>
+                  <EditableText model="AboutPage" id={about.id} field="title" value={about.title} editable={isAdmin}>
+                    {about.title}
+                  </EditableText>
+                </span>
+                <span className={styles.portraitTitle}>
+                  <EditableText model="AboutPage" id={about.id} field="subtitle" value={about.subtitle} editable={isAdmin}>
+                    {about.subtitle}
+                  </EditableText>
+                </span>
               </div>
             </div>
 

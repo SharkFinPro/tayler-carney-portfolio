@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import ProjectPageClient from "./ProjectPageClient";
 import { Metadata } from "next";
 import { cmsQuery } from "@/lib/cms";
+import { isAuthed } from "@/lib/auth";
 
 interface ProjectPageProps {
   params: Promise<{ slug: string }>;
@@ -13,6 +14,7 @@ async function getProject(slug: string) {
       `
           query Projects($slug: String!) {
             projects(where: {slug: $slug}) {
+              id
               title
               slug
               description
@@ -130,5 +132,14 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   const prevProject = currentIndex > 0 ? allProjects[currentIndex - 1] : null;
   const nextProject = currentIndex < allProjects.length - 1 ? allProjects[currentIndex + 1] : null;
 
-  return <ProjectPageClient project={project} prevProject={prevProject} nextProject={nextProject} />;
+  const isAdmin = await isAuthed();
+
+  return (
+    <ProjectPageClient
+      project={project}
+      prevProject={prevProject}
+      nextProject={nextProject}
+      isAdmin={isAdmin}
+    />
+  );
 }

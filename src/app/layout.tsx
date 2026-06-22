@@ -4,6 +4,7 @@ import { Metadata } from "next";
 import "@/styles/global.scss";
 import NavBar from "@/components/NavBar";
 import Footer from "@/components/Footer";
+import AdminBar from "@/components/AdminBar";
 
 const notoSerif = Noto_Serif({
   subsets: ["latin"],
@@ -68,6 +69,7 @@ export default function RootLayout({
       className={`${notoSerif.variable} ${inter.variable} ${dmMono.variable}`}
     >
       <body>
+        <AdminBar />
         <NavBar />
         {children}
         <Footer />

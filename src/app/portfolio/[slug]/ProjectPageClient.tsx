@@ -8,6 +8,7 @@ import ImageGrid, { ImageGridItem } from "./ImageGrid";
 import ProjectModal from "./ProjectModal";
 import ProjectSidebar from "./ProjectSidebar";
 import { BLUR_DATA_URL } from "@/components/AnimatedSection";
+import EditableText from "@/components/EditableText";
 
 interface ImageAsset {
   url: string;
@@ -32,6 +33,7 @@ type TechPackInfo = {
 };
 
 interface Project {
+  id: string;
   title: string;
   slug: string;
   description: string;
@@ -59,6 +61,7 @@ interface ProjectPageClientProps {
   project: Project;
   prevProject: ProjectNavItem | null;
   nextProject: ProjectNavItem | null;
+  isAdmin?: boolean;
 }
 
 interface ModalState {
@@ -83,7 +86,7 @@ const fadeInVariant: Variants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
 };
 
-export default function ProjectPageClient({ project, prevProject, nextProject }: ProjectPageClientProps) {
+export default function ProjectPageClient({ project, prevProject, nextProject, isAdmin = false }: ProjectPageClientProps) {
   const numSketches      = project.sketches?.length ?? 0;
   const numFlats         = (project.frontFlat ? 1 : 0) + (project.backFlat ? 1 : 0) + (project.sideFlat ? 1 : 0);
   const numColoredFlats  = project.coloredFlats?.length ?? 0;
@@ -220,8 +223,16 @@ export default function ProjectPageClient({ project, prevProject, nextProject }:
               variants={fadeInVariant}
               className={styles.mainHeader}
             >
-              <h1>{project.title}</h1>
-              <p>{project.description}</p>
+              <h1>
+                <EditableText model="Project" id={project.id} field="title" value={project.title} editable={isAdmin}>
+                  {project.title}
+                </EditableText>
+              </h1>
+              <p>
+                <EditableText model="Project" id={project.id} field="description" value={project.description} editable={isAdmin} multiline>
+                  {project.description}
+                </EditableText>
+              </p>
             </motion.div>
 
             {sectionHasData.sketches && (

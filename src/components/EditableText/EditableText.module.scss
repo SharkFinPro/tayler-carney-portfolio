@@ -1,0 +1,62 @@
+.wrap {
+  position: relative;
+}
+
+.editBtn {
+  margin-left: 0.4rem;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.7rem;
+  line-height: 1;
+  vertical-align: middle;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--plate-muted);
+  color: var(--ink-soft);
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.editor {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
+.input,
+.textarea {
+  font: inherit;
+  color: var(--ink);
+  background: var(--canvas);
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  padding: 0.25rem 0.4rem;
+  min-width: 12rem;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 5rem;
+  resize: vertical;
+}
+
+.actionBtn {
+  padding: 0.15rem 0.45rem;
+  font-size: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--plate);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.error {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: #b3261e;
+}

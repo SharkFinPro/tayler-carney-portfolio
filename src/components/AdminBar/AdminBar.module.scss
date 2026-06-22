@@ -1,0 +1,35 @@
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.4rem 1rem;
+  background: var(--plate-dark);
+  color: var(--ink-inverse);
+  font-family: var(--ff-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.label {
+  opacity: 0.85;
+}
+
+.logout {
+  font: inherit;
+  text-transform: uppercase;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid rgba(245, 245, 242, 0.4);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink-inverse);
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(245, 245, 242, 0.12);
+  }
+}
