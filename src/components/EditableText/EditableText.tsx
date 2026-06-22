@@ -7,14 +7,21 @@ import { updateContentField } from "@/app/admin/contentActions";
 import styles from "./EditableText.module.scss";
 
 interface EditableTextProps {
-  model: string;
-  id: string;
-  field: string;
+  /** Required for the default CMS save path; omit when `onSave` is supplied. */
+  model?: string;
+  id?: string;
+  field?: string;
   value: string | string[];
   editable?: boolean;
   multiline?: boolean;
   /** Take the pencil out of flow (for headings/gradient text that must not reflow). */
   floatEdit?: boolean;
+  /**
+   * Custom persistence. When provided it replaces the default
+   * `updateContentField(model, id, field, …)` call — used for content that
+   * doesn't map to a single whitelisted CMS scalar (e.g. nested homepage JSON).
+   */
+  onSave?: (next: string | string[]) => Promise<{ error: string } | { ok: true }>;
   /** What visitors (and admins not editing) see. */
   children: React.ReactNode;
 }
@@ -35,6 +42,7 @@ export default function EditableText({
   editable = false,
   multiline = false,
   floatEdit = false,
+  onSave,
   children,
 }: EditableTextProps) {
   const isList = Array.isArray(value);
@@ -71,7 +79,9 @@ export default function EditableText({
     const next: string | string[] = isList
       ? draft.split(",").map((s) => s.trim()).filter(Boolean)
       : draft;
-    const res = await updateContentField(model, id, field, next);
+    const res = onSave
+      ? await onSave(next)
+      : await updateContentField(model!, id!, field!, next);
     setSaving(false);
     if ("error" in res) {
       setError(res.error);
@@ -105,8 +115,8 @@ export default function EditableText({
         <button
           type="button"
           className={styles.editBtn}
-          aria-label={`Edit ${field}`}
-          title={`Edit ${field}`}
+          aria-label={`Edit ${field ?? "text"}`}
+          title={`Edit ${field ?? "text"}`}
           onClick={() => setEditing(true)}
         >
           <FontAwesomeIcon icon={faPen} />
@@ -128,7 +138,7 @@ export default function EditableText({
           }}
           onKeyDown={onKeyDown}
           rows={1}
-          aria-label={`Edit ${field}`}
+          aria-label={`Edit ${field ?? "text"}`}
         />
       ) : (
         <input
@@ -137,7 +147,7 @@ export default function EditableText({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onKeyDown}
-          aria-label={`Edit ${field}`}
+          aria-label={`Edit ${field ?? "text"}`}
         />
       )}
 

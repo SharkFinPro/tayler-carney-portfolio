@@ -3,6 +3,7 @@
 import { isAuthed } from "@/lib/auth";
 import { cmsMutate } from "@/lib/cms";
 import { sanitizeBlocks, type Block } from "@/components/blocks/blocks";
+import { sanitizeHome, type HomeContent } from "@/lib/home";
 
 // Whitelist of inline-editable scalar/list fields, keyed by Hygraph model.
 // Model names are interpolated into the mutation string, so a value is only
@@ -86,6 +87,25 @@ export async function updateSiteSettings(
     return { ok: false, error: e instanceof Error ? e.message : "Update failed." };
   }
   return { ok: true };
+}
+
+// Persist the homepage content singleton (SiteData.home). The whole object is
+// sanitized server-side with the same validator the renderer uses, so the client
+// can never store an invalid or unsafe layout. Returns the sanitized content so
+// the editor can sync its optimistic state.
+type HomeResult = { ok: true; home: HomeContent } | { ok: false; error: string };
+
+export async function updateHome(id: string, rawHome: unknown): Promise<HomeResult> {
+  const denied = await requireAuth();
+  if (denied) return denied;
+
+  const home = sanitizeHome(rawHome);
+  try {
+    await updateAndPublish("SiteData", id, { home });
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Save failed." };
+  }
+  return { ok: true, home };
 }
 
 // Whitelist of JSON block-layout fields, keyed by model.
