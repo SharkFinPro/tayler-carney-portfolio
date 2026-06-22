@@ -9,9 +9,11 @@ import ProjectModal from "./ProjectModal";
 import ProjectSidebar from "./ProjectSidebar";
 import { BLUR_DATA_URL } from "@/components/AnimatedSection";
 import EditableText from "@/components/EditableText";
+import { resolveAlt } from "@/lib/images";
 
 interface ImageAsset {
   url: string;
+  altText?: string;
 }
 
 interface Detail {
@@ -179,14 +181,14 @@ export default function ProjectPageClient({ project, prevProject, nextProject, i
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const sketchItems: ImageGridItem[]       = (project.sketches ?? []).filter((s) => s?.url).map((s, i) => ({ url: s.url, title: `Sketch ${i + 1}` }));
-  const coloredFlatItems: ImageGridItem[]  = (project.coloredFlats ?? []).filter((c) => c?.image?.url).map((c) => ({ url: c.image.url, title: c.title, description: c.description }));
-  const looksItems: ImageGridItem[]        = (project.looks ?? []).filter((l) => l?.image?.url).map((l, i) => ({ url: l.image.url, title: l.title || `Look ${i + 1}`, description: l.description }));
-  const detailItems: ImageGridItem[]       = (project.details ?? []).filter((d) => d?.image?.url).map((d) => ({ url: d.image.url, title: d.title, description: d.description }));
-  const patternItems: ImageGridItem[]      = (project.patterns ?? []).filter((p) => p?.url).map((p, i) => ({ url: p.url, title: `Pattern ${i + 1}` }));
-  const materialItems: ImageGridItem[]     = (project.materials ?? []).filter((m) => m?.image?.url).map((m) => ({ url: m.image.url, title: m.title, description: m.description }));
-  const techPackItems: ImageGridItem[]     = (project.techPacks ?? []).filter((t) => t?.image?.url).map((t, i) => ({ url: t.image.url, title: t.title, description: t.description }));
-  const finalProductItems: ImageGridItem[] = (project.finalProduct ?? []).filter((f) => f?.url).map((f, i) => ({ url: f.url, title: `Final Product ${i + 1}` }));
+  const sketchItems: ImageGridItem[]       = (project.sketches ?? []).filter((s) => s?.url).map((s, i) => ({ url: s.url, title: `Sketch ${i + 1}`, alt: resolveAlt(s.altText, `Sketch ${i + 1}`) }));
+  const coloredFlatItems: ImageGridItem[]  = (project.coloredFlats ?? []).filter((c) => c?.image?.url).map((c) => ({ url: c.image.url, title: c.title, description: c.description, alt: resolveAlt(c.image.altText, c.title) }));
+  const looksItems: ImageGridItem[]        = (project.looks ?? []).filter((l) => l?.image?.url).map((l, i) => ({ url: l.image.url, title: l.title || `Look ${i + 1}`, description: l.description, alt: resolveAlt(l.image.altText, l.title || `Look ${i + 1}`) }));
+  const detailItems: ImageGridItem[]       = (project.details ?? []).filter((d) => d?.image?.url).map((d) => ({ url: d.image.url, title: d.title, description: d.description, alt: resolveAlt(d.image.altText, d.title) }));
+  const patternItems: ImageGridItem[]      = (project.patterns ?? []).filter((p) => p?.url).map((p, i) => ({ url: p.url, title: `Pattern ${i + 1}`, alt: resolveAlt(p.altText, `Pattern ${i + 1}`) }));
+  const materialItems: ImageGridItem[]     = (project.materials ?? []).filter((m) => m?.image?.url).map((m) => ({ url: m.image.url, title: m.title, description: m.description, alt: resolveAlt(m.image.altText, m.title) }));
+  const techPackItems: ImageGridItem[]     = (project.techPacks ?? []).filter((t) => t?.image?.url).map((t, i) => ({ url: t.image.url, title: t.title, description: t.description, alt: resolveAlt(t.image.altText, t.title || `Tech Pack ${i + 1}`) }));
+  const finalProductItems: ImageGridItem[] = (project.finalProduct ?? []).filter((f) => f?.url).map((f, i) => ({ url: f.url, title: `Final Product ${i + 1}`, alt: resolveAlt(f.altText, `Final Product ${i + 1}`) }));
 
   const techPackInfo: TechPackInfo = project.techPackHeader;
 
@@ -250,13 +252,13 @@ export default function ProjectPageClient({ project, prevProject, nextProject, i
                   onClick={() => openModal(
                     project.digitalRendering.url,
                     "Digital Rendering",
-                    [{ url: project.digitalRendering.url, title: "Digital Rendering" }],
+                    [{ url: project.digitalRendering.url, title: "Digital Rendering", alt: resolveAlt(project.digitalRendering.altText, "Digital Rendering") }],
                     0
                   )}
                 >
                   <Image
                     src={project.digitalRendering.url}
-                    alt="Digital Rendering"
+                    alt={resolveAlt(project.digitalRendering.altText, "Digital Rendering")}
                     width={1600}
                     height={1200}
                     placeholder="blur"
@@ -282,16 +284,16 @@ export default function ProjectPageClient({ project, prevProject, nextProject, i
                     <div className={styles.flatSideBySide}>
                       <div className={styles.flat}>
                         <h3>Front View</h3>
-                        <Image src={project.frontFlat.url} alt="Front Flat" width={1000} height={1000}
-                               onClick={() => openModal(project.frontFlat.url, "Front Flat", [{ url: project.frontFlat.url, title: "Front Flat" }], 0)}
+                        <Image src={project.frontFlat.url} alt={resolveAlt(project.frontFlat.altText, "Front Flat")} width={1000} height={1000}
+                               onClick={() => openModal(project.frontFlat.url, "Front Flat", [{ url: project.frontFlat.url, title: "Front Flat", alt: resolveAlt(project.frontFlat.altText, "Front Flat") }], 0)}
                                placeholder="blur"
                                blurDataURL={BLUR_DATA_URL}
                         />
                       </div>
                       <div className={styles.flat}>
                         <h3>Back View</h3>
-                        <Image src={project.backFlat.url} alt="Back Flat" width={1000} height={1000}
-                               onClick={() => openModal(project.backFlat.url, "Back Flat", [{ url: project.backFlat.url, title: "Back Flat" }], 0)}
+                        <Image src={project.backFlat.url} alt={resolveAlt(project.backFlat.altText, "Back Flat")} width={1000} height={1000}
+                               onClick={() => openModal(project.backFlat.url, "Back Flat", [{ url: project.backFlat.url, title: "Back Flat", alt: resolveAlt(project.backFlat.altText, "Back Flat") }], 0)}
                                placeholder="blur"
                                blurDataURL={BLUR_DATA_URL}
                         />
@@ -301,24 +303,24 @@ export default function ProjectPageClient({ project, prevProject, nextProject, i
                     <div className={styles.flat}>
                       {activeFlat === "front" && project.frontFlat?.url && <>
                         <h3>Front View</h3>
-                        <Image src={project.frontFlat.url} alt="Front Flat" width={1000} height={1000}
-                               onClick={() => openModal(project.frontFlat.url, "Front Flat", [{ url: project.frontFlat.url, title: "Front Flat" }], 0)}
+                        <Image src={project.frontFlat.url} alt={resolveAlt(project.frontFlat.altText, "Front Flat")} width={1000} height={1000}
+                               onClick={() => openModal(project.frontFlat.url, "Front Flat", [{ url: project.frontFlat.url, title: "Front Flat", alt: resolveAlt(project.frontFlat.altText, "Front Flat") }], 0)}
                                placeholder="blur"
                                blurDataURL={BLUR_DATA_URL}
                         />
                       </>}
                       {activeFlat === "back" && project.backFlat?.url && <>
                         <h3>Back View</h3>
-                        <Image src={project.backFlat.url} alt="Back Flat" width={1000} height={1000}
-                               onClick={() => openModal(project.backFlat.url, "Back Flat", [{ url: project.backFlat.url, title: "Back Flat" }], 0)}
+                        <Image src={project.backFlat.url} alt={resolveAlt(project.backFlat.altText, "Back Flat")} width={1000} height={1000}
+                               onClick={() => openModal(project.backFlat.url, "Back Flat", [{ url: project.backFlat.url, title: "Back Flat", alt: resolveAlt(project.backFlat.altText, "Back Flat") }], 0)}
                                placeholder="blur"
                                blurDataURL={BLUR_DATA_URL}
                         />
                       </>}
                       {activeFlat === "side" && project.sideFlat?.url && <>
                         <h3>Side View</h3>
-                        <Image src={project.sideFlat.url} alt="Side Flat" width={1000} height={1000}
-                               onClick={() => openModal(project.sideFlat.url, "Side Flat", [{ url: project.sideFlat.url, title: "Side Flat" }], 0)}
+                        <Image src={project.sideFlat.url} alt={resolveAlt(project.sideFlat.altText, "Side Flat")} width={1000} height={1000}
+                               onClick={() => openModal(project.sideFlat.url, "Side Flat", [{ url: project.sideFlat.url, title: "Side Flat", alt: resolveAlt(project.sideFlat.altText, "Side Flat") }], 0)}
                                placeholder="blur"
                                blurDataURL={BLUR_DATA_URL}
                         />

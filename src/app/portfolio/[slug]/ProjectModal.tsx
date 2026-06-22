@@ -7,6 +7,7 @@ interface ImageGridItem {
   url: string;
   title: string;
   description?: string;
+  alt?: string;
 }
 
 interface ProjectModalProps {
@@ -66,7 +67,7 @@ export default function ProjectModal({ modal, modalVisible, closeModal, goNext, 
           )}
           <Image
             src={currentModalItem.url}
-            alt={currentModalItem.title}
+            alt={currentModalItem.alt ?? currentModalItem.title}
             width={1600}
             height={900}
           />

@@ -3,6 +3,7 @@ import Image from "next/image";
 import styles from "./Atelier.module.scss";
 import { AnimatedSection } from "@/components/AnimatedSection";
 import { cmsQuery } from "@/lib/cms";
+import { resolveAlt } from "@/lib/images";
 
 export const metadata: Metadata = {
   title: "Atelier"
@@ -20,6 +21,7 @@ const ATELIERS_QUERY = `
         description
         image {
           url
+          altText
         }
       }
     }
@@ -31,6 +33,7 @@ interface AtelierImageEntry {
   description: string;
   image: {
     url: string;
+    altText?: string;
   };
 }
 
@@ -91,7 +94,7 @@ export default async function Atelier() {
                             <div className={styles.imageWrap}>
                               <Image
                                 src={entry.image.url}
-                                alt={entry.title ?? atelier.title}
+                                alt={resolveAlt(entry.image.altText, entry.title ?? atelier.title)}
                                 width={0}
                                 height={0}
                                 sizes="(max-width: 860px) 90vw, 40vw"

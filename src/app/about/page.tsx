@@ -7,6 +7,7 @@ import { AnimatedSection } from "@/components/AnimatedSection";
 import { cmsQuery } from "@/lib/cms";
 import { isAuthed } from "@/lib/auth";
 import EditableText from "@/components/EditableText";
+import { resolveAlt } from "@/lib/images";
 
 export const metadata: Metadata = {
   title: "About"
@@ -22,6 +23,7 @@ const ABOUT_QUERY = `
       subtitle
       portrait {
         url
+        altText
       }
       description {
         raw
@@ -51,7 +53,7 @@ export default async function About() {
             <div className={styles.portraitWrap}>
               <Image
                 src={about.portrait.url}
-                alt={about.title}
+                alt={resolveAlt(about.portrait.altText, about.title)}
                 fill
                 priority
                 className={styles.portraitImage}

@@ -9,6 +9,7 @@ export interface ImageGridItem {
   title: string;
   subtitle?: string;
   description?: string;
+  alt?: string;
 }
 
 interface ImageGridProps {
@@ -32,7 +33,7 @@ export default function ImageGrid({ items, variant = "grid", onOpen }: ImageGrid
             <div className={styles.materialImage}>
               <Image
                 src={item.url}
-                alt={item.title}
+                alt={item.alt ?? item.title}
                 width={600}
                 height={600}
                 placeholder="blur"
@@ -60,7 +61,7 @@ export default function ImageGrid({ items, variant = "grid", onOpen }: ImageGrid
           >
             <Image
               src={item.url}
-              alt={item.title}
+              alt={item.alt ?? item.title}
               width={1200}
               height={1200}
               placeholder="blur"
@@ -84,7 +85,7 @@ export default function ImageGrid({ items, variant = "grid", onOpen }: ImageGrid
           >
             <Image
               src={item.url}
-              alt={item.title}
+              alt={item.alt ?? item.title}
               width={1000}
               height={1000}
               placeholder="blur"
@@ -141,7 +142,7 @@ export default function ImageGrid({ items, variant = "grid", onOpen }: ImageGrid
         >
           <Image
             src={selected.url}
-            alt={selected.title}
+            alt={selected.alt ?? selected.title}
             width={1600}
             height={2200}
             placeholder="blur"
@@ -163,7 +164,7 @@ export default function ImageGrid({ items, variant = "grid", onOpen }: ImageGrid
           >
             <Image
               src={item.url}
-              alt={item.title}
+              alt={item.alt ?? item.title}
               width={1000}
               height={1000}
               placeholder="blur"
@@ -187,7 +188,7 @@ export default function ImageGrid({ items, variant = "grid", onOpen }: ImageGrid
             <div className={styles.lookImage}>
               <Image
                 src={item.url}
-                alt={item.title}
+                alt={item.alt ?? item.title}
                 width={1000}
                 height={1200}
                 placeholder="blur"
@@ -219,7 +220,7 @@ export default function ImageGrid({ items, variant = "grid", onOpen }: ImageGrid
           {item.description && <p>{item.description}</p>}
           <Image
             src={item.url}
-            alt={item.title}
+            alt={item.alt ?? item.title}
             width={1000}
             height={1000}
             placeholder="blur"

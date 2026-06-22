@@ -20,24 +20,30 @@ async function getProject(slug: string) {
               description
               sketches {
                 url
+                altText
               }
               digitalRendering {
                 url
+                altText
               }
               frontFlat {
                 url
+                altText
               }
               backFlat {
                 url
+                altText
               }
               sideFlat {
                 url
+                altText
               }
               coloredFlats {
                 title
                 description
                 image {
                   url
+                  altText
                 }
               }
               details {
@@ -45,16 +51,19 @@ async function getProject(slug: string) {
                 description
                 image {
                   url
+                  altText
                 }
               }
               patterns {
                 url
+                altText
               }
               materials {
                 title
                 description
                 image {
                   url
+                  altText
                 }
               }
               techPackHeader
@@ -63,6 +72,7 @@ async function getProject(slug: string) {
                 description
                 image {
                   url
+                  altText
                 }
               }
               looks {
@@ -70,10 +80,12 @@ async function getProject(slug: string) {
                 description
                 image {
                   url
+                  altText
                 }
               }
               finalProduct {
                 url
+                altText
               }
             }
           }
