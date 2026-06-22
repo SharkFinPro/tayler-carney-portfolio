@@ -10,6 +10,7 @@ import { sanitizeBlocks, type Block } from "@/components/blocks/blocks";
 const EDITABLE_FIELDS: Record<string, string[]> = {
   Project: ["title", "description"],
   AboutPage: ["title", "subtitle"],
+  ContactPage: ["header", "subheader", "availabilityMessage"],
   SiteData: ["displayName", "focus", "email", "linkedInHandle", "instagramHandle"],
 };
 

@@ -6,6 +6,8 @@ import { faLinkedin, faInstagram } from "@fortawesome/free-brands-svg-icons";
 import getSiteData from "@/components/SiteData"
 import { AnimatedSection } from "@/components/AnimatedSection";
 import { cmsQuery } from "@/lib/cms";
+import { isAuthed } from "@/lib/auth";
+import EditableText from "@/components/EditableText";
 
 export const metadata: Metadata = {
   title: "Contact"
@@ -16,6 +18,7 @@ export const dynamic = "force-dynamic";
 const CONTACTPAGE_QUERY = `
   query ContactPage {
     contactPages {
+      id
       header
       subheader
       availabilityMessage
@@ -33,6 +36,8 @@ export default async function ContactPage() {
   const contactPage = await getContactPage();
 
   const siteData = await getSiteData();
+
+  const isAdmin = await isAuthed();
 
   const socials = [
     {
@@ -59,12 +64,24 @@ export default async function ContactPage() {
             <div className={styles.left}>
               <div className={styles.leftTop}>
                 <span className={styles.eyebrow}>Contact</span>
-                <h1 className={styles.headline}>{contactPage.header}</h1>
-                <p className={styles.subtext}>{contactPage.subheader}</p>
+                <h1 className={styles.headline}>
+                  <EditableText model="ContactPage" id={contactPage.id} field="header" value={contactPage.header} editable={isAdmin} floatEdit>
+                    {contactPage.header}
+                  </EditableText>
+                </h1>
+                <p className={styles.subtext}>
+                  <EditableText model="ContactPage" id={contactPage.id} field="subheader" value={contactPage.subheader} editable={isAdmin} multiline>
+                    {contactPage.subheader}
+                  </EditableText>
+                </p>
               </div>
               <div className={styles.availability}>
                 <span className={styles.availabilityDot} aria-hidden="true" />
-                <span className={styles.availabilityText}>{contactPage.availabilityMessage}</span>
+                <span className={styles.availabilityText}>
+                  <EditableText model="ContactPage" id={contactPage.id} field="availabilityMessage" value={contactPage.availabilityMessage} editable={isAdmin}>
+                    {contactPage.availabilityMessage}
+                  </EditableText>
+                </span>
               </div>
             </div>
 
@@ -80,7 +97,11 @@ export default async function ContactPage() {
                     <span className={styles.emailButtonArrow}>↗</span>
                   </div>
                 </a>
-                <span className={styles.emailAddress}>{siteData.email}</span>
+                <span className={styles.emailAddress}>
+                  <EditableText model="SiteData" id={siteData.id} field="email" value={siteData.email} editable={isAdmin}>
+                    {siteData.email}
+                  </EditableText>
+                </span>
               </div>
 
               <div className={styles.contactItem}>
