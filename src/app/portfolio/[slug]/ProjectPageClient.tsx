@@ -133,19 +133,6 @@ export default function ProjectPageClient({ project, prevProject, nextProject, i
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  if (editing) {
-    return (
-      <ProjectPageEditor
-        projectId={project.id}
-        initialBlocks={blocks}
-        onExit={(b) => {
-          setBlocks(b);
-          setEditing(false);
-        }}
-      />
-    );
-  }
-
   return (
     <>
       <ProjectModal
@@ -192,7 +179,7 @@ export default function ProjectPageClient({ project, prevProject, nextProject, i
               {isAdmin && (
                 <button
                   type="button"
-                  onClick={() => setEditing(true)}
+                  onClick={() => setEditing((e) => !e)}
                   style={{
                     marginTop: "1rem",
                     fontFamily: "var(--ff-sans)",
@@ -205,14 +192,22 @@ export default function ProjectPageClient({ project, prevProject, nextProject, i
                     cursor: "pointer",
                   }}
                 >
-                  Edit page layout
+                  {editing ? "Preview" : "Exit preview"}
                 </button>
               )}
             </motion.div>
 
-            {sectionBlocks.map((block) => (
-              <ProjectBlockSection key={block.id} block={block} onOpen={openModal} />
-            ))}
+            {editing ? (
+              <ProjectPageEditor
+                projectId={project.id}
+                initialBlocks={blocks}
+                onBlocksChange={setBlocks}
+              />
+            ) : (
+              sectionBlocks.map((block) => (
+                <ProjectBlockSection key={block.id} block={block} onOpen={openModal} />
+              ))
+            )}
 
             {/* Project Footer Navigation */}
             <motion.div

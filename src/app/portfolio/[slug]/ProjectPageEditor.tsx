@@ -19,7 +19,7 @@ import { updateBlockLayout } from "@/app/admin/contentActions";
 interface Props {
   projectId: string;
   initialBlocks: Block[];
-  onExit: (blocks: Block[]) => void;
+  onBlocksChange: (blocks: Block[]) => void;
 }
 
 const noop = () => {};
@@ -47,12 +47,14 @@ function blockSummary(b: Block): string {
   }
 }
 
-// Admin authoring surface for a project's block layout. Blocks are shown as
-// compact rows (uniform height → smooth reordering); editing a row expands its
-// form inline. Structural changes and commits persist through updateBlockLayout,
-// which returns the sanitized list we adopt. The full-page preview is the read
-// view (header + sidebar) reached via the Preview button.
-export default function ProjectPageEditor({ projectId, initialBlocks, onExit }: Props) {
+// Admin authoring surface for a project's block layout. Rendered in-place inside
+// the project page (header + sidebar stay visible) so authoring matches the
+// reader's view. Blocks are shown as compact rows (uniform height → smooth
+// reordering); editing a row expands its form inline. Structural changes and
+// commits persist through updateBlockLayout, which returns the sanitized list we
+// adopt; onBlocksChange keeps the parent's layout (sidebar sections, preview) in
+// sync. Toggling to the read view is handled by the parent's Preview button.
+export default function ProjectPageEditor({ projectId, initialBlocks, onBlocksChange }: Props) {
   const [blocks, setBlocks] = useState<Block[]>(initialBlocks);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Block | null>(null);
@@ -65,7 +67,8 @@ export default function ProjectPageEditor({ projectId, initialBlocks, onExit }: 
   const blocksRef = useRef(blocks);
   useEffect(() => {
     blocksRef.current = blocks;
-  }, [blocks]);
+    onBlocksChange(blocks);
+  }, [blocks, onBlocksChange]);
 
   async function persist(next: Block[]): Promise<{ ok: true } | { ok: false; error: string }> {
     setBlocks(next);
@@ -151,9 +154,6 @@ export default function ProjectPageEditor({ projectId, initialBlocks, onExit }: 
         ) : (
           <span className={styles.statusText} role="status" aria-live="polite">{saving ? "Saving…" : status}</span>
         )}
-        <button type="button" className={styles.doneBtn} onClick={() => onExit(blocksRef.current)}>
-          Preview
-        </button>
       </div>
 
       {/* Live region for keyboard reordering announcements. */}

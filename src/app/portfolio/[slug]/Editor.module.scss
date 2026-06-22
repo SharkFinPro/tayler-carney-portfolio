@@ -1,8 +1,6 @@
 .editorRoot {
   width: 100%;
-  max-width: var(--max-width);
-  margin: 0 auto;
-  padding: 2rem 1.5rem 6rem;
+  padding: 1rem 0 4rem;
   font-family: var(--ff-sans);
   color: var(--ink);
 }
@@ -18,23 +16,6 @@
 
 .statusText { color: var(--ink-muted); font-size: 0.9rem; margin-right: auto; }
 .statusError { color: #b3261e; font-size: 0.9rem; margin-right: auto; }
-
-.secondaryBtn,
-.doneBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.45rem 0.9rem;
-  font: inherit;
-  font-size: 0.9rem;
-  color: var(--ink);
-  background: var(--plate);
-  border: 1px solid var(--line-strong);
-  border-radius: 3px;
-  cursor: pointer;
-
-  &:disabled { opacity: 0.5; cursor: default; }
-}
 
 .empty {
   text-align: center;
