@@ -162,3 +162,10 @@
     border-color: var(--accent);
   }
 }
+
+.editFieldHint {
+  font-family: var(--ff-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+}

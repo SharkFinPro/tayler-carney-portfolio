@@ -21,15 +21,26 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-// Stagger children of .leftTop on load
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+// ── Admin edit toggle ────────────────────────────────────────────────────────
+
+.editToggle {
+  margin-bottom: 2rem;
+  font-family: var(--ff-sans);
+  font-size: 0.85rem;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  background: var(--accent);
+  color: var(--ink-inverse);
+  cursor: pointer;
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 1;   transform: scale(1); }
-  50%       { opacity: 0.5; transform: scale(0.85); }
+// When editing, the channels panel is shown standalone below the block editor
+// (rather than as the right column of the grid) so it spans the full width.
+.channelsStandalone {
+  margin-top: 3rem;
+  max-width: 520px;
+  border: 1px solid var(--line);
 }
 
 // ── Two-column layout ────────────────────────────────────────────────────────
@@ -45,138 +56,29 @@
   }
 }
 
-// ── Left — dark panel ────────────────────────────────────────────────────────
+// ── Left — dark block region (page intro, availability callout…) ─────────────
+// The dark surface + diagonal stripes match the original contact panel; the
+// blocks inside are themed for the dark context via `.contactDark` (in the block
+// stylesheet, so it can reach the hashed block classes).
 
 .left {
   background: var(--plate-dark);
   padding: 3rem;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 3rem;
+  gap: 2.5rem;
   background-image: repeating-linear-gradient(
-          -45deg,
-          transparent,
-          transparent 40px,
-          rgba(255, 255, 255, 0.015) 40px,
-          rgba(255, 255, 255, 0.015) 41px
+    -45deg,
+    transparent,
+    transparent 40px,
+    rgba(255, 255, 255, 0.015) 40px,
+    rgba(255, 255, 255, 0.015) 41px
   );
 
   @media (max-width: 768px) {
     padding: 2rem;
     gap: 2rem;
-    justify-content: flex-start;
   }
-}
-
-.leftTop {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-
-  // Stagger each direct child in on load
-  & > * {
-    animation: fadeIn 0.8s ease-out both;
-    will-change: opacity, transform;
-  }
-
-  & > *:nth-child(1) { animation-delay: 0.08s; }
-  & > *:nth-child(2) { animation-delay: 0.16s; }
-  & > *:nth-child(3) { animation-delay: 0.24s; }
-}
-
-.eyebrow {
-  font-family: var(--ff-mono);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-  color: var(--ink-inverse);
-  opacity: 0.4;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-
-  &::before {
-    content: '';
-    display: block;
-    width: 20px;
-    height: 1px;
-    background: rgba(255, 255, 255, 0.3);
-    flex-shrink: 0;
-  }
-}
-
-.headline {
-  font-family: var(--ff-serif);
-  font-size: clamp(28px, 3.5vw, 50px);
-  font-weight: 400;
-  letter-spacing: -0.025em;
-  line-height: 1.1;
-  color: var(--ink-inverse);
-}
-
-.subtext {
-  font-family: var(--ff-sans);
-  font-size: 13px;
-  color: var(--ink-inverse);
-  opacity: 0.55;
-  line-height: 1.75;
-  max-width: 34ch;
-}
-
-// Admin-only edit affordance (opens the shared edit modal)
-.editButton {
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-family: var(--ff-mono);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-  color: var(--ink-inverse);
-  background: none;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  padding: 0.55rem 0.875rem;
-  cursor: pointer;
-  transition: border-color 0.2s, opacity 0.2s;
-  opacity: 0.75;
-
-  &:hover {
-    opacity: 1;
-    border-color: rgba(255, 255, 255, 0.45);
-  }
-}
-
-// Availability badge
-.availability {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.625rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  padding: 0.6rem 0.875rem;
-  width: fit-content;
-  animation: fadeIn 0.5s cubic-bezier(0.25, 1, 0.5, 1) 0.4s both;
-}
-
-.availabilityDot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #7ecfa0;
-  flex-shrink: 0;
-  animation: pulse 2.5s ease-in-out infinite;
-}
-
-.availabilityText {
-  font-family: var(--ff-mono);
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-inverse);
-  opacity: 0.5;
 }
 
 // ── Right — light panel ──────────────────────────────────────────────────────

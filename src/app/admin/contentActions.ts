@@ -4,15 +4,14 @@ import { isAuthed } from "@/lib/auth";
 import { cmsMutate } from "@/lib/cms";
 import { sanitizeBlocks, type Block } from "@/components/blocks/blocks";
 import { sanitizeHome, type HomeContent } from "@/lib/home";
+import { sanitizeGlobal, type GlobalContent } from "@/lib/global";
+import { sanitizeSeo, type SeoContent } from "@/lib/seo";
 
 // Whitelist of inline-editable scalar/list fields, keyed by Hygraph model.
 // Model names are interpolated into the mutation string, so a value is only
 // ever used after it passes this check. Relations are NOT inline-editable.
 const EDITABLE_FIELDS: Record<string, string[]> = {
   Project: ["title", "description"],
-  AboutPage: ["title", "subtitle"],
-  ContactPage: ["header", "subheader", "availabilityMessage"],
-  SiteData: ["displayName", "focus", "email", "linkedInHandle", "instagramHandle"],
 };
 
 type Result = { ok: true } | { ok: false; error: string };
@@ -57,36 +56,41 @@ export async function updateContentField(
   return { ok: true };
 }
 
-// Site-wide singleton scalar fields. These are surfaced in multiple places
-// across the site (footer, contact, etc.), so they are edited from a dedicated
-// admin settings page rather than inline. The whitelist is reused from
-// EDITABLE_FIELDS.SiteData so there is a single source of truth.
-const SITE_SETTINGS_FIELDS = EDITABLE_FIELDS.SiteData;
+// Site-wide identity (display name, focus, email, social handles) lives in the
+// SiteData singleton's `global` JSON field — surfaced across the site (nav,
+// footer, contact). It is edited from the admin settings page and sanitized
+// server-side with the same validator the renderer uses. Returns the sanitized
+// value so the form can sync its state.
+type GlobalResult = { ok: true; global: GlobalContent } | { ok: false; error: string };
 
-export async function updateSiteSettings(
-  id: string,
-  values: Record<string, unknown>
-): Promise<Result> {
+export async function updateGlobal(id: string, rawGlobal: unknown): Promise<GlobalResult> {
   const denied = await requireAuth();
   if (denied) return denied;
 
-  const data: Record<string, string> = {};
-  for (const [field, value] of Object.entries(values)) {
-    if (!SITE_SETTINGS_FIELDS.includes(field)) {
-      return { ok: false, error: `Field "${field}" is not editable.` };
-    }
-    if (typeof value !== "string") {
-      return { ok: false, error: `Field "${field}" must be text.` };
-    }
-    data[field] = value.trim();
-  }
-
+  const global = sanitizeGlobal(rawGlobal);
   try {
-    await updateAndPublish("SiteData", id, data);
+    await updateAndPublish("SiteData", id, { global });
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Update failed." };
+    return { ok: false, error: e instanceof Error ? e.message : "Save failed." };
   }
-  return { ok: true };
+  return { ok: true, global };
+}
+
+// Site SEO metadata lives in the SiteData singleton's `seo` JSON field and drives
+// the root layout's generateMetadata(). Same sanitize-on-save contract as above.
+type SeoResult = { ok: true; seo: SeoContent } | { ok: false; error: string };
+
+export async function updateSeo(id: string, rawSeo: unknown): Promise<SeoResult> {
+  const denied = await requireAuth();
+  if (denied) return denied;
+
+  const seo = sanitizeSeo(rawSeo);
+  try {
+    await updateAndPublish("SiteData", id, { seo });
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Save failed." };
+  }
+  return { ok: true, seo };
 }
 
 // Persist the homepage content singleton (SiteData.home). The whole object is
@@ -111,7 +115,7 @@ export async function updateHome(id: string, rawHome: unknown): Promise<HomeResu
 // Whitelist of JSON block-layout fields, keyed by model.
 const BLOCK_LAYOUT_FIELDS: Record<string, string[]> = {
   Project: ["projectPage"],
-  SiteData: ["atelier"],
+  SiteData: ["atelier", "about", "contact"],
 };
 
 type BlockResult = { ok: true; blocks: Block[] } | { ok: false; error: string };

@@ -27,6 +27,9 @@ export type HomeContent = {
     subtext: string;
     primaryCta: HomeCta;
     secondaryCta: HomeCta;
+    // Labels on the hero's right-side data panel header ("TC / Archive" / "001").
+    dataHeading: string;
+    dataIndex: string;
     stats: HomeStat[];
   };
   archive: {
@@ -38,6 +41,8 @@ export type HomeContent = {
     imageUrl: string;
     imageAlt: string;
   };
+  // Heading above the "explore the site" navigation grid.
+  exploreTitle: string;
   destinations: HomeDestination[];
 };
 
@@ -51,6 +56,8 @@ export const DEFAULT_HOME: HomeContent = {
       "A portfolio of garments engineered with the precision of architecture. Documenting pattern-making, material research, and production from concept to final product.",
     primaryCta: { label: "View Portfolio", href: "/portfolio" },
     secondaryCta: { label: "Read About", href: "/about" },
+    dataHeading: "TC / Archive",
+    dataIndex: "001",
     stats: [
       { key: "Program", value: "Apparel Design" },
       { key: "Year", value: "2023 — 2027" },
@@ -68,6 +75,7 @@ export const DEFAULT_HOME: HomeContent = {
       "https://lh3.googleusercontent.com/aida-public/AB6AXuBDK47nqSrafWv-0jCRGsliMV0uXg05oyzhNOdBalBuF4YTAhah7yurIy9HyhR4Qpj0u12mINQKs4_2arv4gVC4Ub2goUe4ckiCEML9a4Et87U1fmNzU0GrtptSeyZqfgZv0pePbzmzaJRaTT5dinzM_NxxhXQLQ45pFjTCPBXyJc30zEsnKwbU-I7KCeL0eBPjsycYdRDvazN0INuxtHaBjFi-PG_MU3ZMIuVE29xiqXlwKHb8gymDAD9WZbEyI_bz7-0dUNvP1iU",
     imageAlt: "Archival garment on concrete pedestal",
   },
+  exploreTitle: "Explore the Site",
   destinations: [
     {
       ref: "Sec. 01",
@@ -156,6 +164,8 @@ export function sanitizeHome(raw: unknown): HomeContent {
       subtext: str(hero.subtext, d.hero.subtext),
       primaryCta: cta(hero.primaryCta, d.hero.primaryCta),
       secondaryCta: cta(hero.secondaryCta, d.hero.secondaryCta),
+      dataHeading: str(hero.dataHeading, d.hero.dataHeading),
+      dataIndex: str(hero.dataIndex, d.hero.dataIndex),
       stats,
     },
     archive: {
@@ -167,6 +177,7 @@ export function sanitizeHome(raw: unknown): HomeContent {
       imageUrl: str(archive.imageUrl, d.archive.imageUrl),
       imageAlt: str(archive.imageAlt, d.archive.imageAlt),
     },
+    exploreTitle: str(data.exploreTitle, d.exploreTitle),
     destinations,
   };
 }

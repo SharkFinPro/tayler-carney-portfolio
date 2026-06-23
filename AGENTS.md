@@ -32,13 +32,17 @@ The site has a lightweight, **database-free admin editor**: log in with an env-v
 Inline-editable scalar/list fields are whitelisted in `EDITABLE_FIELDS` in [contentActions.ts](src/app/admin/contentActions.ts):
 
 - `Project`: `title`, `description`
-- `AboutPage`: `title`, `subtitle`
-- `ContactPage`: `header`, `subheader`, `availabilityMessage`
-- `SiteData`: `displayName`, `focus`, `email`, `linkedInHandle`, `instagramHandle` (singleton — name/contact/socials)
 
-Model names are interpolated into the mutation string, so a value is only ever written after it passes this whitelist. Relations are **not** inline-editable. There is no `SiteConfig` entry and no site-wide toggles/featured/ordering — the **home page is hardcoded** (`pageData` in [page.tsx](src/app/(index)/page.tsx)), not CMS-driven.
+Model names are interpolated into the mutation string, so a value is only ever written after it passes this whitelist. Relations are **not** inline-editable.
 
-**Block-layout (JSON) fields** are whitelisted separately in `BLOCK_LAYOUT_FIELDS`: `Project.projectPage` (project case studies) and `SiteData.atelier` (the singleton Atelier page).
+**Singleton JSON fields** on the one `SiteData` entry hold the rest of the site content, each with a pure sanitize-on-save validator (`src/lib/*.ts`) reused on render and save, and a dedicated server action in [contentActions.ts](src/app/admin/contentActions.ts):
+
+- `home` ([lib/home.ts](src/lib/home.ts)) — homepage hero/archive/explore content + nav cards (`updateHome`)
+- `global` ([lib/global.ts](src/lib/global.ts)) — site identity: display name, focus/tagline, email, social handles. Surfaced in the nav, footer, and contact channels; edited on the admin **Settings** page (`updateGlobal`)
+- `seo` ([lib/seo.ts](src/lib/seo.ts)) — title/template, description, keywords, OpenGraph copy; drives the root layout `generateMetadata()`; edited on the admin **Settings** page (`updateSeo`)
+- `atelier`, `about`, `contact` — block layouts (see below)
+
+**Block-layout (JSON) fields** are whitelisted separately in `BLOCK_LAYOUT_FIELDS`: `Project.projectPage` (project case studies) and `SiteData.atelier` / `about` / `contact` (singleton page layouts).
 
 ## The block system
 

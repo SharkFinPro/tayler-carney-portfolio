@@ -1,19 +1,29 @@
 import { cmsQuery } from "@/lib/cms";
+import { sanitizeGlobal, type GlobalContent } from "@/lib/global";
+import { sanitizeSeo, type SeoContent } from "@/lib/seo";
 
 const SITEDATA_QUERY = `
   query SiteData {
     siteDatas {
       id
-      displayName
-      focus
-      email
-      linkedInHandle
-      instagramHandle
+      global
+      seo
     }
   }
 `;
 
-export default async function getSiteData() {
+export type SiteData = {
+  id: string;
+  global: GlobalContent;
+  seo: SeoContent;
+};
+
+export default async function getSiteData(): Promise<SiteData> {
   const data = await cmsQuery(SITEDATA_QUERY);
-  return data.siteDatas[0];
+  const entry = data?.siteDatas?.[0] ?? {};
+  return {
+    id: entry.id ?? "",
+    global: sanitizeGlobal(entry.global),
+    seo: sanitizeSeo(entry.seo),
+  };
 }

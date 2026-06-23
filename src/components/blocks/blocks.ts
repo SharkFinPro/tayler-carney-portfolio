@@ -22,6 +22,11 @@ export type RichTextAST = { children: unknown[] };
 
 export type ComparisonView = { label: string; image: ImageRef };
 export type SpecRow = { label: string; value: string };
+// A single entry in a `credentials` block. Flexible enough to cover both the
+// Education list (title = degree, meta = institution · years, description = notes)
+// and the Exhibitions list (term = year, title, description).
+export type CredentialEntry = { term?: string; title: string; meta?: string; description?: string };
+export type TagListTone = "light" | "dark";
 export type CalloutVariant = "quote" | "info" | "success" | "warning";
 export type ShowcaseLayout = "cards" | "grid";
 // "grid" — even masonry of equal images. "feature" — bold editorial layout that
@@ -38,7 +43,13 @@ export type BlockType =
   | "documentViewer"
   | "callout"
   | "split"
-  | "entry";
+  | "entry"
+  | "profileHero"
+  | "credentials"
+  | "tagList"
+  | "cta"
+  | "pageIntro"
+  | "columns";
 
 interface BaseBlock {
   id: string;
@@ -61,7 +72,20 @@ export type Block =
   | (BaseBlock & { type: "split"; left: Block; right: Block })
   // An editorial entry: a narrow text rail (auto-numbered index + heading +
   // prose) beside a captioned image grid. The signature atelier layout.
-  | (BaseBlock & { type: "entry"; content: RichTextAST; items: ImageItem[] });
+  | (BaseBlock & { type: "entry"; content: RichTextAST; items: ImageItem[] })
+  // A portrait + name/subtitle badge beside a bio. The About-page hero.
+  | (BaseBlock & { type: "profileHero"; image: ImageRef | null; name: string; subtitle: string; bio: RichTextAST })
+  // A labelled list of credential entries (education, exhibitions, awards…).
+  | (BaseBlock & { type: "credentials"; items: CredentialEntry[] })
+  // A labelled list of short tags/keywords (e.g. skills). `dark` is the inverted plate.
+  | (BaseBlock & { type: "tagList"; tone: TagListTone; tags: string[] })
+  // A call-to-action band: a headline (the block heading) and one button.
+  | (BaseBlock & { type: "cta"; buttonLabel: string; buttonHref: string })
+  // A page intro: a small eyebrow, a large heading, and a body paragraph.
+  | (BaseBlock & { type: "pageIntro"; eyebrow: string; body: RichTextAST })
+  // Container: lays 2–4 child blocks side-by-side in a responsive grid. Children
+  // are any non-container content block (no nested columns/splits/entries).
+  | (BaseBlock & { type: "columns"; items: Block[] });
 
 // ── Block metadata (palette + chrome) ─────────────────────────────────────
 
@@ -77,13 +101,26 @@ export const BLOCK_TYPES: BlockType[] = [
   "callout",
   "split",
   "entry",
+  "profileHero",
+  "credentials",
+  "tagList",
+  "cta",
+  "pageIntro",
+  "columns",
 ];
 
-// Block types that may be placed inside a split container. Splits can't nest,
-// and an `entry` is itself a two-column container, so both are excluded.
+// Container block types — these lay out other blocks and so can never be nested
+// inside one another.
+const CONTAINER_TYPES: BlockType[] = ["split", "entry", "columns"];
+
+// Block types that may be placed inside a split or columns container. Containers
+// can't nest, so they're excluded.
 export const CHILD_BLOCK_TYPES: BlockType[] = BLOCK_TYPES.filter(
-  (t) => t !== "split" && t !== "entry"
+  (t) => !CONTAINER_TYPES.includes(t)
 );
+
+// Block types offered inside a `columns` container (same constraint as split).
+export const COLUMN_CHILD_TYPES: BlockType[] = CHILD_BLOCK_TYPES;
 
 // Short label shown on the block row / palette / sidebar fallback.
 export const BLOCK_LABELS: Record<BlockType, string> = {
@@ -97,6 +134,12 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   callout: "Callout",
   split: "Split layout",
   entry: "Editorial entry",
+  profileHero: "Profile hero",
+  credentials: "Credentials list",
+  tagList: "Tag list",
+  cta: "Call to action",
+  pageIntro: "Page intro",
+  columns: "Columns",
 };
 
 // One-line descriptions shown in the editor's "add block" palette.
@@ -111,6 +154,12 @@ export const BLOCK_DESCRIPTIONS: Record<BlockType, string> = {
   callout: "A highlighted note or pull quote.",
   split: "Two blocks side-by-side (e.g. a specs table beside a document viewer).",
   entry: "A numbered text rail (heading + prose) beside a captioned image grid.",
+  profileHero: "A portrait with a name/title badge beside a bio.",
+  credentials: "A labelled list of entries — education, exhibitions, awards.",
+  tagList: "A labelled list of short tags or keywords (e.g. skills).",
+  cta: "A highlighted call-to-action band with a headline and a button.",
+  pageIntro: "A page intro — small eyebrow, large heading, and a short body.",
+  columns: "Two to four blocks laid out side-by-side in a responsive grid.",
 };
 
 // Whether the block row / section heading shows a count badge.
@@ -125,6 +174,12 @@ export const BLOCK_SHOW_COUNT: Record<BlockType, boolean> = {
   callout: false,
   split: false,
   entry: true,
+  profileHero: false,
+  credentials: true,
+  tagList: true,
+  cta: false,
+  pageIntro: false,
+  columns: false,
 };
 
 const DEFAULT_HEADINGS: Record<BlockType, string> = {
@@ -138,6 +193,12 @@ const DEFAULT_HEADINGS: Record<BlockType, string> = {
   callout: "",
   split: "",
   entry: "",
+  profileHero: "",
+  credentials: "",
+  tagList: "",
+  cta: "",
+  pageIntro: "",
+  columns: "",
 };
 
 export function newId(): string {
@@ -180,6 +241,19 @@ export function createEmptyBlock(type: BlockType): Block {
       };
     case "entry":
       return { id, type, heading, content: emptyRichText(), items: [] };
+    case "profileHero":
+      return { id, type, heading, image: null, name: "", subtitle: "", bio: emptyRichText() };
+    case "credentials":
+      return { id, type, heading, items: [] };
+    case "tagList":
+      return { id, type, heading, tone: "light", tags: [] };
+    case "cta":
+      return { id, type, heading, buttonLabel: "", buttonHref: "/" };
+    case "pageIntro":
+      return { id, type, heading, eyebrow: "", body: emptyRichText() };
+    case "columns":
+      // Default to a two-column layout of empty credential lists.
+      return { id, type, heading, items: [createEmptyBlock("credentials"), createEmptyBlock("credentials")] };
   }
 }
 
@@ -206,6 +280,18 @@ export function blockSummary(b: Block): string {
       return `${BLOCK_LABELS[b.left.type]} + ${BLOCK_LABELS[b.right.type]}`;
     case "entry":
       return `${b.items.length} image${b.items.length === 1 ? "" : "s"}`;
+    case "profileHero":
+      return b.name || "Profile";
+    case "credentials":
+      return `${b.items.length} entr${b.items.length === 1 ? "y" : "ies"}`;
+    case "tagList":
+      return `${b.tags.length} tag${b.tags.length === 1 ? "" : "s"}`;
+    case "cta":
+      return b.buttonLabel || b.heading || "Call to action";
+    case "pageIntro":
+      return b.heading || "Page intro";
+    case "columns":
+      return `${b.items.length} column${b.items.length === 1 ? "" : "s"}`;
   }
 }
 
@@ -264,6 +350,27 @@ function cleanRows(raw: unknown): SpecRow[] {
       return { label, value: typeof r.value === "string" ? r.value : str(r.value) ?? "" };
     })
     .filter((x): x is SpecRow => x !== null);
+}
+
+function cleanCredentialEntries(raw: unknown): CredentialEntry[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((v): CredentialEntry | null => {
+      if (!v || typeof v !== "object") return null;
+      const r = v as Record<string, unknown>;
+      const term = str(r.term);
+      const title = str(r.title);
+      const meta = str(r.meta);
+      const description = str(r.description);
+      if (!term && !title && !meta && !description) return null;
+      return { term, title: title ?? "", meta, description };
+    })
+    .filter((x): x is CredentialEntry => x !== null);
+}
+
+function cleanTags(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((v) => (typeof v === "string" ? v.trim() : "")).filter((s) => s.length > 0);
 }
 
 function cleanRichText(raw: unknown): RichTextAST {
@@ -333,9 +440,49 @@ function cleanBlock(raw: unknown): Block | null {
       return { id, type, heading, left: cleanChild(r.left), right: cleanChild(r.right) };
     case "entry":
       return { id, type, heading, content: cleanRichText(r.content), items: cleanItems(r.items) };
+    case "profileHero":
+      return {
+        id,
+        type,
+        heading,
+        image: cleanImageRef(r.image),
+        name: str(r.name) ?? "",
+        subtitle: str(r.subtitle) ?? "",
+        bio: cleanRichText(r.bio),
+      };
+    case "credentials":
+      return { id, type, heading, items: cleanCredentialEntries(r.items) };
+    case "tagList":
+      return { id, type, heading, tone: r.tone === "dark" ? "dark" : "light", tags: cleanTags(r.tags) };
+    case "cta":
+      return {
+        id,
+        type,
+        heading,
+        buttonLabel: str(r.buttonLabel) ?? "",
+        buttonHref: typeof r.buttonHref === "string" && isSafeUrl(r.buttonHref) ? r.buttonHref : "/",
+      };
+    case "pageIntro":
+      return { id, type, heading, eyebrow: str(r.eyebrow) ?? "", body: cleanRichText(r.body) };
+    case "columns":
+      return { id, type, heading, items: cleanColumnChildren(r.items) };
     default:
       return null;
   }
+}
+
+// Clean a columns container's children. Each must be a valid, non-container
+// block; containers (columns/split/entry) and invalid entries are dropped, and
+// the count is capped so a runaway array can't blow up the layout.
+function cleanColumnChildren(raw: unknown): Block[] {
+  if (!Array.isArray(raw)) return [];
+  const out: Block[] = [];
+  for (const c of raw) {
+    const b = cleanBlock(c);
+    if (b && !CONTAINER_TYPES.includes(b.type)) out.push(b);
+    if (out.length >= 4) break;
+  }
+  return out;
 }
 
 // Clean a split's child. Children must be a valid, non-split block; anything
@@ -383,6 +530,18 @@ export function blockHasData(b: Block): boolean {
       return blockHasData(b.left) || blockHasData(b.right);
     case "entry":
       return b.heading.trim().length > 0 || richTextHasContent(b.content) || b.items.length > 0;
+    case "profileHero":
+      return !!b.image || b.name.trim().length > 0 || b.subtitle.trim().length > 0 || richTextHasContent(b.bio);
+    case "credentials":
+      return b.items.length > 0;
+    case "tagList":
+      return b.tags.length > 0;
+    case "cta":
+      return b.heading.trim().length > 0 || b.buttonLabel.trim().length > 0;
+    case "pageIntro":
+      return b.heading.trim().length > 0 || b.eyebrow.trim().length > 0 || richTextHasContent(b.body);
+    case "columns":
+      return b.items.some(blockHasData);
   }
 }
 

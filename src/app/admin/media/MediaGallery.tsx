@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -93,12 +93,16 @@ function Preview({ asset }: { asset: MediaAsset }) {
   );
 }
 
+// How long (ms) the pointer must rest on a card before selection mode engages.
+const LONG_PRESS_MS = 450;
+
 function MediaCard({
   asset,
   selected,
   selectionMode,
   compact,
   onToggleSelect,
+  onLongPress,
   onStatusChange,
   onRequestDelete,
   onPatch,
@@ -108,6 +112,7 @@ function MediaCard({
   selectionMode: boolean;
   compact: boolean;
   onToggleSelect: (id: string) => void;
+  onLongPress: (id: string) => void;
   onStatusChange: (id: string, status: MediaAsset["status"]) => void;
   onRequestDelete: (ids: string[]) => void;
   onPatch: (id: string, patch: Partial<MediaAsset>) => void;
@@ -116,6 +121,43 @@ function MediaCard({
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState(asset.title ?? "");
   const [altText, setAltText] = useState(asset.altText ?? "");
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // A long-press engages selection on pointer-down; swallow the click that
+  // fires on the following pointer-up so it doesn't immediately toggle back off.
+  const suppressClick = useRef(false);
+
+  function startLongPress() {
+    cancelLongPress();
+    longPressTimer.current = setTimeout(() => {
+      suppressClick.current = true;
+      onLongPress(asset.id);
+    }, LONG_PRESS_MS);
+  }
+
+  function cancelLongPress() {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }
+
+  // In selection mode, a click anywhere on the card toggles it — except on the
+  // interactive controls (buttons, inputs, the checkbox itself).
+  function handleCardClick(e: React.MouseEvent) {
+    if (suppressClick.current) {
+      suppressClick.current = false;
+      return;
+    }
+    if (!selectionMode) return;
+    if (
+      (e.target as HTMLElement).closest(
+        "button, input, label, a, textarea, [contenteditable='true']"
+      )
+    ) {
+      return;
+    }
+    onToggleSelect(asset.id);
+  }
 
   const isDraft = asset.status === "draft";
   const displayName = asset.title?.trim() || baseName(asset.fileName);
@@ -140,8 +182,18 @@ function MediaCard({
   }
 
   return (
-    <li className={`${styles.card} ${isDraft ? styles.cardDraft : ""} ${selected ? styles.cardSelected : ""}`}>
-      <div className={styles.thumb}>
+    <li
+      className={`${styles.card} ${isDraft ? styles.cardDraft : ""} ${selected ? styles.cardSelected : ""} ${selectionMode ? styles.cardSelectable : ""}`}
+      onClick={handleCardClick}
+    >
+      <div
+        className={styles.thumb}
+        onPointerDown={selectionMode ? undefined : startLongPress}
+        onPointerUp={cancelLongPress}
+        onPointerLeave={cancelLongPress}
+        onPointerCancel={cancelLongPress}
+        onContextMenu={selectionMode ? undefined : (e) => e.preventDefault()}
+      >
         {selectionMode && (
           <label className={styles.selectCheckbox}>
             <input type="checkbox" checked={selected} onChange={() => onToggleSelect(asset.id)} aria-label={`Select ${displayName}`} />
@@ -254,8 +306,15 @@ export default function MediaGallery({ initialAssets }: { initialAssets: MediaAs
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
+      // Leaving selection mode once nothing is selected keeps the grid clean.
+      if (next.size === 0) setSelectionMode(false);
       return next;
     });
+  }
+  // A long-press on any card turns on selection mode and selects that card.
+  function startSelection(id: string) {
+    setSelectionMode(true);
+    setSelected((prev) => new Set(prev).add(id));
   }
   function clearSelection() {
     setSelected(new Set());
@@ -401,6 +460,7 @@ export default function MediaGallery({ initialAssets }: { initialAssets: MediaAs
               selectionMode={selectionMode}
               compact={hideMetadata}
               onToggleSelect={toggleSelect}
+              onLongPress={startSelection}
               onStatusChange={setStatus}
               onRequestDelete={setPendingDelete}
               onPatch={patchAsset}

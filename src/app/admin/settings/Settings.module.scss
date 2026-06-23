@@ -1,8 +1,26 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  max-width: 520px;
+  gap: 1.35rem;
+  max-width: 620px;
+  padding: 1.75rem;
+  background: var(--plate);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 1px 2px var(--shadow);
+
+  & + & {
+    margin-top: 1.5rem;
+  }
+}
+
+.sectionTitle {
+  font-family: var(--ff-serif);
+  font-size: 1.25rem;
+  color: var(--ink);
+  margin: 0;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
 }
 
 .field {
@@ -14,28 +32,37 @@
 .label {
   font-family: var(--ff-sans);
   font-size: 0.9rem;
+  font-weight: 500;
   color: var(--ink);
 }
 
 .hint {
   font-family: var(--ff-sans);
   font-size: 0.78rem;
+  line-height: 1.45;
   color: var(--ink-muted);
 }
 
 .input {
-  margin-top: 0.15rem;
+  margin-top: 0.25rem;
   font-family: var(--ff-mono);
   font-size: 0.92rem;
   padding: 0.6rem 0.75rem;
   border: 1px solid var(--line);
-  border-radius: 3px;
+  border-radius: 7px;
   background: var(--canvas);
   color: var(--ink);
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
+
+  &:hover {
+    border-color: var(--line-strong);
+  }
 
   &:focus {
     outline: none;
     border-color: var(--accent);
+    background: var(--plate);
+    box-shadow: 0 0 0 3px var(--frame);
   }
 }
 
@@ -43,32 +70,50 @@
   display: flex;
   align-items: center;
   gap: 1rem;
+  margin-top: 0.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line);
 }
 
 .button {
   font-family: var(--ff-sans);
   font-size: 0.9rem;
-  padding: 0.6rem 1.2rem;
-  border: none;
-  border-radius: 3px;
+  font-weight: 500;
+  padding: 0.6rem 1.4rem;
+  border: 1px solid var(--accent);
+  border-radius: 7px;
   background: var(--accent);
   color: var(--ink-inverse);
   cursor: pointer;
+  transition: filter 0.18s ease, transform 0.12s ease, opacity 0.18s ease;
+
+  &:hover:not(:disabled) {
+    filter: brightness(1.12);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.97);
+  }
 
   &:disabled {
-    opacity: 0.5;
+    opacity: 0.45;
     cursor: default;
   }
 }
 
-.success {
+.success,
+.error {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   font-family: var(--ff-sans);
   font-size: 0.85rem;
+}
+
+.success {
   color: #1a7f37;
 }
 
 .error {
-  font-family: var(--ff-sans);
-  font-size: 0.85rem;
   color: #b3261e;
 }

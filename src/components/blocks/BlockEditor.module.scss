@@ -205,6 +205,76 @@
   background: var(--plate-muted);
 }
 
+// ── Collapsible column card (columns block editor) ────────────────────────
+// Each column collapses to a compact header so a multi-column layout doesn't
+// stack several nested tables open at once.
+.columnCard {
+  border: 1px solid var(--line-strong);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  background: var(--plate-muted);
+  overflow: hidden;
+}
+
+// The expanded column gets a stronger accent presence so it's obvious which
+// one you're editing among the collapsed siblings.
+.columnCardOpen {
+  border-color: var(--accent);
+}
+
+.columnHead {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+}
+
+.columnCardOpen .columnHead {
+  background: var(--frame);
+}
+
+.columnToggle {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.3rem 0.2rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+
+  .blockSummary {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.columnChevron {
+  color: var(--ink-muted);
+  font-size: 0.7rem;
+  flex: 0 0 auto;
+}
+
+// On the open column, accent the chevron + the "Column N" label so the colour
+// ties the header to its accent rail.
+.columnCardOpen {
+  .columnChevron { color: var(--accent); }
+  .columnToggle .fieldLabel { color: var(--accent); }
+}
+
+.columnBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  border-top: 1px solid var(--line);
+  background: var(--canvas);
+}
+
 .row {
   display: flex;
   gap: 0.6rem;

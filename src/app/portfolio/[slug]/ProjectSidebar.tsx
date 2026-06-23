@@ -24,6 +24,7 @@ export default function ProjectSidebar({ projectTitle, activeSection, setActiveS
           <button
             key={id}
             className={`${styles.sidebarItem} ${activeSection === id ? styles.sidebarItemActive : ""}`}
+            aria-current={activeSection === id ? "true" : undefined}
             onClick={() => scrollTo(id)}
           >
             <span className={styles.sidebarDot} />

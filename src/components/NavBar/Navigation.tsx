@@ -47,6 +47,7 @@ export default function Navigation() {
         <Link
           key={item.label}
           href={item.path}
+          aria-current={pathname === item.path ? "page" : undefined}
           className={`${styles.nav_item} ${pathname === item.path ? styles.active : ""}`}
         >
           <span>{item.label}</span>
@@ -70,6 +71,7 @@ export default function Navigation() {
             <Link
               key={item.label}
               href={item.path}
+              aria-current={pathname === item.path ? "page" : undefined}
               className={`${styles.dropdownItem} ${pathname === item.path ? styles.active : ""}`}
               onClick={toggleDropdown}
             >

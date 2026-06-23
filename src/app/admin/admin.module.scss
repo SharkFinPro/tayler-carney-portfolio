@@ -1,13 +1,170 @@
-.wrap {
-  max-width: 880px;
+// ── Admin shell ──────────────────────────────────────────────────────────────
+
+.shell {
+  min-height: 100vh;
+  background:
+    radial-gradient(120% 80% at 50% -10%, var(--canvas-soft) 0%, var(--canvas) 60%);
+  font-family: var(--ff-sans);
+  color: var(--ink);
+}
+
+.shellBody {
+  // Bottom padding clears the fixed AdminBar pinned to the viewport bottom.
+  padding-bottom: 4rem;
+}
+
+// ── Section navigation ───────────────────────────────────────────────────────
+
+.nav {
+  position: sticky;
+  // Tuck just beneath the public NavBar, which is sticky at the very top.
+  top: var(--navbar-height);
+  z-index: 50;
+  background: color-mix(in srgb, var(--plate) 88%, transparent);
+  backdrop-filter: saturate(1.2) blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+
+.navInner {
+  max-width: 1080px;
   margin: 0 auto;
-  padding: 3rem 1.5rem 7rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.7rem 1.5rem;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.brandMark {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 7px;
+  background: var(--accent);
+  color: var(--ink-inverse);
+  font-family: var(--ff-serif);
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+}
+
+.brandText {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+  font-family: var(--ff-serif);
+  font-size: 0.98rem;
+}
+
+.brandSub {
+  font-family: var(--ff-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-top: 0.15rem;
+}
+
+.navLinks {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-right: auto;
+  padding-left: 0.5rem;
+}
+
+.navLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: 7px;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  text-decoration: none;
+  transition: background-color 0.16s ease, color 0.16s ease;
+
+  &:hover {
+    background: var(--plate-muted);
+    color: var(--ink);
+  }
+}
+
+.navIcon {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+.navLinkActive {
+  background: var(--accent);
+  color: var(--ink-inverse);
+
+  &:hover {
+    background: var(--accent);
+    color: var(--ink-inverse);
+  }
+
+  .navIcon {
+    opacity: 1;
+  }
+}
+
+.viewSite {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  text-decoration: none;
+  padding: 0.4rem 0.2rem;
+
+  &:hover {
+    color: var(--accent);
+  }
+}
+
+.viewSiteIcon {
+  font-size: 0.72rem;
+}
+
+// Collapse the section labels on narrow screens, keeping the icons.
+@media (max-width: 640px) {
+  .navInner {
+    gap: 0.75rem;
+    padding: 0.6rem 1rem;
+  }
+  .brandText {
+    display: none;
+  }
+  .navLink {
+    padding: 0.45rem 0.55rem;
+    font-size: 0;
+    gap: 0;
+  }
+  .navIcon {
+    font-size: 0.95rem;
+  }
+}
+
+// ── Page scaffold ────────────────────────────────────────────────────────────
+
+.wrap {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 2.75rem 1.5rem 5rem;
   font-family: var(--ff-sans);
   color: var(--ink);
 }
 
 .header {
-  margin-bottom: 2rem;
+  margin-bottom: 2.25rem;
 }
 
 .eyebrow {
@@ -27,44 +184,140 @@
 
 .intro {
   color: var(--ink-soft);
-  max-width: 52ch;
+  max-width: 58ch;
+  line-height: 1.6;
 }
+
+// ── Dashboard cards ──────────────────────────────────────────────────────────
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(252px, 1fr));
+  gap: 1.1rem;
 }
 
 .panel {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 0.55rem;
   padding: 1.5rem;
   background: var(--plate);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 12px;
+  text-decoration: none;
+  color: inherit;
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+
+  // Accent hairline that slides in along the top edge on hover.
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.25s ease;
+  }
+
+  &:hover {
+    border-color: var(--line-strong);
+    box-shadow: 0 12px 30px var(--shadow);
+    transform: translateY(-3px);
+
+    &::after {
+      transform: scaleX(1);
+    }
+
+    .panelArrow {
+      transform: translateX(3px);
+      color: var(--accent);
+    }
+  }
+}
+
+.panelIcon {
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  margin-bottom: 0.35rem;
+  border-radius: 10px;
+  background: var(--plate-muted);
+  color: var(--accent);
+  font-size: 1.05rem;
 }
 
 .panelIndex {
   font-family: var(--ff-mono);
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--ink-muted);
 }
 
 .panelTitle {
   font-family: var(--ff-serif);
-  font-size: 1.25rem;
+  font-size: 1.3rem;
   margin: 0;
 }
 
 .panelBody {
   font-size: 0.88rem;
+  line-height: 1.55;
   color: var(--ink-muted);
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.6rem;
 }
 
+.panelArrow {
+  margin-top: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+// Session panel renders a sign-out form rather than acting as a link.
+.panelStatic {
+  cursor: default;
+
+  &:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: var(--line);
+
+    &::after {
+      transform: scaleX(0);
+    }
+  }
+}
+
+.logout {
+  align-self: flex-start;
+  margin-top: auto;
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.5rem 1.1rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  background: var(--plate);
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+
+  &:hover {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--ink-inverse);
+  }
+}
+
+// Generic inline link (used in settings header, etc.)
 .link {
   align-self: flex-start;
   font-size: 0.9rem;
@@ -75,21 +328,5 @@
 
   &:hover {
     color: var(--ink);
-  }
-}
-
-.logout {
-  align-self: flex-start;
-  font: inherit;
-  font-size: 0.85rem;
-  padding: 0.5rem 1.1rem;
-  border: 1px solid var(--line-strong);
-  border-radius: 4px;
-  background: var(--plate);
-  color: var(--ink);
-  cursor: pointer;
-
-  &:hover {
-    border-color: var(--accent);
   }
 }

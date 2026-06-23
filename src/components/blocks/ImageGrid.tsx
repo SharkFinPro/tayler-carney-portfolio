@@ -2,6 +2,7 @@
 import Image from "next/image";
 import styles from "./BlockSection.module.scss";
 import { BLUR_DATA_URL } from "@/components/AnimatedSection";
+import { clickableProps } from "@/lib/a11y";
 
 export interface ImageGridItem {
   url: string;
@@ -30,7 +31,11 @@ export default function ImageGrid({ items, variant, onOpen }: ImageGridProps) {
     return (
       <div className={styles.featureContainer}>
         {items.map((item, i) => (
-          <div key={i} className={styles.featureItem} onClick={() => onOpen(item.url, item.title, items, i)}>
+          <div
+            key={i}
+            className={styles.featureItem}
+            {...clickableProps(() => onOpen(item.url, item.title, items, i), `View ${item.title}`)}
+          >
             <Image
               src={item.url}
               alt={item.alt ?? item.title}
@@ -49,7 +54,11 @@ export default function ImageGrid({ items, variant, onOpen }: ImageGridProps) {
     return (
       <div className={styles.cardsContainer}>
         {items.map((item, i) => (
-          <div key={i} className={styles.card} onClick={() => onOpen(item.url, item.title, items, i)}>
+          <div
+            key={i}
+            className={styles.card}
+            {...clickableProps(() => onOpen(item.url, item.title, items, i), `View ${item.title}`)}
+          >
             <div className={styles.cardImage}>
               <Image
                 src={item.url}
@@ -76,7 +85,11 @@ export default function ImageGrid({ items, variant, onOpen }: ImageGridProps) {
     return (
       <div className={styles.gridContainer}>
         {items.map((item, i) => (
-          <div key={i} className={styles.gridCard} onClick={() => onOpen(item.url, item.title, items, i)}>
+          <div
+            key={i}
+            className={styles.gridCard}
+            {...clickableProps(() => onOpen(item.url, item.title, items, i), `View ${item.title}`)}
+          >
             {item.title && <h3>{item.title}</h3>}
             {item.description && <p>{item.description}</p>}
             <Image
@@ -97,7 +110,11 @@ export default function ImageGrid({ items, variant, onOpen }: ImageGridProps) {
   return (
     <div className={styles.galleryContainer}>
       {items.map((item, i) => (
-        <div key={i} className={styles.galleryItem} onClick={() => onOpen(item.url, item.title, items, i)}>
+        <div
+          key={i}
+          className={styles.galleryItem}
+          {...clickableProps(() => onOpen(item.url, item.title, items, i), `View ${item.title}`)}
+        >
           <Image
             src={item.url}
             alt={item.alt ?? item.title}
