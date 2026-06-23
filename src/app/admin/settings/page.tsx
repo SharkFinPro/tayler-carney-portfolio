@@ -1,5 +1,4 @@
 import { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { isAuthed } from "@/lib/auth";
 import getSiteData from "@/components/SiteData";
@@ -28,9 +27,6 @@ export default async function SiteSettings() {
           social links, and search/social previews), so they&apos;re edited here rather
           than inline.
         </p>
-        <Link href="/admin" className={styles.link}>
-          ← Back to Admin
-        </Link>
       </div>
 
       <SettingsForm id={id} initialGlobal={global} initialSeo={seo} />
