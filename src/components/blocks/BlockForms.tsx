@@ -9,6 +9,7 @@ import {
   BLOCK_LABELS,
   CHILD_BLOCK_TYPES,
   COLUMN_CHILD_TYPES,
+  blockSummary,
   createEmptyBlock,
   type Block,
   type BlockType,
@@ -499,38 +500,67 @@ function StringList({ value, onChange, addLabel }: { value: string[]; onChange: 
 // A columns container's children: an add/remove/reorder list, each child edited
 // with its own type picker + form (reusing ChildEditor, restricted to the
 // non-container column child types).
+//
+// Columns are collapsible (accordion): each shows a compact header — column
+// number, block type, and a one-line content summary — and only the expanded
+// one reveals its full form. Without this, every column's nested table (e.g. a
+// credentials entry list) is open at once, stacking bordered boxes into an
+// unreadable wall. Defaults to the first column open.
 function ColumnsList({ value, onChange }: { value: Block[]; onChange: (v: Block[]) => void }) {
+  const [openId, setOpenId] = useState<string | null>(value[0]?.id ?? null);
   const update = (i: number, child: Block | null) => {
     const next = [...value];
     if (child === null) next.splice(i, 1);
     else next[i] = child;
     onChange(next);
   };
+  const addColumn = () => {
+    const child = createEmptyBlock("credentials");
+    onChange([...value, child]);
+    setOpenId(child.id); // open the new column so it's ready to edit
+  };
   return (
     <div className={styles.subGroup}>
-      {value.map((child, i) => (
-        <div key={child.id} className={styles.subGroup}>
-          <div className={styles.row}>
-            <span className={styles.fieldLabel}>Column {i + 1}</span>
-            <ReorderControls index={i} count={value.length} onMove={(to) => onChange(move(value, i, to))} />
-            <button
-              type="button"
-              className={styles.iconBtn}
-              onClick={() => update(i, null)}
-              disabled={value.length <= 1}
-              aria-label={`Remove column ${i + 1}`}
-            >
-              Remove
-            </button>
+      {value.map((child, i) => {
+        const open = openId === child.id;
+        return (
+          <div key={child.id} className={`${styles.columnCard} ${open ? styles.columnCardOpen : ""}`}>
+            <div className={styles.columnHead}>
+              <button
+                type="button"
+                className={styles.columnToggle}
+                onClick={() => setOpenId(open ? null : child.id)}
+                aria-expanded={open}
+              >
+                <span className={styles.columnChevron} aria-hidden="true">{open ? "▾" : "▸"}</span>
+                <span className={styles.fieldLabel}>Column {i + 1}</span>
+                <span className={styles.blockTag}>{BLOCK_LABELS[child.type]}</span>
+                <span className={styles.blockSummary}>{blockSummary(child)}</span>
+              </button>
+              <ReorderControls index={i} count={value.length} onMove={(to) => onChange(move(value, i, to))} />
+              <button
+                type="button"
+                className={styles.iconBtn}
+                onClick={() => update(i, null)}
+                disabled={value.length <= 1}
+                aria-label={`Remove column ${i + 1}`}
+              >
+                Remove
+              </button>
+            </div>
+            {open && (
+              <div className={styles.columnBody}>
+                <ChildEditor block={child} onChange={(b) => update(i, b)} types={COLUMN_CHILD_TYPES} />
+              </div>
+            )}
           </div>
-          <ChildEditor block={child} onChange={(b) => update(i, b)} types={COLUMN_CHILD_TYPES} />
-        </div>
-      ))}
+        );
+      })}
       <div className={styles.addRow}>
         <button
           type="button"
           className={styles.iconBtn}
-          onClick={() => onChange([...value, createEmptyBlock("credentials")])}
+          onClick={addColumn}
           disabled={value.length >= 4}
         >
           + Add column
