@@ -13,7 +13,7 @@ import HeroEditor from "./HeroEditor";
 import ArchiveEditor from "./ArchiveEditor";
 import CardEditor from "./CardEditor";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import { newId } from "@/components/EditModal";
+import EditModal, { fieldStyles as f, newId } from "@/components/EditModal";
 import { updateHome } from "@/app/admin/contentActions";
 import type { HomeContent, HomeDestination } from "@/lib/home";
 
@@ -42,23 +42,28 @@ export default function HomePageClient({ siteId, home: initial, isAdmin = false 
   // independent of the hero/archive copy.
   const [hero, setHero] = useState(initial.hero);
   const [archive, setArchive] = useState(initial.archive);
+  const [exploreTitle, setExploreTitle] = useState(initial.exploreTitle);
   const [cards, setCards] = useState<CardRow[]>(() => initial.destinations.map(withId));
 
   // Latest values for closures that outlive a render (drag commit, editText).
   const heroRef = useRef(hero);
   const archiveRef = useRef(archive);
+  const exploreTitleRef = useRef(exploreTitle);
   const cardsRef = useRef(cards);
   heroRef.current = hero;
   archiveRef.current = archive;
+  exploreTitleRef.current = exploreTitle;
   cardsRef.current = cards;
 
   useEffect(() => {
     setHero(initial.hero);
     setArchive(initial.archive);
+    setExploreTitle(initial.exploreTitle);
     setCards(initial.destinations.map(withId));
   }, [initial]);
 
-  const [editor, setEditor] = useState<null | "hero" | "archive">(null);
+  const [editor, setEditor] = useState<null | "hero" | "archive" | "explore">(null);
+  const [exploreDraft, setExploreDraft] = useState("");
   const [cardEditor, setCardEditor] = useState<CardEditState | null>(null);
   const [cardToDelete, setCardToDelete] = useState<string | null>(null);
 
@@ -69,6 +74,7 @@ export default function HomePageClient({ siteId, home: initial, isAdmin = false 
     const next: HomeContent = { ...input, destinations: normalize(input.destinations) };
     setHero(next.hero);
     setArchive(next.archive);
+    setExploreTitle(next.exploreTitle);
     setCards(next.destinations.map(withId));
     const res = await updateHome(siteId, next);
     if ("error" in res) {
@@ -77,6 +83,7 @@ export default function HomePageClient({ siteId, home: initial, isAdmin = false 
     }
     setHero(res.home.hero);
     setArchive(res.home.archive);
+    setExploreTitle(res.home.exploreTitle);
     setCards(res.home.destinations.map(withId));
     return null;
   }
@@ -85,6 +92,7 @@ export default function HomePageClient({ siteId, home: initial, isAdmin = false 
     return {
       hero: over.hero ?? heroRef.current,
       archive: over.archive ?? archiveRef.current,
+      exploreTitle: over.exploreTitle ?? exploreTitleRef.current,
       destinations: over.destinations ?? cardsRef.current.map(stripId),
     };
   }
@@ -221,8 +229,8 @@ export default function HomePageClient({ siteId, home: initial, isAdmin = false 
 
             <div className={styles.heroRight}>
               <div className={styles.heroDataHeader}>
-                <span>TC / Archive</span>
-                <span>001</span>
+                <span>{hero.dataHeading}</span>
+                <span>{hero.dataIndex}</span>
               </div>
               {hero.stats.map((stat, i) => (
                 <div key={`${stat.key}-${i}`} className={styles.heroDataRow}>
@@ -272,8 +280,20 @@ export default function HomePageClient({ siteId, home: initial, isAdmin = false 
         <section className={styles.navSection}>
           <div className={styles.navSectionInner}>
             <div className={styles.navSectionHeader}>
-              <h3 className={styles.navSectionTitle}>Explore the Site</h3>
+              <h3 className={styles.navSectionTitle}>{exploreTitle}</h3>
               <span className={styles.navSectionMeta}>Index: {cards.length} Sections</span>
+              {isAdmin && (
+                <button
+                  type="button"
+                  className={styles.editSectionBtn}
+                  onClick={() => {
+                    setExploreDraft(exploreTitleRef.current);
+                    setEditor("explore");
+                  }}
+                >
+                  <FontAwesomeIcon icon={faPen} /> Edit heading
+                </button>
+              )}
             </div>
 
             {isAdmin ? (
@@ -336,6 +356,23 @@ export default function HomePageClient({ siteId, home: initial, isAdmin = false 
           onClose={() => setEditor(null)}
           onSave={(nextArchive) => persist(buildHome({ archive: nextArchive }))}
         />
+      )}
+
+      {editor === "explore" && (
+        <EditModal
+          title="Edit heading"
+          onClose={() => setEditor(null)}
+          onSave={() => persist(buildHome({ exploreTitle: exploreDraft }))}
+        >
+          <label className={f.formField}>
+            <span className={f.editFieldLabel}>Heading</span>
+            <input
+              className={f.editInput}
+              value={exploreDraft}
+              onChange={(e) => setExploreDraft(e.target.value)}
+            />
+          </label>
+        </EditModal>
       )}
 
       {cardEditor && (

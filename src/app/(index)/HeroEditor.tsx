@@ -30,6 +30,8 @@ export default function HeroEditor({ initial, onClose, onSave }: HeroEditorProps
   const [primaryHref, setPrimaryHref] = useState(initial.primaryCta.href);
   const [secondaryLabel, setSecondaryLabel] = useState(initial.secondaryCta.label);
   const [secondaryHref, setSecondaryHref] = useState(initial.secondaryCta.href);
+  const [dataHeading, setDataHeading] = useState(initial.dataHeading);
+  const [dataIndex, setDataIndex] = useState(initial.dataIndex);
   const [stats, setStats] = useState<StatRow[]>(() => initial.stats.map((s) => ({ ...s, _id: newId() })));
 
   const drag = useDragReorder<StatRow>({
@@ -56,6 +58,8 @@ export default function HeroEditor({ initial, onClose, onSave }: HeroEditorProps
       subtext,
       primaryCta: { label: primaryLabel, href: primaryHref },
       secondaryCta: { label: secondaryLabel, href: secondaryHref },
+      dataHeading,
+      dataIndex,
       stats: stats.map(({ _id, ...rest }) => rest),
     });
   }
@@ -174,6 +178,18 @@ export default function HeroEditor({ initial, onClose, onSave }: HeroEditorProps
             value={secondaryHref}
             onChange={(e) => setSecondaryHref(e.target.value)}
           />
+        </label>
+      </div>
+
+      <p className={f.formSubhead}>Data panel header</p>
+      <div className={f.formRow}>
+        <label className={f.formField}>
+          <span className={f.editFieldLabel}>Heading</span>
+          <input className={f.editInput} value={dataHeading} onChange={(e) => setDataHeading(e.target.value)} />
+        </label>
+        <label className={f.formField}>
+          <span className={f.editFieldLabel}>Index</span>
+          <input className={f.editInput} value={dataIndex} onChange={(e) => setDataIndex(e.target.value)} />
         </label>
       </div>
 

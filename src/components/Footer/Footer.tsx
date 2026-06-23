@@ -13,17 +13,17 @@ const navLinks = [
 ];
 
 export default async function Footer() {
-  const siteData = await getSiteData();
+  const { global } = await getSiteData();
 
   const socials = [
     {
       label: "LinkedIn",
-      href: `https://www.linkedin.com/in/${siteData.linkedInHandle}`,
+      href: `https://www.linkedin.com/in/${global.linkedInHandle}`,
       icon: faLinkedin,
     },
     {
       label: "Instagram",
-      href: `https://instagram.com/${siteData.instagramHandle}`,
+      href: `https://instagram.com/${global.instagramHandle}`,
       icon: faInstagram,
     },
   ];
@@ -34,8 +34,8 @@ export default async function Footer() {
 
         {/* Brand + socials — left cluster */}
         <div className={styles.brand}>
-          <Link href="/" className={styles.brandName}>{siteData.displayName}</Link>
-          <p className={styles.brandSub}>{siteData.focus}</p>
+          <Link href="/" className={styles.brandName}>{global.displayName}</Link>
+          <p className={styles.brandSub}>{global.focus}</p>
           <div className={styles.socials}>
             {socials.map((s) => (
               <a
@@ -67,7 +67,7 @@ export default async function Footer() {
       </div>
 
       <div className={styles.bottom}>
-        <p>&copy; {new Date().getFullYear()} {siteData.displayName}. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} {global.displayName}. All rights reserved.</p>
       </div>
     </footer>
   );

@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 export default async function SiteSettings() {
   if (!(await isAuthed())) redirect("/admin/login");
 
-  const siteData = await getSiteData();
+  const { id, global, seo } = await getSiteData();
 
   return (
     <div className={styles.wrap}>
@@ -25,23 +25,15 @@ export default async function SiteSettings() {
         <h1 className={styles.title}>Site Settings</h1>
         <p className={styles.intro}>
           These details appear in multiple places across the site (footer, contact page,
-          social links), so they&apos;re edited here rather than inline.
+          social links, and search/social previews), so they&apos;re edited here rather
+          than inline.
         </p>
         <Link href="/admin" className={styles.link}>
           ← Back to Admin
         </Link>
       </div>
 
-      <SettingsForm
-        id={siteData.id}
-        initial={{
-          displayName: siteData.displayName ?? "",
-          focus: siteData.focus ?? "",
-          email: siteData.email ?? "",
-          linkedInHandle: siteData.linkedInHandle ?? "",
-          instagramHandle: siteData.instagramHandle ?? "",
-        }}
-      />
+      <SettingsForm id={id} initialGlobal={global} initialSeo={seo} />
     </div>
   );
 }

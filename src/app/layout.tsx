@@ -6,6 +6,7 @@ import NavBar from "@/components/NavBar";
 import Footer from "@/components/Footer";
 import AdminBar from "@/components/AdminBar";
 import MotionProvider from "@/components/MotionProvider";
+import getSiteData from "@/components/SiteData";
 
 const notoSerif = Noto_Serif({
   subsets: ["latin"],
@@ -26,38 +27,37 @@ const dmMono = DM_Mono({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  // @ts-ignore
-  metadataBase: new URL(process.env.WEBSITE_URL),
-  title: {
-    default: "Tayler Carney's Portfolio",
-    template: "%s | Tayler Carney"
-  },
-  description: "A professional portfolio of structural fashion design by Tayler Carney, showcasing the intersection of garment engineering and architectural precision through pattern-making and material research.",
-  keywords: [
-    "tayler carney",
-    "fashion design portfolio",
-    "structural design",
-    "pattern making",
-    "apparel production",
-    "fashion architecture"
-  ],
-  openGraph: {
-    title: "Tayler Carney | Structural Fashion Design",
-    description: "Explore a portfolio of garments engineered with the precision of architecture.",
-    type: "website",
-    url: process.env.WEBSITE_URL,
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Tayler Carney | Structural Fashion Design",
-    description: "Explore a portfolio of garments engineered with the precision of architecture.",
-  },
-  robots: {
-    index: true,
-    follow: true
-  }
-};
+// SEO metadata is driven by the SiteData `seo` JSON field (editable in admin
+// settings), with DEFAULT_SEO as the fallback when the entry is empty.
+export async function generateMetadata(): Promise<Metadata> {
+  const { seo } = await getSiteData();
+
+  return {
+    // @ts-ignore
+    metadataBase: new URL(process.env.WEBSITE_URL),
+    title: {
+      default: seo.title,
+      template: seo.titleTemplate,
+    },
+    description: seo.description,
+    keywords: seo.keywords,
+    openGraph: {
+      title: seo.ogTitle,
+      description: seo.ogDescription,
+      type: "website",
+      url: process.env.WEBSITE_URL,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: seo.ogTitle,
+      description: seo.ogDescription,
+    },
+    robots: {
+      index: true,
+      follow: true,
+    },
+  };
+}
 
 export default function RootLayout({
   children,
