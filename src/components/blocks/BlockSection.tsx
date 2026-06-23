@@ -10,6 +10,7 @@ import SheetViewer from "./SheetViewer";
 import RichTextWidget from "./richText/RichTextWidget";
 import { BLUR_DATA_URL } from "@/components/AnimatedSection";
 import { resolveAlt } from "@/lib/images";
+import { clickableProps } from "@/lib/a11y";
 import { blockHasData, richTextHasContent, type Block, type BlockType, type ImageItem, type ImageRef } from "./blocks";
 
 // Block types that render their own heading/layout and so skip the generic
@@ -101,7 +102,10 @@ function BlockContent({ block, onOpen }: { block: Block; onOpen: OnOpen }) {
       return (
         <div
           className={styles.singleImage}
-          onClick={() => onOpen(block.image!.url, block.heading, [{ url: block.image!.url, title: block.heading, alt }], 0)}
+          {...clickableProps(
+            () => onOpen(block.image!.url, block.heading, [{ url: block.image!.url, title: block.heading, alt }], 0),
+            `View ${block.heading || "image"}`
+          )}
         >
           <Image src={block.image.url} alt={alt} width={1600} height={1200} placeholder="blur" blurDataURL={BLUR_DATA_URL} />
         </div>
@@ -143,7 +147,7 @@ function BlockContent({ block, onOpen }: { block: Block; onOpen: OnOpen }) {
                 <div
                   key={idx}
                   className={styles.comparisonView}
-                  onClick={() => onOpen(v.image.url, v.label, gallery, idx)}
+                  {...clickableProps(() => onOpen(v.image.url, v.label, gallery, idx), `View ${v.label}`)}
                 >
                   <h3>{v.label}</h3>
                   <Image src={v.image.url} alt={alt} width={1000} height={1000} placeholder="blur" blurDataURL={BLUR_DATA_URL} />
@@ -221,7 +225,7 @@ function BlockContent({ block, onOpen }: { block: Block; onOpen: OnOpen }) {
                 <figure
                   key={i}
                   className={styles.imageItem}
-                  onClick={() => onOpen(item.url, item.title, items, i)}
+                  {...clickableProps(() => onOpen(item.url, item.title, items, i), `View ${item.title}`)}
                 >
                   <div className={styles.imageWrap}>
                     <Image

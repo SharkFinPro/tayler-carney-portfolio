@@ -3,6 +3,7 @@ import { useState } from "react";
 import Image from "next/image";
 import styles from "./BlockSection.module.scss";
 import { BLUR_DATA_URL } from "@/components/AnimatedSection";
+import { clickableProps } from "@/lib/a11y";
 import type { ImageGridItem } from "./ImageGrid";
 
 interface SheetViewerProps {
@@ -41,7 +42,10 @@ export default function SheetViewer({ items, onOpen }: SheetViewerProps) {
 
       <div
         className={styles.sheet}
-        onClick={() => onOpen(selected.url, selected.title, items, Math.min(index, items.length - 1))}
+        {...clickableProps(
+          () => onOpen(selected.url, selected.title, items, Math.min(index, items.length - 1)),
+          `View ${selected.title}`
+        )}
       >
         <Image
           src={selected.url}
