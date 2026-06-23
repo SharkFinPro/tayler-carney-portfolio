@@ -8,6 +8,7 @@ import RichTextEditor from "./richText/RichTextEditor";
 import {
   BLOCK_LABELS,
   CHILD_BLOCK_TYPES,
+  COLUMN_CHILD_TYPES,
   createEmptyBlock,
   type Block,
   type BlockType,
@@ -16,6 +17,7 @@ import {
   type ComparisonView,
   type SpecRow,
   type CalloutVariant,
+  type CredentialEntry,
 } from "./blocks";
 
 // ── Small field primitives ────────────────────────────────────────────────
@@ -423,6 +425,121 @@ function RowList({ value, onChange }: { value: SpecRow[]; onChange: (v: SpecRow[
   );
 }
 
+function CredentialEntryList({ value, onChange }: { value: CredentialEntry[]; onChange: (v: CredentialEntry[]) => void }) {
+  const drag = useRowDrag((from, to) => onChange(move(value, from, to)));
+  const update = (i: number, patch: Partial<CredentialEntry> | null) => {
+    const next = [...value];
+    if (patch === null) next.splice(i, 1);
+    else next[i] = { ...next[i], ...patch };
+    onChange(next);
+  };
+  return (
+    <div className={styles.subGroup}>
+      {value.map((entry, i) => (
+        <Fragment key={i}>
+          {drag.showBoxBefore(i) && <div className={styles.rowPlaceholder} style={{ height: drag.size.h }} />}
+          <div
+            ref={drag.registerRow(i)}
+            className={`${styles.subGroup} ${drag.dragIndex === i ? styles.rowDragging : ""}`}
+          >
+            <div className={styles.row}>
+              <DragHandle {...drag.handleProps(i)} />
+              <Field label="Term (optional)" value={entry.term ?? ""} onChange={(v) => update(i, { term: v || undefined })} />
+              <Field label="Title" value={entry.title} onChange={(v) => update(i, { title: v })} />
+              <ReorderControls index={i} count={value.length} onMove={(to) => onChange(move(value, i, to))} />
+              <button type="button" className={styles.iconBtn} onClick={() => update(i, null)} aria-label="Remove entry">Remove</button>
+            </div>
+            <Field label="Meta (optional)" value={entry.meta ?? ""} onChange={(v) => update(i, { meta: v || undefined })} />
+            <Field label="Description (optional)" value={entry.description ?? ""} onChange={(v) => update(i, { description: v || undefined })} multiline />
+          </div>
+        </Fragment>
+      ))}
+      {drag.showBoxBefore(value.length) && <div className={styles.rowPlaceholder} style={{ height: drag.size.h }} />}
+      <RowDragLayer drag={drag} />
+      <div className={styles.addRow}>
+        <button type="button" className={styles.iconBtn} onClick={() => onChange([...value, { title: "" }])}>+ Add entry</button>
+      </div>
+    </div>
+  );
+}
+
+function StringList({ value, onChange, addLabel }: { value: string[]; onChange: (v: string[]) => void; addLabel: string }) {
+  const drag = useRowDrag((from, to) => onChange(move(value, from, to)));
+  const update = (i: number, v: string | null) => {
+    const next = [...value];
+    if (v === null) next.splice(i, 1);
+    else next[i] = v;
+    onChange(next);
+  };
+  return (
+    <div className={styles.subGroup}>
+      {value.map((item, i) => (
+        <Fragment key={i}>
+          {drag.showBoxBefore(i) && <div className={styles.rowPlaceholder} style={{ height: drag.size.h }} />}
+          <div
+            ref={drag.registerRow(i)}
+            className={`${styles.row} ${drag.dragIndex === i ? styles.rowDragging : ""}`}
+          >
+            <DragHandle {...drag.handleProps(i)} />
+            <input className={styles.input} value={item} onChange={(e) => update(i, e.target.value)} />
+            <ReorderControls index={i} count={value.length} onMove={(to) => onChange(move(value, i, to))} />
+            <button type="button" className={styles.iconBtn} onClick={() => update(i, null)} aria-label="Remove">Remove</button>
+          </div>
+        </Fragment>
+      ))}
+      {drag.showBoxBefore(value.length) && <div className={styles.rowPlaceholder} style={{ height: drag.size.h }} />}
+      <RowDragLayer drag={drag} />
+      <div className={styles.addRow}>
+        <button type="button" className={styles.iconBtn} onClick={() => onChange([...value, ""])}>{addLabel}</button>
+      </div>
+    </div>
+  );
+}
+
+// A columns container's children: an add/remove/reorder list, each child edited
+// with its own type picker + form (reusing ChildEditor, restricted to the
+// non-container column child types).
+function ColumnsList({ value, onChange }: { value: Block[]; onChange: (v: Block[]) => void }) {
+  const update = (i: number, child: Block | null) => {
+    const next = [...value];
+    if (child === null) next.splice(i, 1);
+    else next[i] = child;
+    onChange(next);
+  };
+  return (
+    <div className={styles.subGroup}>
+      {value.map((child, i) => (
+        <div key={child.id} className={styles.subGroup}>
+          <div className={styles.row}>
+            <span className={styles.fieldLabel}>Column {i + 1}</span>
+            <ReorderControls index={i} count={value.length} onMove={(to) => onChange(move(value, i, to))} />
+            <button
+              type="button"
+              className={styles.iconBtn}
+              onClick={() => update(i, null)}
+              disabled={value.length <= 1}
+              aria-label={`Remove column ${i + 1}`}
+            >
+              Remove
+            </button>
+          </div>
+          <ChildEditor block={child} onChange={(b) => update(i, b)} types={COLUMN_CHILD_TYPES} />
+        </div>
+      ))}
+      <div className={styles.addRow}>
+        <button
+          type="button"
+          className={styles.iconBtn}
+          onClick={() => onChange([...value, createEmptyBlock("credentials")])}
+          disabled={value.length >= 4}
+        >
+          + Add column
+        </button>
+      </div>
+    </div>
+  );
+}
+
 const CALLOUT_VARIANTS: CalloutVariant[] = ["info", "quote", "success", "warning"];
 
 // ── Per-block form ────────────────────────────────────────────────────────
@@ -433,6 +550,8 @@ export default function BlockForm({ block, onChange }: { block: Block; onChange:
       ? "Heading (optional)"
       : block.type === "entry"
       ? "Title"
+      : block.type === "profileHero"
+      ? "Section label (optional)"
       : "Heading";
   const heading = (
     <Field label={headingLabel} value={block.heading} onChange={(v) => onChange({ ...block, heading: v })} />
@@ -575,13 +694,82 @@ export default function BlockForm({ block, onChange }: { block: Block; onChange:
           <ImageItemList value={block.items} onChange={(items) => onChange({ ...block, items })} />
         </>
       );
+
+    case "profileHero":
+      return (
+        <>
+          {heading}
+          <Field label="Name" value={block.name} onChange={(v) => onChange({ ...block, name: v })} />
+          <Field label="Subtitle" value={block.subtitle} onChange={(v) => onChange({ ...block, subtitle: v })} />
+          <span className={styles.fieldLabel}>Portrait</span>
+          <ImageRefFields value={block.image} onChange={(image) => onChange({ ...block, image })} />
+          <span className={styles.fieldLabel}>Bio</span>
+          <RichTextEditor value={block.bio} onChange={(bio) => onChange({ ...block, bio })} />
+        </>
+      );
+
+    case "credentials":
+      return (
+        <>
+          {heading}
+          <span className={styles.fieldLabel}>Entries</span>
+          <CredentialEntryList value={block.items} onChange={(items) => onChange({ ...block, items })} />
+        </>
+      );
+
+    case "tagList":
+      return (
+        <>
+          {heading}
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Tone</span>
+            <select
+              className={styles.select}
+              value={block.tone}
+              onChange={(e) => onChange({ ...block, tone: e.target.value === "dark" ? "dark" : "light" })}
+            >
+              <option value="light">Light</option>
+              <option value="dark">Dark (inverted panel)</option>
+            </select>
+          </label>
+          <span className={styles.fieldLabel}>Tags</span>
+          <StringList value={block.tags} onChange={(tags) => onChange({ ...block, tags })} addLabel="+ Add tag" />
+        </>
+      );
+
+    case "cta":
+      return (
+        <>
+          <Field label="Headline" value={block.heading} onChange={(v) => onChange({ ...block, heading: v })} />
+          <Field label="Button label" value={block.buttonLabel} onChange={(v) => onChange({ ...block, buttonLabel: v })} />
+          <Field label="Button link" value={block.buttonHref} onChange={(v) => onChange({ ...block, buttonHref: v })} />
+        </>
+      );
+
+    case "pageIntro":
+      return (
+        <>
+          <Field label="Eyebrow" value={block.eyebrow} onChange={(v) => onChange({ ...block, eyebrow: v })} />
+          <Field label="Heading" value={block.heading} onChange={(v) => onChange({ ...block, heading: v })} />
+          <span className={styles.fieldLabel}>Body</span>
+          <RichTextEditor value={block.body} onChange={(body) => onChange({ ...block, body })} />
+        </>
+      );
+
+    case "columns":
+      return (
+        <>
+          <span className={styles.fieldLabel}>Columns</span>
+          <ColumnsList value={block.items} onChange={(items) => onChange({ ...block, items })} />
+        </>
+      );
   }
 }
 
 // One side of a split: a type picker plus the chosen block's own form. Switching
 // type swaps in a fresh empty block of that type (keeping the same id). Splits
 // can't be nested, so `split` is excluded from the type options.
-function ChildEditor({ block, onChange }: { block: Block; onChange: (b: Block) => void }) {
+function ChildEditor({ block, onChange, types = CHILD_BLOCK_TYPES }: { block: Block; onChange: (b: Block) => void; types?: BlockType[] }) {
   function changeType(type: BlockType) {
     if (type === block.type) return;
     const next = createEmptyBlock(type);
@@ -594,7 +782,7 @@ function ChildEditor({ block, onChange }: { block: Block; onChange: (b: Block) =
       <label className={styles.field}>
         <span className={styles.fieldLabel}>Block type</span>
         <select className={styles.select} value={block.type} onChange={(e) => changeType(e.target.value as BlockType)}>
-          {CHILD_BLOCK_TYPES.map((t) => (
+          {types.map((t) => (
             <option key={t} value={t}>
               {BLOCK_LABELS[t]}
             </option>

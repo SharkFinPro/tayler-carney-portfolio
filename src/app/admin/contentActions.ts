@@ -10,8 +10,6 @@ import { sanitizeHome, type HomeContent } from "@/lib/home";
 // ever used after it passes this check. Relations are NOT inline-editable.
 const EDITABLE_FIELDS: Record<string, string[]> = {
   Project: ["title", "description"],
-  AboutPage: ["title", "subtitle"],
-  ContactPage: ["header", "subheader", "availabilityMessage"],
   SiteData: ["displayName", "focus", "email", "linkedInHandle", "instagramHandle"],
 };
 
@@ -111,7 +109,7 @@ export async function updateHome(id: string, rawHome: unknown): Promise<HomeResu
 // Whitelist of JSON block-layout fields, keyed by model.
 const BLOCK_LAYOUT_FIELDS: Record<string, string[]> = {
   Project: ["projectPage"],
-  SiteData: ["atelier"],
+  SiteData: ["atelier", "about", "contact"],
 };
 
 type BlockResult = { ok: true; blocks: Block[] } | { ok: false; error: string };

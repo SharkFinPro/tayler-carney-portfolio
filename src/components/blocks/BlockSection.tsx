@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { motion, type Variants } from "framer-motion";
 import styles from "./BlockSection.module.scss";
 import ImageGrid, { ImageGridItem } from "./ImageGrid";
@@ -9,7 +10,19 @@ import SheetViewer from "./SheetViewer";
 import RichTextWidget from "./richText/RichTextWidget";
 import { BLUR_DATA_URL } from "@/components/AnimatedSection";
 import { resolveAlt } from "@/lib/images";
-import { blockHasData, richTextHasContent, type Block, type ImageItem, type ImageRef } from "./blocks";
+import { blockHasData, richTextHasContent, type Block, type BlockType, type ImageItem, type ImageRef } from "./blocks";
+
+// Block types that render their own heading/layout and so skip the generic
+// numbered "01 / 05" section chrome.
+const SELF_CHROME_TYPES: BlockType[] = [
+  "entry",
+  "profileHero",
+  "credentials",
+  "tagList",
+  "cta",
+  "pageIntro",
+  "columns",
+];
 
 const fadeInVariant: Variants = {
   hidden: { opacity: 0, y: 20 },
@@ -235,6 +248,109 @@ function BlockContent({ block, onOpen }: { block: Block; onOpen: OnOpen }) {
         </div>
       );
     }
+
+    case "profileHero": {
+      const alt = resolveAlt(block.image?.altText, block.name || "Portrait");
+      return (
+        <div className={styles.profileHero}>
+          <div className={styles.profilePortrait}>
+            {block.image && (
+              <Image
+                src={block.image.url}
+                alt={alt}
+                fill
+                sizes="(max-width: 768px) 90vw, 40vw"
+                className={styles.profilePortraitImg}
+                placeholder="blur"
+                blurDataURL={BLUR_DATA_URL}
+              />
+            )}
+            {(block.name || block.subtitle) && (
+              <div className={styles.profileBadge}>
+                {block.name && <span className={styles.profileName}>{block.name}</span>}
+                {block.subtitle && <span className={styles.profileSubtitle}>{block.subtitle}</span>}
+              </div>
+            )}
+          </div>
+          <div className={styles.profileBio}>
+            {block.heading && <span className={styles.profileBioLabel}>{block.heading}</span>}
+            {richTextHasContent(block.bio) && <RichTextWidget content={block.bio} variant="bare" />}
+          </div>
+        </div>
+      );
+    }
+
+    case "credentials":
+      return (
+        <div className={styles.credentials}>
+          {block.heading && <span className={styles.colHeader}>{block.heading}</span>}
+          <div className={styles.credentialsList}>
+            {block.items.map((it, i) => (
+              <div key={i} className={`${styles.credentialItem} ${it.term ? styles.credentialItemTermed : ""}`}>
+                {it.term && <span className={styles.credentialTerm}>{it.term}</span>}
+                <div className={styles.credentialBody}>
+                  {it.title && <h3 className={styles.credentialTitle}>{it.title}</h3>}
+                  {it.meta && <p className={styles.credentialMeta}>{it.meta}</p>}
+                  {it.description && <p className={styles.credentialDesc}>{it.description}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+
+    case "tagList":
+      return (
+        <div className={`${styles.tagList} ${block.tone === "dark" ? styles.tagListDark : ""}`}>
+          {block.heading && <span className={styles.tagListHeader}>{block.heading}</span>}
+          <ul className={styles.tagItems}>
+            {block.tags.map((t, i) => (
+              <li key={i} className={styles.tagItem}>
+                <span className={styles.tagName}>{t}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      );
+
+    case "cta":
+      return (
+        <div className={styles.cta}>
+          {block.heading && <h2 className={styles.ctaHeadline}>{block.heading}</h2>}
+          {block.buttonLabel && (
+            <Link href={block.buttonHref} className={styles.ctaButton}>
+              {block.buttonLabel}
+            </Link>
+          )}
+        </div>
+      );
+
+    case "pageIntro":
+      return (
+        <div className={styles.pageIntro}>
+          {block.eyebrow && <span className={styles.pageIntroEyebrow}>{block.eyebrow}</span>}
+          {block.heading && <h1 className={styles.pageIntroHeading}>{block.heading}</h1>}
+          {richTextHasContent(block.body) && (
+            <div className={styles.pageIntroBody}>
+              <RichTextWidget content={block.body} variant="bare" />
+            </div>
+          )}
+        </div>
+      );
+
+    case "columns": {
+      const children = block.items.filter(blockHasData);
+      if (!children.length) return null;
+      return (
+        <div className={styles.columns} data-count={children.length}>
+          {children.map((child) => (
+            <div key={child.id} className={styles.column}>
+              <BlockContent block={child} onOpen={onOpen} />
+            </div>
+          ))}
+        </div>
+      );
+    }
   }
 }
 
@@ -256,9 +372,10 @@ function SplitColumn({ block, onOpen }: { block: Block; onOpen: OnOpen }) {
 // to the host page's lightbox.
 export default function BlockSection({ block, onOpen }: { block: Block; onOpen: OnOpen }) {
   const count = blockCount(block);
-  // The editorial entry renders its own heading/index/count inside the text
-  // rail, so it skips the generic section chrome (the "01 / 05" counter h2).
-  if (block.type === "entry") {
+  // Some blocks render their own heading/layout (the editorial entry, the
+  // About/Contact page blocks), so they skip the generic section chrome (the
+  // "01 / 05" counter h2).
+  if (SELF_CHROME_TYPES.includes(block.type)) {
     return (
       <motion.div id={block.id} {...sectionMotion}>
         <BlockContent block={block} onOpen={onOpen} />
