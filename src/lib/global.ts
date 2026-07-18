@@ -13,6 +13,12 @@ export type GlobalContent = {
   email: string;
   linkedInHandle: string;
   instagramHandle: string;
+  /**
+   * Hygraph Asset id of the resume PDF. Stored as a reference (not a URL) and
+   * resolved fresh on every render, so renames/re-uploads of the asset are
+   * reflected everywhere. Empty hides the download links.
+   */
+  resumeAssetId: string;
 };
 
 // Seed identity — the fallback when `global` is null (e.g. a fresh CMS entry).
@@ -22,9 +28,16 @@ export const DEFAULT_GLOBAL: GlobalContent = {
   email: "",
   linkedInHandle: "",
   instagramHandle: "",
+  resumeAssetId: "",
 };
 
 const str = (v: unknown, fallback = ""): string => (typeof v === "string" ? v : fallback);
+
+// Hygraph asset ids are opaque alphanumeric tokens; anything else is dropped.
+const assetId = (v: unknown): string => {
+  const s = str(v).trim();
+  return /^[a-z0-9]+$/i.test(s) ? s : "";
+};
 
 /**
  * Coerce arbitrary JSON (from the CMS or the admin settings form) into a complete,
@@ -40,5 +53,6 @@ export function sanitizeGlobal(raw: unknown): GlobalContent {
     email: str(data.email, d.email).trim(),
     linkedInHandle: str(data.linkedInHandle, d.linkedInHandle).trim(),
     instagramHandle: str(data.instagramHandle, d.instagramHandle).trim(),
+    resumeAssetId: assetId(data.resumeAssetId),
   };
 }

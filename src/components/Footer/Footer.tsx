@@ -3,6 +3,7 @@ import styles from "./Footer.module.scss";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faLinkedin, faInstagram } from "@fortawesome/free-brands-svg-icons";
 import getSiteData from "@/components/SiteData";
+import { resolveResumeAsset } from "@/lib/resume";
 
 const navLinks = [
   { label: "Home", href: "/" },
@@ -14,6 +15,7 @@ const navLinks = [
 
 export default async function Footer() {
   const { global } = await getSiteData();
+  const resume = await resolveResumeAsset(global.resumeAssetId);
 
   const socials = [
     {
@@ -50,6 +52,17 @@ export default async function Footer() {
               </a>
             ))}
           </div>
+          {resume && (
+            <a
+              href={resume.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.resumeLink}
+              title={resume.name}
+            >
+              Resume ↗
+            </a>
+          )}
         </div>
 
         {/* Spacer — empty middle column keeps nav pushed right */}

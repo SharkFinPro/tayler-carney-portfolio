@@ -66,6 +66,59 @@
   }
 }
 
+// ── Resume asset row ─────────────────────────────────────────────────────────
+
+.assetRow {
+  margin-top: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.assetName {
+  font-family: var(--ff-mono);
+  font-size: 0.88rem;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.assetEmpty {
+  font-family: var(--ff-sans);
+  font-size: 0.88rem;
+  color: var(--ink-muted);
+}
+
+.assetBtn {
+  font-family: var(--ff-sans);
+  font-size: 0.82rem;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--canvas);
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 0.16s ease, background-color 0.16s ease;
+
+  &:hover {
+    border-color: var(--line-strong);
+    background: var(--plate);
+  }
+}
+
+.assetBtnDanger {
+  color: #b3261e;
+
+  &:hover {
+    border-color: #b3261e;
+  }
+}
+
 .actions {
   display: flex;
   align-items: center;

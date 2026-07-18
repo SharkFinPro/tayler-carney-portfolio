@@ -2,7 +2,8 @@ import { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { isAuthed } from "@/lib/auth";
 import getSiteData from "@/components/SiteData";
-import SettingsForm from "./SettingsForm";
+import { getAssetById } from "@/lib/getAssets";
+import SettingsForm, { type ResumeDisplay } from "./SettingsForm";
 import styles from "../admin.module.scss";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,19 @@ export default async function SiteSettings() {
 
   const { id, global, seo } = await getSiteData();
 
+  // Resolve the referenced resume asset for display (authed read, so a
+  // still-draft PDF shows up too). Null when unset or the asset was deleted.
+  let resume: ResumeDisplay | null = null;
+  if (global.resumeAssetId) {
+    const asset = await getAssetById(global.resumeAssetId).catch(() => null);
+    if (asset) {
+      resume = {
+        url: asset.url,
+        name: asset.title?.trim() || asset.fileName.replace(/\.[^.]+$/, ""),
+      };
+    }
+  }
+
   return (
     <div className={styles.wrap}>
       <div className={styles.header}>
@@ -29,7 +43,7 @@ export default async function SiteSettings() {
         </p>
       </div>
 
-      <SettingsForm id={id} initialGlobal={global} initialSeo={seo} />
+      <SettingsForm id={id} initialGlobal={global} initialSeo={seo} initialResume={resume} />
     </div>
   );
 }

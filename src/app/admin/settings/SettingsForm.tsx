@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { updateGlobal, updateSeo } from "@/app/admin/contentActions";
 import { useUnsavedChanges } from "@/components/useUnsavedChanges";
+import AssetPicker from "@/components/AssetPicker";
 import type { GlobalContent } from "@/lib/global";
 import type { SeoContent } from "@/lib/seo";
 import styles from "./Settings.module.scss";
@@ -32,14 +33,22 @@ const toSeoForm = (seo: SeoContent): SeoForm => ({ ...seo, keywords: seo.keyword
 
 type Status = { ok: boolean; message: string } | null;
 
+/** Display info for the currently referenced resume asset. */
+export type ResumeDisplay = { url: string; name: string };
+
+const baseName = (fileName: string): string => fileName.replace(/\.[^.]+$/, "");
+
 export default function SettingsForm({
   id,
   initialGlobal,
   initialSeo,
+  initialResume,
 }: {
   id: string;
   initialGlobal: GlobalContent;
   initialSeo: SeoContent;
+  /** Resolved server-side from `initialGlobal.resumeAssetId`; null when unset or the asset is gone. */
+  initialResume: ResumeDisplay | null;
 }) {
   const [global, setGlobal] = useState<GlobalContent>(initialGlobal);
   const [seo, setSeo] = useState<SeoForm>(() => toSeoForm(initialSeo));
@@ -51,6 +60,10 @@ export default function SettingsForm({
   const [savingSeo, setSavingSeo] = useState(false);
   const [globalStatus, setGlobalStatus] = useState<Status>(null);
   const [seoStatus, setSeoStatus] = useState<Status>(null);
+  const [resumePickerOpen, setResumePickerOpen] = useState(false);
+  // Local display info for the referenced asset; the saved value is only the
+  // asset id (public pages re-resolve it on render, so renames propagate).
+  const [resume, setResume] = useState<ResumeDisplay | null>(initialResume);
 
   const globalDirty = (Object.keys(savedGlobal) as (keyof GlobalContent)[]).some(
     (k) => global[k] !== savedGlobal[k]
@@ -116,6 +129,65 @@ export default function SettingsForm({
           </div>
         ))}
 
+        <div className={styles.field}>
+          <span className={styles.label}>Resume</span>
+          <span className={styles.hint}>
+            A PDF from the Media Library, offered as a download on the Contact page and in the
+            footer. The file is referenced live — renaming or replacing it in the Media Library
+            updates it everywhere. Remove it to hide those links.
+          </span>
+          <div className={styles.assetRow}>
+            {global.resumeAssetId ? (
+              <>
+                {resume ? (
+                  <a
+                    href={resume.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.assetName}
+                    title={resume.name}
+                  >
+                    {resume.name}
+                  </a>
+                ) : (
+                  <span className={styles.assetEmpty}>
+                    The selected PDF no longer exists in the Media Library.
+                  </span>
+                )}
+                <button
+                  type="button"
+                  className={styles.assetBtn}
+                  onClick={() => setResumePickerOpen(true)}
+                >
+                  Change…
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.assetBtn} ${styles.assetBtnDanger}`}
+                  onClick={() => {
+                    setGlobal((v) => ({ ...v, resumeAssetId: "" }));
+                    setResume(null);
+                    setGlobalStatus(null);
+                  }}
+                >
+                  Remove
+                </button>
+              </>
+            ) : (
+              <>
+                <span className={styles.assetEmpty}>No resume selected.</span>
+                <button
+                  type="button"
+                  className={styles.assetBtn}
+                  onClick={() => setResumePickerOpen(true)}
+                >
+                  Select PDF…
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
         <div className={styles.actions}>
           <button type="submit" className={styles.button} disabled={savingGlobal || !globalDirty}>
             {savingGlobal ? "Saving…" : "Save identity"}
@@ -175,6 +247,18 @@ export default function SettingsForm({
           )}
         </div>
       </form>
+
+      {resumePickerOpen && (
+        <AssetPicker
+          kind="document"
+          onClose={() => setResumePickerOpen(false)}
+          onSelect={(asset) => {
+            setGlobal((v) => ({ ...v, resumeAssetId: asset.id }));
+            setResume({ url: asset.url, name: asset.title?.trim() || baseName(asset.fileName) });
+            setGlobalStatus(null);
+          }}
+        />
+      )}
     </>
   );
 }

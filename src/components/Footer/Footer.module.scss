@@ -75,6 +75,23 @@
   }
 }
 
+// Resume download — mono-label link matching the brand cluster's quiet tone.
+.resumeLink {
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-inverse);
+  opacity: 0.45;
+  text-decoration: none;
+  transition: opacity 0.2s;
+  width: fit-content;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
 // ── Nav links (right) ─────────────────────────────────────────────────────────
 
 .nav {

@@ -9,10 +9,12 @@ import type { MediaAsset } from "@/lib/getAssets";
 
 interface Props {
   onClose: () => void;
-  onSelect: (asset: { url: string; altText?: string }) => void;
+  onSelect: (asset: { id: string; url: string; altText?: string; title?: string; fileName: string }) => void;
+  /** Which assets to offer: images (default) or PDF documents. */
+  kind?: "image" | "document";
 }
 
-export default function AssetPicker({ onClose, onSelect }: Props) {
+export default function AssetPicker({ onClose, onSelect, kind = "image" }: Props) {
   const [assets, setAssets] = useState<MediaAsset[]>([]);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<{ msg: string; error?: boolean } | null>(null);
@@ -48,11 +50,13 @@ export default function AssetPicker({ onClose, onSelect }: Props) {
         return;
       }
     }
-    onSelect({ url: asset.url, altText: asset.altText });
+    onSelect({ id: asset.id, url: asset.url, altText: asset.altText, title: asset.title, fileName: asset.fileName });
     onClose();
   }
 
   const filtered = assets.filter((a) => {
+    const mime = a.mimeType ?? "";
+    if (kind === "document" ? mime !== "application/pdf" : !mime.startsWith("image/")) return false;
     const q = query.trim().toLowerCase();
     if (!q) return true;
     return (a.title ?? "").toLowerCase().includes(q) || a.fileName.toLowerCase().includes(q);
@@ -62,7 +66,9 @@ export default function AssetPicker({ onClose, onSelect }: Props) {
     <Modal onClose={onClose} labelledBy="asset-picker-title" overlayClassName={styles.overlay}>
       <div className={styles.panel}>
         <div className={styles.head}>
-          <span id="asset-picker-title" className={styles.title}>Select image</span>
+          <span id="asset-picker-title" className={styles.title}>
+            {kind === "document" ? "Select PDF" : "Select image"}
+          </span>
           <input
             className={styles.search}
             placeholder="Search assets…"
@@ -77,7 +83,11 @@ export default function AssetPicker({ onClose, onSelect }: Props) {
           {loading ? (
             <p className={styles.empty}>Loading assets…</p>
           ) : filtered.length === 0 ? (
-            <p className={styles.empty}>No assets found.</p>
+            <p className={styles.empty}>
+              {kind === "document"
+                ? "No PDFs in the Media Library yet. Upload one below."
+                : "No assets found."}
+            </p>
           ) : (
             <div className={styles.grid}>
               {filtered.map((a) => (
@@ -88,8 +98,12 @@ export default function AssetPicker({ onClose, onSelect }: Props) {
                   disabled={selecting}
                   onClick={() => choose(a)}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img className={styles.thumb} src={a.url} alt={a.altText ?? a.title ?? a.fileName} loading="lazy" />
+                  {kind === "document" ? (
+                    <span className={styles.docThumb} aria-hidden="true">PDF</span>
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img className={styles.thumb} src={a.url} alt={a.altText ?? a.title ?? a.fileName} loading="lazy" />
+                  )}
                   <span className={styles.name}>{a.title || a.fileName}</span>
                   <span className={styles.badge}>{a.status}</span>
                 </button>
@@ -100,10 +114,11 @@ export default function AssetPicker({ onClose, onSelect }: Props) {
 
         <div className={styles.foot}>
           <MediaUploader
-            triggerLabel="Upload new…"
+            triggerLabel={kind === "document" ? "Upload PDF…" : "Upload new…"}
             triggerClassName={styles.close}
+            accept={kind}
             onUploaded={(asset) => {
-              onSelect({ url: asset.url, altText: asset.altText });
+              onSelect({ id: asset.id, url: asset.url, altText: asset.altText, title: asset.title, fileName: asset.fileName });
               onClose();
             }}
           />

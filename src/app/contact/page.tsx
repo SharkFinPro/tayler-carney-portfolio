@@ -3,6 +3,7 @@ import ContactPageClient from "./ContactPageClient";
 import { cmsQuery } from "@/lib/cms";
 import { isAuthed } from "@/lib/auth";
 import { sanitizeGlobal } from "@/lib/global";
+import { resolveResumeAsset } from "@/lib/resume";
 
 export const metadata: Metadata = {
   title: "Contact",
@@ -34,6 +35,7 @@ export default async function ContactPage() {
   const siteData = await getContact();
   const isAdmin = await isAuthed();
   const global = sanitizeGlobal(siteData?.global);
+  const resume = await resolveResumeAsset(global.resumeAssetId);
 
   return (
     <ContactPageClient
@@ -42,6 +44,7 @@ export default async function ContactPage() {
       email={global.email}
       linkedInHandle={global.linkedInHandle}
       instagramHandle={global.instagramHandle}
+      resume={resume}
       isAdmin={isAdmin}
     />
   );

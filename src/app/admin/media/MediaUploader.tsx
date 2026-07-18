@@ -34,10 +34,13 @@ export default function MediaUploader({
   onUploaded,
   triggerLabel = "Upload media",
   triggerClassName,
+  accept = "image",
 }: {
   onUploaded: (asset: MediaAsset) => void;
   triggerLabel?: string;
   triggerClassName?: string;
+  /** "image" runs the crop flow; "document" accepts a PDF and uploads it directly. */
+  accept?: "image" | "document";
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cropperRef = useRef<CropperRef>(null);
@@ -65,6 +68,15 @@ export default function MediaUploader({
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    if (accept === "document") {
+      if (file.type !== "application/pdf") {
+        setError("Please choose a PDF file.");
+        return;
+      }
+      // Documents have nothing to crop — upload as-is.
+      void uploadDocument(file);
+      return;
+    }
     if (!file.type.startsWith("image/")) {
       setError("Please choose an image file.");
       return;
@@ -75,6 +87,22 @@ export default function MediaUploader({
     reader.onload = () => setSource({ url: reader.result as string, file });
     reader.onerror = () => setError("Couldn't read the selected file.");
     reader.readAsDataURL(file);
+  }
+
+  async function uploadDocument(file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("title", baseName(file.name));
+
+    setBusy(true);
+    setError(null);
+    const result = await uploadAsset(formData);
+    setBusy(false);
+    if ("error" in result) {
+      setError(result.error);
+      return;
+    }
+    onUploaded(result.asset);
   }
 
   async function handleSave() {
@@ -112,10 +140,21 @@ export default function MediaUploader({
 
   return (
     <>
-      <button type="button" className={triggerClassName ?? styles.uploadBtn} onClick={() => fileInputRef.current?.click()}>
-        {triggerLabel}
+      <button
+        type="button"
+        className={triggerClassName ?? styles.uploadBtn}
+        onClick={() => fileInputRef.current?.click()}
+        disabled={busy && !source}
+      >
+        {busy && !source ? "Uploading…" : triggerLabel}
       </button>
-      <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleFile} />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={accept === "document" ? "application/pdf" : "image/*"}
+        hidden
+        onChange={handleFile}
+      />
       {!source && error && <p className={styles.actionError}>{error}</p>}
 
       {source && (
