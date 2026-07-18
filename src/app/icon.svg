@@ -1,0 +1,5 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="64" height="64" fill="#2d3930"/>
+  <rect x="4.5" y="4.5" width="55" height="55" fill="none" stroke="#fcf9f8" stroke-opacity="0.28" stroke-width="1"/>
+  <text x="32" y="43" font-family="Georgia, 'Times New Roman', serif" font-size="34" font-weight="500" letter-spacing="-1" text-anchor="middle" fill="#fcf9f8">TC</text>
+</svg>
