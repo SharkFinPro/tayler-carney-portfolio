@@ -33,8 +33,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const { seo } = await getSiteData();
 
   return {
-    // @ts-ignore
-    metadataBase: new URL(process.env.WEBSITE_URL),
+    metadataBase: new URL(process.env.WEBSITE_URL ?? "http://localhost:3000"),
     title: {
       default: seo.title,
       template: seo.titleTemplate,
