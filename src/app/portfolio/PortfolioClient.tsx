@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faGripVertical,
@@ -11,10 +12,13 @@ import {
   faRotateLeft,
   faChevronRight,
   faTrash,
+  faImage,
+  faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import styles from "./Portfolio.module.scss";
 import { useDragReorder } from "@/components/blocks/useDragReorder";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import AssetPicker from "@/components/AssetPicker";
 import CreateProjectModal from "./CreateProjectModal";
 import { deleteProject, updatePortfolio } from "@/app/admin/portfolioActions";
 import type { OrderedProject, PortfolioConfig } from "@/lib/portfolio";
@@ -33,7 +37,11 @@ interface PortfolioClientProps {
 }
 
 const toConfig = (rows: ProjectRow[]): PortfolioConfig => ({
-  entries: rows.map((r) => ({ id: r.id, archived: r.archived })),
+  entries: rows.map((r) => ({
+    id: r.id,
+    archived: r.archived,
+    ...(r.coverUrl ? { coverUrl: r.coverUrl, coverAlt: r.coverAlt } : {}),
+  })),
 });
 
 export default function PortfolioClient({ siteId, projects: initial, isAdmin = false }: PortfolioClientProps) {
@@ -50,6 +58,8 @@ export default function PortfolioClient({ siteId, projects: initial, isAdmin = f
   const [creating, setCreating] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<ProjectRow | null>(null);
+  // Id of the project whose cover is being picked, or null when the picker is closed.
+  const [coverPickerFor, setCoverPickerFor] = useState<string | null>(null);
 
   // Active and archived are two views of the one ordered list. Reordering and
   // archiving only ever rearrange this single source of truth, so the persisted
@@ -86,6 +96,17 @@ export default function PortfolioClient({ siteId, projects: initial, isAdmin = f
     },
   });
 
+  // Set or clear a project's cover image, persisting the whole config. Passing a
+  // null asset removes the cover.
+  function setCover(id: string, asset: { url: string; altText?: string } | null) {
+    const next = projectsRef.current.map((p) =>
+      p.id === id
+        ? { ...p, coverUrl: asset?.url || undefined, coverAlt: asset?.altText || undefined }
+        : p
+    );
+    void persist(next);
+  }
+
   function toggleArchived(id: string) {
     const next = projectsRef.current.map((p) =>
       p.id === id ? { ...p, archived: !p.archived } : p
@@ -116,15 +137,66 @@ export default function PortfolioClient({ siteId, projects: initial, isAdmin = f
       <Link
         key={project.id}
         href={`/portfolio/${project.slug}`}
-        className={styles.project}
+        className={`${styles.project} ${project.coverUrl ? styles.projectHasCover : ""}`}
       >
         <span className={styles.projectIndex} aria-hidden="true" />
+        {project.coverUrl && (
+          <span className={styles.projectCover}>
+            <Image
+              src={project.coverUrl}
+              alt={project.coverAlt ?? ""}
+              fill
+              sizes="120px"
+              className={styles.projectCoverImg}
+            />
+          </span>
+        )}
         <div className={styles.projectBody}>
           <h2 className={styles.projectTitle}>{project.title}</h2>
           <p className={styles.projectDesc}>{project.description}</p>
         </div>
         <span className={styles.projectArrow} aria-hidden="true">↗</span>
       </Link>
+    );
+  }
+
+  // Admin cover affordance: a thumbnail that doubles as the "set / change cover"
+  // trigger (opens the AssetPicker), plus a remove button when a cover is set.
+  function renderCoverControl(project: ProjectRow) {
+    return (
+      <div className={styles.coverControl}>
+        <button
+          type="button"
+          className={styles.coverTrigger}
+          onClick={() => setCoverPickerFor(project.id)}
+          aria-label={project.coverUrl ? `Change cover for ${project.title}` : `Set cover for ${project.title}`}
+        >
+          {project.coverUrl ? (
+            <Image
+              src={project.coverUrl}
+              alt={project.coverAlt ?? ""}
+              fill
+              sizes="56px"
+              className={styles.coverTriggerImg}
+            />
+          ) : (
+            <span className={styles.coverPlaceholder}>
+              <FontAwesomeIcon icon={faImage} />
+              <span>Cover</span>
+            </span>
+          )}
+        </button>
+        {project.coverUrl && (
+          <button
+            type="button"
+            className={styles.coverRemove}
+            aria-label={`Remove cover for ${project.title}`}
+            onClick={() => setCover(project.id, null)}
+          >
+            <FontAwesomeIcon icon={faXmark} />
+          </button>
+        )}
+      </div>
     );
   }
 
@@ -145,6 +217,8 @@ export default function PortfolioClient({ siteId, projects: initial, isAdmin = f
         >
           <FontAwesomeIcon icon={faGripVertical} />
         </button>
+
+        {renderCoverControl(project)}
 
         <div className={styles.projectBody}>
           <Link href={`/portfolio/${project.slug}`} className={styles.projectTitleLink}>
@@ -173,6 +247,8 @@ export default function PortfolioClient({ siteId, projects: initial, isAdmin = f
   function renderArchivedRow(project: ProjectRow) {
     return (
       <div key={project.id} className={`${styles.project} ${styles.projectArchivedRow}`}>
+        {renderCoverControl(project)}
+
         <div className={styles.projectBody}>
           <Link href={`/portfolio/${project.slug}`} className={styles.projectTitleLink}>
             <h2 className={styles.projectTitle}>{project.title || "Untitled project"}</h2>
@@ -283,6 +359,13 @@ export default function PortfolioClient({ siteId, projects: initial, isAdmin = f
         <div className={styles.projectFloatingLayer} style={drag.floatingStyle}>
           {renderActiveRow(draggingRow, active.findIndex((p) => p.id === draggingRow.id), true)}
         </div>
+      )}
+
+      {coverPickerFor && (
+        <AssetPicker
+          onClose={() => setCoverPickerFor(null)}
+          onSelect={(asset) => setCover(coverPickerFor, asset)}
+        />
       )}
 
       {creating && (

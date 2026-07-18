@@ -96,6 +96,40 @@
   }
 }
 
+// When a public row carries a cover, insert a fixed thumbnail column between
+// the index and the body. Rows without a cover keep the original 3-col grid.
+.projectHasCover {
+  grid-template-columns: 3rem 96px 1fr auto;
+
+  @media (max-width: 560px) {
+    grid-template-columns: 2rem 72px 1fr;
+  }
+}
+
+.projectCover {
+  position: relative;
+  align-self: center;
+  aspect-ratio: 3 / 4;
+  width: 96px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--canvas-soft);
+
+  @media (max-width: 560px) {
+    width: 72px;
+  }
+}
+
+.projectCoverImg {
+  object-fit: cover;
+  filter: saturate(0.92);
+  transition: transform 0.35s ease;
+
+  .project:hover & {
+    transform: scale(1.03);
+  }
+}
+
 .projectIndex {
   font-family: var(--ff-mono);
   font-size: 10px;
@@ -160,7 +194,7 @@
 // The admin row reuses .project but is a non-navigating grid with a drag grip
 // on the left and an archive toggle on the right.
 .projectAdmin {
-  grid-template-columns: 2.5rem 1fr auto;
+  grid-template-columns: 2.5rem auto 1fr auto;
   cursor: default;
 
   &:hover {
@@ -183,7 +217,7 @@
 
 // Archived rows have no drag handle, so they drop the leading grip column.
 .projectArchivedRow {
-  grid-template-columns: 1fr auto;
+  grid-template-columns: auto 1fr auto;
   opacity: 0.7;
   cursor: default;
 
@@ -225,6 +259,73 @@
   &:hover {
     color: var(--ink);
     border-color: var(--accent);
+  }
+}
+
+// ── Admin: cover image control ─────────────────────────────────────────────
+
+.coverControl {
+  position: relative;
+  align-self: center;
+  width: 56px;
+  height: 74px;
+}
+
+.coverTrigger {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--canvas-soft);
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--accent);
+  }
+}
+
+.coverTriggerImg {
+  object-fit: cover;
+}
+
+.coverPlaceholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  width: 100%;
+  height: 100%;
+  color: var(--ink-muted);
+  font-family: var(--ff-mono);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.coverRemove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--canvas);
+  color: var(--ink-muted);
+  font-size: 9px;
+  cursor: pointer;
+
+  &:hover {
+    color: #b3261e;
+    border-color: #b3261e;
   }
 }
 
