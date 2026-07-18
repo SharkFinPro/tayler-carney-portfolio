@@ -5,7 +5,9 @@ import { isAuthed } from "@/lib/auth";
 import { sanitizeGlobal } from "@/lib/global";
 
 export const metadata: Metadata = {
-  title: "Contact"
+  title: "Contact",
+  description:
+    "Get in touch with Tayler Carney for collaborations, commissions, and studio inquiries.",
 };
 
 export const dynamic = "force-dynamic";

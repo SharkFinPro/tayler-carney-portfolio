@@ -4,7 +4,9 @@ import { cmsQuery } from "@/lib/cms";
 import { isAuthed } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "About"
+  title: "About",
+  description:
+    "The designer behind the archive — Tayler Carney's background, practice, and approach to structural fashion design.",
 };
 
 export const dynamic = "force-dynamic";

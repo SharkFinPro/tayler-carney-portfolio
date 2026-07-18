@@ -1,0 +1,87 @@
+// Minimal, on-brand loading skeletons. Each variant echoes the real header
+// layout of the route it stands in for, so the swap to real content doesn't
+// shift the page. Placeholder bars carry a restrained pulse.
+
+.wrapper {
+  background: var(--canvas);
+  padding-top: 5rem;
+  min-height: 60vh;
+}
+
+.container {
+  max-width: 1440px;
+  width: 90%;
+  margin-inline: auto;
+}
+
+// ── Index-style header (eyebrow + serif title): portfolio, atelier ───────────
+
+.indexHeader {
+  padding-bottom: 4rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.eyebrow {
+  height: 10px;
+  width: 140px;
+  margin-bottom: 1.5rem;
+}
+
+.title {
+  height: clamp(42px, 6vw, 80px);
+  width: min(420px, 70%);
+}
+
+// ── Project-style header (two-column title + description) ────────────────────
+
+.projectHeader {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: end;
+  gap: 2rem 4rem;
+  padding-bottom: 5rem;
+  border-bottom: 1px solid var(--line);
+
+  @media (max-width: 700px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.projectTitle {
+  height: clamp(48px, 7vw, 88px);
+  width: min(360px, 90%);
+}
+
+.lines {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.line {
+  height: 12px;
+
+  &:nth-child(1) { width: 100%; }
+  &:nth-child(2) { width: 92%; }
+  &:nth-child(3) { width: 60%; }
+}
+
+// ── Shared bar treatment ─────────────────────────────────────────────────────
+
+.bar {
+  display: block;
+  border-radius: 2px;
+  background: var(--canvas-deep);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar {
+    animation: none;
+  }
+}
