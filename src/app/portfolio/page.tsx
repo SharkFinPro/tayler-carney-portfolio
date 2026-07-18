@@ -5,7 +5,9 @@ import { isAuthed } from "@/lib/auth";
 import { orderProjects, sanitizePortfolio } from "@/lib/portfolio";
 
 export const metadata: Metadata = {
-  title: "Portfolio"
+  title: "Portfolio",
+  description:
+    "A working archive of structural fashion projects by Tayler Carney — garment engineering, pattern-making, and material studies documented in full.",
 };
 
 export const dynamic = "force-dynamic";

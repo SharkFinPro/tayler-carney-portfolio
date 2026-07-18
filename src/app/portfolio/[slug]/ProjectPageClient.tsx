@@ -98,13 +98,16 @@ export default function ProjectPageClient({ project, prevProject, nextProject, i
   }, []);
 
   useEffect(() => {
+    // Only steer the lightbox with the arrow keys while it's actually open —
+    // otherwise the global listener hijacks arrow keys during normal browsing.
+    if (!modal) return;
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "ArrowRight")  goNext();
       if (e.key === "ArrowLeft")   goPrev();
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [goNext, goPrev]);
+  }, [modal, goNext, goPrev]);
 
   useEffect(() => {
     document.body.style.overflow = modal ? "hidden" : "";
