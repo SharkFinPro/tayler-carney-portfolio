@@ -13,8 +13,12 @@ export type GlobalContent = {
   email: string;
   linkedInHandle: string;
   instagramHandle: string;
-  /** URL of a resume PDF (Media Library asset). Empty hides the download links. */
-  resumeUrl: string;
+  /**
+   * Hygraph Asset id of the resume PDF. Stored as a reference (not a URL) and
+   * resolved fresh on every render, so renames/re-uploads of the asset are
+   * reflected everywhere. Empty hides the download links.
+   */
+  resumeAssetId: string;
 };
 
 // Seed identity — the fallback when `global` is null (e.g. a fresh CMS entry).
@@ -24,15 +28,15 @@ export const DEFAULT_GLOBAL: GlobalContent = {
   email: "",
   linkedInHandle: "",
   instagramHandle: "",
-  resumeUrl: "",
+  resumeAssetId: "",
 };
 
 const str = (v: unknown, fallback = ""): string => (typeof v === "string" ? v : fallback);
 
-// Resume links render as public hrefs, so only absolute http(s) URLs pass.
-const httpUrl = (v: unknown): string => {
+// Hygraph asset ids are opaque alphanumeric tokens; anything else is dropped.
+const assetId = (v: unknown): string => {
   const s = str(v).trim();
-  return /^https?:\/\//i.test(s) ? s : "";
+  return /^[a-z0-9]+$/i.test(s) ? s : "";
 };
 
 /**
@@ -49,6 +53,6 @@ export function sanitizeGlobal(raw: unknown): GlobalContent {
     email: str(data.email, d.email).trim(),
     linkedInHandle: str(data.linkedInHandle, d.linkedInHandle).trim(),
     instagramHandle: str(data.instagramHandle, d.instagramHandle).trim(),
-    resumeUrl: httpUrl(data.resumeUrl),
+    resumeAssetId: assetId(data.resumeAssetId),
   };
 }

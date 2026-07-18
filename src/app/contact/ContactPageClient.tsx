@@ -20,8 +20,8 @@ interface ContactPageClientProps {
   email: string;
   linkedInHandle: string;
   instagramHandle: string;
-  /** Absolute URL of the resume PDF; empty hides the download card. */
-  resumeUrl?: string;
+  /** Resolved resume asset (fresh per render); null hides the download card. */
+  resume?: { url: string; name: string } | null;
   isAdmin?: boolean;
 }
 
@@ -36,7 +36,7 @@ export default function ContactPageClient({
   email,
   linkedInHandle,
   instagramHandle,
-  resumeUrl = "",
+  resume = null,
   isAdmin = false,
 }: ContactPageClientProps) {
   const initialBlocks = useMemo(() => sanitizeBlocks(contact), [contact]);
@@ -108,14 +108,15 @@ export default function ContactPageClient({
         <span className={styles.emailAddress}>{email}</span>
       </div>
 
-      {resumeUrl && (
+      {resume && (
         <div className={styles.contactItem}>
           <span className={styles.sectionLabel}>Resume</span>
           <a
-            href={resumeUrl}
+            href={resume.url}
             target="_blank"
             rel="noopener noreferrer"
             className={styles.emailButton}
+            title={resume.name}
           >
             <div className={styles.emailButtonInner}>
               <FontAwesomeIcon icon={faFileArrowDown} className={styles.emailButtonIcon} />
@@ -123,6 +124,7 @@ export default function ContactPageClient({
               <span className={styles.emailButtonArrow}>↗</span>
             </div>
           </a>
+          <span className={styles.emailAddress}>{resume.name}</span>
         </div>
       )}
 

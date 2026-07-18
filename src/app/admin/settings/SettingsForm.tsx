@@ -31,26 +31,24 @@ const SEO_FIELDS: { name: keyof SeoForm; label: string; hint?: string; multiline
 
 const toSeoForm = (seo: SeoContent): SeoForm => ({ ...seo, keywords: seo.keywords.join(", ") });
 
-// A readable name for the selected resume, derived from its asset URL.
-const fileNameFromUrl = (url: string): string => {
-  try {
-    const last = decodeURIComponent(new URL(url).pathname.split("/").pop() ?? "");
-    return last || url;
-  } catch {
-    return url;
-  }
-};
-
 type Status = { ok: boolean; message: string } | null;
+
+/** Display info for the currently referenced resume asset. */
+export type ResumeDisplay = { url: string; name: string };
+
+const baseName = (fileName: string): string => fileName.replace(/\.[^.]+$/, "");
 
 export default function SettingsForm({
   id,
   initialGlobal,
   initialSeo,
+  initialResume,
 }: {
   id: string;
   initialGlobal: GlobalContent;
   initialSeo: SeoContent;
+  /** Resolved server-side from `initialGlobal.resumeAssetId`; null when unset or the asset is gone. */
+  initialResume: ResumeDisplay | null;
 }) {
   const [global, setGlobal] = useState<GlobalContent>(initialGlobal);
   const [seo, setSeo] = useState<SeoForm>(() => toSeoForm(initialSeo));
@@ -63,6 +61,9 @@ export default function SettingsForm({
   const [globalStatus, setGlobalStatus] = useState<Status>(null);
   const [seoStatus, setSeoStatus] = useState<Status>(null);
   const [resumePickerOpen, setResumePickerOpen] = useState(false);
+  // Local display info for the referenced asset; the saved value is only the
+  // asset id (public pages re-resolve it on render, so renames propagate).
+  const [resume, setResume] = useState<ResumeDisplay | null>(initialResume);
 
   const globalDirty = (Object.keys(savedGlobal) as (keyof GlobalContent)[]).some(
     (k) => global[k] !== savedGlobal[k]
@@ -131,21 +132,28 @@ export default function SettingsForm({
         <div className={styles.field}>
           <span className={styles.label}>Resume</span>
           <span className={styles.hint}>
-            A PDF from the Media Library, offered as a download on the Contact page and in the footer.
-            Remove it to hide those links.
+            A PDF from the Media Library, offered as a download on the Contact page and in the
+            footer. The file is referenced live — renaming or replacing it in the Media Library
+            updates it everywhere. Remove it to hide those links.
           </span>
           <div className={styles.assetRow}>
-            {global.resumeUrl ? (
+            {global.resumeAssetId ? (
               <>
-                <a
-                  href={global.resumeUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={styles.assetName}
-                  title={global.resumeUrl}
-                >
-                  {fileNameFromUrl(global.resumeUrl)}
-                </a>
+                {resume ? (
+                  <a
+                    href={resume.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.assetName}
+                    title={resume.name}
+                  >
+                    {resume.name}
+                  </a>
+                ) : (
+                  <span className={styles.assetEmpty}>
+                    The selected PDF no longer exists in the Media Library.
+                  </span>
+                )}
                 <button
                   type="button"
                   className={styles.assetBtn}
@@ -157,7 +165,8 @@ export default function SettingsForm({
                   type="button"
                   className={`${styles.assetBtn} ${styles.assetBtnDanger}`}
                   onClick={() => {
-                    setGlobal((v) => ({ ...v, resumeUrl: "" }));
+                    setGlobal((v) => ({ ...v, resumeAssetId: "" }));
+                    setResume(null);
                     setGlobalStatus(null);
                   }}
                 >
@@ -243,8 +252,9 @@ export default function SettingsForm({
         <AssetPicker
           kind="document"
           onClose={() => setResumePickerOpen(false)}
-          onSelect={({ url }) => {
-            setGlobal((v) => ({ ...v, resumeUrl: url }));
+          onSelect={(asset) => {
+            setGlobal((v) => ({ ...v, resumeAssetId: asset.id }));
+            setResume({ url: asset.url, name: asset.title?.trim() || baseName(asset.fileName) });
             setGlobalStatus(null);
           }}
         />

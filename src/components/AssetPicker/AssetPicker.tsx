@@ -9,7 +9,7 @@ import type { MediaAsset } from "@/lib/getAssets";
 
 interface Props {
   onClose: () => void;
-  onSelect: (asset: { url: string; altText?: string }) => void;
+  onSelect: (asset: { id: string; url: string; altText?: string; title?: string; fileName: string }) => void;
   /** Which assets to offer: images (default) or PDF documents. */
   kind?: "image" | "document";
 }
@@ -50,7 +50,7 @@ export default function AssetPicker({ onClose, onSelect, kind = "image" }: Props
         return;
       }
     }
-    onSelect({ url: asset.url, altText: asset.altText });
+    onSelect({ id: asset.id, url: asset.url, altText: asset.altText, title: asset.title, fileName: asset.fileName });
     onClose();
   }
 
@@ -118,7 +118,7 @@ export default function AssetPicker({ onClose, onSelect, kind = "image" }: Props
             triggerClassName={styles.close}
             accept={kind}
             onUploaded={(asset) => {
-              onSelect({ url: asset.url, altText: asset.altText });
+              onSelect({ id: asset.id, url: asset.url, altText: asset.altText, title: asset.title, fileName: asset.fileName });
               onClose();
             }}
           />
