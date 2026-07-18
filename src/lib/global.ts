@@ -13,6 +13,8 @@ export type GlobalContent = {
   email: string;
   linkedInHandle: string;
   instagramHandle: string;
+  /** URL of a resume PDF (Media Library asset). Empty hides the download links. */
+  resumeUrl: string;
 };
 
 // Seed identity — the fallback when `global` is null (e.g. a fresh CMS entry).
@@ -22,9 +24,16 @@ export const DEFAULT_GLOBAL: GlobalContent = {
   email: "",
   linkedInHandle: "",
   instagramHandle: "",
+  resumeUrl: "",
 };
 
 const str = (v: unknown, fallback = ""): string => (typeof v === "string" ? v : fallback);
+
+// Resume links render as public hrefs, so only absolute http(s) URLs pass.
+const httpUrl = (v: unknown): string => {
+  const s = str(v).trim();
+  return /^https?:\/\//i.test(s) ? s : "";
+};
 
 /**
  * Coerce arbitrary JSON (from the CMS or the admin settings form) into a complete,
@@ -40,5 +49,6 @@ export function sanitizeGlobal(raw: unknown): GlobalContent {
     email: str(data.email, d.email).trim(),
     linkedInHandle: str(data.linkedInHandle, d.linkedInHandle).trim(),
     instagramHandle: str(data.instagramHandle, d.instagramHandle).trim(),
+    resumeUrl: httpUrl(data.resumeUrl),
   };
 }

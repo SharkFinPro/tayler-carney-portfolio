@@ -17,6 +17,12 @@ const GLOBAL_FIELDS: { name: keyof GlobalContent; label: string; hint?: string; 
   { name: "email", label: "Email", type: "email", hint: "Used for the contact page email link." },
   { name: "linkedInHandle", label: "LinkedIn handle", hint: "The part after linkedin.com/in/" },
   { name: "instagramHandle", label: "Instagram handle", hint: "Without the @" },
+  {
+    name: "resumeUrl",
+    label: "Resume URL",
+    type: "url",
+    hint: "Link to a resume PDF — upload it in the Media Library, then paste its URL here. Leave empty to hide the download links on About and Contact.",
+  },
 ];
 
 const SEO_FIELDS: { name: keyof SeoForm; label: string; hint?: string; multiline?: boolean }[] = [

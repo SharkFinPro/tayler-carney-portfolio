@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./Contact.module.scss";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEnvelope } from "@fortawesome/free-solid-svg-icons";
+import { faEnvelope, faFileArrowDown } from "@fortawesome/free-solid-svg-icons";
 import { faLinkedin, faInstagram } from "@fortawesome/free-brands-svg-icons";
 import { ImageGridItem } from "@/components/blocks/ImageGrid";
 import BlockSection from "@/components/blocks/BlockSection";
@@ -20,6 +20,8 @@ interface ContactPageClientProps {
   email: string;
   linkedInHandle: string;
   instagramHandle: string;
+  /** Absolute URL of the resume PDF; empty hides the download card. */
+  resumeUrl?: string;
   isAdmin?: boolean;
 }
 
@@ -34,6 +36,7 @@ export default function ContactPageClient({
   email,
   linkedInHandle,
   instagramHandle,
+  resumeUrl = "",
   isAdmin = false,
 }: ContactPageClientProps) {
   const initialBlocks = useMemo(() => sanitizeBlocks(contact), [contact]);
@@ -104,6 +107,24 @@ export default function ContactPageClient({
         </a>
         <span className={styles.emailAddress}>{email}</span>
       </div>
+
+      {resumeUrl && (
+        <div className={styles.contactItem}>
+          <span className={styles.sectionLabel}>Resume</span>
+          <a
+            href={resumeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.emailButton}
+          >
+            <div className={styles.emailButtonInner}>
+              <FontAwesomeIcon icon={faFileArrowDown} className={styles.emailButtonIcon} />
+              <span className={styles.emailButtonText}>Download Resume</span>
+              <span className={styles.emailButtonArrow}>↗</span>
+            </div>
+          </a>
+        </div>
+      )}
 
       <div className={styles.contactItem}>
         <span className={styles.sectionLabel}>Online</span>

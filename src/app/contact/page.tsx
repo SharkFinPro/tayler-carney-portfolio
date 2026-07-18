@@ -42,6 +42,7 @@ export default async function ContactPage() {
       email={global.email}
       linkedInHandle={global.linkedInHandle}
       instagramHandle={global.instagramHandle}
+      resumeUrl={global.resumeUrl}
       isAdmin={isAdmin}
     />
   );

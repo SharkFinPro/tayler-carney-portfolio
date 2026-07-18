@@ -50,6 +50,16 @@ export default async function Footer() {
               </a>
             ))}
           </div>
+          {global.resumeUrl && (
+            <a
+              href={global.resumeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.resumeLink}
+            >
+              Resume ↗
+            </a>
+          )}
         </div>
 
         {/* Spacer — empty middle column keeps nav pushed right */}
