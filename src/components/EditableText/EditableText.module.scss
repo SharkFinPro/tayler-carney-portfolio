@@ -136,6 +136,17 @@
   }
 }
 
+// Hint shown while editing a list field, clarifying that commas split items.
+.hint {
+  display: block;
+  margin-top: 0.25rem;
+  font-family: var(--ff-sans);
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--ink-soft);
+  -webkit-text-fill-color: var(--ink-soft);
+}
+
 .error {
   display: block;
   margin-top: 0.25rem;
