@@ -210,6 +210,11 @@
   }
 }
 
+// When no archive image is set, the band collapses to a single text column.
+.archiveBandInnerNoImage {
+  grid-template-columns: 1fr;
+}
+
 .archiveCard {
   border: 1px solid rgba(255,255,255,0.15);
   padding: 2.5rem;

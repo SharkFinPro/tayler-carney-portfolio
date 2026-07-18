@@ -151,6 +151,10 @@ export default function EditableText({
         />
       )}
 
+      {isList && (
+        <span className={styles.hint}>Separate items with commas</span>
+      )}
+
       <span className={styles.controls} contentEditable={false}>
         <button
           type="button"

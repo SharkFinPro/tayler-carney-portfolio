@@ -71,9 +71,8 @@ export const DEFAULT_HOME: HomeContent = {
     body: "Each garment in this collection is treated as a structural feat. The practice prioritizes the technical precision of pattern-making over ephemeral trends, creating a visual language that mirrors architectural blueprints.",
     buttonLabel: "Read More",
     buttonHref: "/about",
-    imageUrl:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuBDK47nqSrafWv-0jCRGsliMV0uXg05oyzhNOdBalBuF4YTAhah7yurIy9HyhR4Qpj0u12mINQKs4_2arv4gVC4Ub2goUe4ckiCEML9a4Et87U1fmNzU0GrtptSeyZqfgZv0pePbzmzaJRaTT5dinzM_NxxhXQLQ45pFjTCPBXyJc30zEsnKwbU-I7KCeL0eBPjsycYdRDvazN0INuxtHaBjFi-PG_MU3ZMIuVE29xiqXlwKHb8gymDAD9WZbEyI_bz7-0dUNvP1iU",
-    imageAlt: "Archival garment on concrete pedestal",
+    imageUrl: "",
+    imageAlt: "",
   },
   exploreTitle: "Explore the Site",
   destinations: [

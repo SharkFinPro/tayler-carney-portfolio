@@ -245,7 +245,9 @@ export default function HomePageClient({ siteId, home: initial, isAdmin = false 
 
       <AnimatedSection>
         <section className={styles.archiveBand}>
-          <div className={styles.archiveBandInner}>
+          <div
+            className={`${styles.archiveBandInner} ${archive.imageUrl ? "" : styles.archiveBandInnerNoImage}`}
+          >
             <div className={styles.archiveCard}>
               <span className={styles.archiveCardLabel}>{archive.label}</span>
               <h2 className={styles.archiveCardHeadline}>{archive.headline}</h2>
@@ -264,14 +266,16 @@ export default function HomePageClient({ siteId, home: initial, isAdmin = false 
               )}
             </div>
 
-            <div className={styles.archiveImage}>
-              <Image
-                src={archive.imageUrl}
-                alt={archive.imageAlt}
-                fill
-                sizes="(max-width: 860px) 90vw, 45vw"
-              />
-            </div>
+            {archive.imageUrl && (
+              <div className={styles.archiveImage}>
+                <Image
+                  src={archive.imageUrl}
+                  alt={archive.imageAlt}
+                  fill
+                  sizes="(max-width: 860px) 90vw, 45vw"
+                />
+              </div>
+            )}
           </div>
         </section>
       </AnimatedSection>

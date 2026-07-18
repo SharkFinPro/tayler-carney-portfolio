@@ -11,6 +11,7 @@ export default function Navigation() {
   const pathname = usePathname();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const toggleButtonRef = useRef<HTMLButtonElement>(null);
 
   const navItems = [
     { label: "Home", path: "/" },
@@ -28,12 +29,22 @@ export default function Navigation() {
       }
     };
 
+    // Close on Escape and return focus to the toggle button.
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsDropdownOpen(false);
+        toggleButtonRef.current?.focus();
+      }
+    };
+
     if (isDropdownOpen) {
       document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
     }
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isDropdownOpen, pathname]);
 
@@ -56,6 +67,7 @@ export default function Navigation() {
     </nav>
     <nav className={styles.navSmall} ref={dropdownRef}>
       <button
+        ref={toggleButtonRef}
         onClick={toggleDropdown}
         aria-expanded={isDropdownOpen}
         aria-label="Toggle navigation menu"
