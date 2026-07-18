@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { updateGlobal, updateSeo } from "@/app/admin/contentActions";
 import { useUnsavedChanges } from "@/components/useUnsavedChanges";
+import AssetPicker from "@/components/AssetPicker";
 import type { GlobalContent } from "@/lib/global";
 import type { SeoContent } from "@/lib/seo";
 import styles from "./Settings.module.scss";
@@ -17,12 +18,6 @@ const GLOBAL_FIELDS: { name: keyof GlobalContent; label: string; hint?: string; 
   { name: "email", label: "Email", type: "email", hint: "Used for the contact page email link." },
   { name: "linkedInHandle", label: "LinkedIn handle", hint: "The part after linkedin.com/in/" },
   { name: "instagramHandle", label: "Instagram handle", hint: "Without the @" },
-  {
-    name: "resumeUrl",
-    label: "Resume URL",
-    type: "url",
-    hint: "Link to a resume PDF — upload it in the Media Library, then paste its URL here. Leave empty to hide the download links on About and Contact.",
-  },
 ];
 
 const SEO_FIELDS: { name: keyof SeoForm; label: string; hint?: string; multiline?: boolean }[] = [
@@ -35,6 +30,16 @@ const SEO_FIELDS: { name: keyof SeoForm; label: string; hint?: string; multiline
 ];
 
 const toSeoForm = (seo: SeoContent): SeoForm => ({ ...seo, keywords: seo.keywords.join(", ") });
+
+// A readable name for the selected resume, derived from its asset URL.
+const fileNameFromUrl = (url: string): string => {
+  try {
+    const last = decodeURIComponent(new URL(url).pathname.split("/").pop() ?? "");
+    return last || url;
+  } catch {
+    return url;
+  }
+};
 
 type Status = { ok: boolean; message: string } | null;
 
@@ -57,6 +62,7 @@ export default function SettingsForm({
   const [savingSeo, setSavingSeo] = useState(false);
   const [globalStatus, setGlobalStatus] = useState<Status>(null);
   const [seoStatus, setSeoStatus] = useState<Status>(null);
+  const [resumePickerOpen, setResumePickerOpen] = useState(false);
 
   const globalDirty = (Object.keys(savedGlobal) as (keyof GlobalContent)[]).some(
     (k) => global[k] !== savedGlobal[k]
@@ -122,6 +128,57 @@ export default function SettingsForm({
           </div>
         ))}
 
+        <div className={styles.field}>
+          <span className={styles.label}>Resume</span>
+          <span className={styles.hint}>
+            A PDF from the Media Library, offered as a download on the Contact page and in the footer.
+            Remove it to hide those links.
+          </span>
+          <div className={styles.assetRow}>
+            {global.resumeUrl ? (
+              <>
+                <a
+                  href={global.resumeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.assetName}
+                  title={global.resumeUrl}
+                >
+                  {fileNameFromUrl(global.resumeUrl)}
+                </a>
+                <button
+                  type="button"
+                  className={styles.assetBtn}
+                  onClick={() => setResumePickerOpen(true)}
+                >
+                  Change…
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.assetBtn} ${styles.assetBtnDanger}`}
+                  onClick={() => {
+                    setGlobal((v) => ({ ...v, resumeUrl: "" }));
+                    setGlobalStatus(null);
+                  }}
+                >
+                  Remove
+                </button>
+              </>
+            ) : (
+              <>
+                <span className={styles.assetEmpty}>No resume selected.</span>
+                <button
+                  type="button"
+                  className={styles.assetBtn}
+                  onClick={() => setResumePickerOpen(true)}
+                >
+                  Select PDF…
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
         <div className={styles.actions}>
           <button type="submit" className={styles.button} disabled={savingGlobal || !globalDirty}>
             {savingGlobal ? "Saving…" : "Save identity"}
@@ -181,6 +238,17 @@ export default function SettingsForm({
           )}
         </div>
       </form>
+
+      {resumePickerOpen && (
+        <AssetPicker
+          kind="document"
+          onClose={() => setResumePickerOpen(false)}
+          onSelect={({ url }) => {
+            setGlobal((v) => ({ ...v, resumeUrl: url }));
+            setGlobalStatus(null);
+          }}
+        />
+      )}
     </>
   );
 }

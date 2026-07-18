@@ -93,6 +93,21 @@
   background: var(--plate-muted);
 }
 
+// Non-image assets (PDFs) have no preview — show a labeled tile instead.
+.docThumb {
+  width: 100%;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  background: var(--plate-muted);
+  font-family: var(--ff-mono);
+  font-size: 0.85rem;
+  letter-spacing: 0.15em;
+  color: var(--ink-muted);
+}
+
 .name {
   font-size: 0.72rem;
   color: var(--ink-soft);
