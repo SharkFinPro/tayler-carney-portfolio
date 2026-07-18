@@ -132,6 +132,24 @@
   counter-reset: section;
 }
 
+// Admin-only toggle between the rendered page and the block editor.
+.editToggle {
+  margin-top: 1rem;
+  font-family: var(--ff-sans);
+  font-size: 0.85rem;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  background: var(--accent);
+  color: var(--ink-inverse);
+  cursor: pointer;
+  transition: opacity 0.2s;
+
+  &:hover {
+    opacity: 0.85;
+  }
+}
+
 .mainHeader {
   width: 100%;
   display: grid;

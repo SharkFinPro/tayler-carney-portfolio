@@ -16,6 +16,7 @@ import {
   blockSummary,
 } from "./blocks";
 import { useDragReorder } from "./useDragReorder";
+import { useUnsavedChanges } from "@/components/useUnsavedChanges";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { updateBlockLayout } from "@/app/admin/contentActions";
 
@@ -46,6 +47,9 @@ export default function BlockEditor({ model, field, id, initialBlocks, onBlocksC
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  // An open block form means a draft that hasn't been committed yet.
+  useUnsavedChanges(draft !== null);
 
   const blocksRef = useRef(blocks);
   useEffect(() => {
