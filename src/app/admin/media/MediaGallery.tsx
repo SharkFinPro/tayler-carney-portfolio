@@ -16,7 +16,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import type { MediaAsset } from "@/lib/getAssets";
-import { updateAsset, publishAsset, unpublishAsset, deleteAsset } from "@/app/admin/mediaActions";
+import { updateAsset, publishAsset, unpublishAsset, deleteAsset, findAssetUsage } from "@/app/admin/mediaActions";
 import MediaUploader from "./MediaUploader";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import styles from "./Media.module.scss";
@@ -248,6 +248,8 @@ export default function MediaGallery({ initialAssets }: { initialAssets: MediaAs
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<string[] | null>(null);
+  const [deleteUsage, setDeleteUsage] = useState<string[] | null>(null);
+  const [usageLoading, setUsageLoading] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
 
@@ -326,25 +328,60 @@ export default function MediaGallery({ initialAssets }: { initialAssets: MediaAs
   async function bulkSetPublished(publish: boolean) {
     setBulkBusy(true);
     setBulkError(null);
-    let firstError: string | null = null;
-    for (const id of selectedIds) {
-      const result = publish ? await publishAsset(id) : await unpublishAsset(id);
-      if ("error" in result) firstError ??= result.error;
-      else setStatus(id, publish ? "published" : "draft");
-    }
+    // Run all requests concurrently; each applies its own optimistic update on
+    // success. The results array preserves selection order, so the first
+    // rejected entry is the first error to surface.
+    const results = await Promise.allSettled(
+      selectedIds.map(async (id) => {
+        const result = publish ? await publishAsset(id) : await unpublishAsset(id);
+        if ("error" in result) throw new Error(result.error);
+        setStatus(id, publish ? "published" : "draft");
+      })
+    );
     setBulkBusy(false);
-    if (firstError) setBulkError(firstError);
+    const firstRejected = results.find((r): r is PromiseRejectedResult => r.status === "rejected");
+    if (firstRejected) {
+      const reason = firstRejected.reason;
+      setBulkError(reason instanceof Error ? reason.message : String(reason));
+    }
+  }
+
+  // Open the delete confirmation and, in parallel, scan where the asset(s) are
+  // used so the dialog can warn before a delete silently breaks a live page.
+  function requestDelete(ids: string[]) {
+    setPendingDelete(ids);
+    setDeleteUsage(null);
+    setUsageLoading(true);
+    const urls = items.filter((a) => ids.includes(a.id)).map((a) => a.url);
+    findAssetUsage(urls).then((res) => {
+      setUsageLoading(false);
+      setDeleteUsage("error" in res ? null : res.used);
+    });
+  }
+
+  function closeDelete() {
+    setPendingDelete(null);
+    setDeleteUsage(null);
+    setUsageLoading(false);
   }
 
   // Returns an error string to keep the confirm dialog open, or null on success.
   async function confirmDelete(): Promise<string | null> {
     if (!pendingDelete) return null;
+    // Delete all selected assets concurrently; collect the survivors and the
+    // first error (results preserve order) to surface.
+    const results = await Promise.allSettled(
+      pendingDelete.map(async (id) => {
+        const result = await deleteAsset(id);
+        if ("error" in result) throw new Error(result.error);
+        return id;
+      })
+    );
     let firstError: string | null = null;
     const deleted: string[] = [];
-    for (const id of pendingDelete) {
-      const result = await deleteAsset(id);
-      if ("error" in result) firstError ??= result.error;
-      else deleted.push(id);
+    for (const r of results) {
+      if (r.status === "fulfilled") deleted.push(r.value);
+      else if (firstError === null) firstError = r.reason instanceof Error ? r.reason.message : String(r.reason);
     }
     if (deleted.length) {
       const gone = new Set(deleted);
@@ -429,7 +466,7 @@ export default function MediaGallery({ initialAssets }: { initialAssets: MediaAs
           <div className={styles.bulkActions}>
             <button type="button" className={styles.publishBtn} onClick={() => bulkSetPublished(true)} disabled={bulkBusy}>Publish</button>
             <button type="button" className={styles.unpublishBtn} onClick={() => bulkSetPublished(false)} disabled={bulkBusy}>Unpublish</button>
-            <button type="button" className={styles.dangerBtn} onClick={() => setPendingDelete(selectedIds)} disabled={bulkBusy}>Delete</button>
+            <button type="button" className={styles.dangerBtn} onClick={() => requestDelete(selectedIds)} disabled={bulkBusy}>Delete</button>
             <button type="button" className={styles.unpublishBtn} onClick={clearSelection} disabled={bulkBusy}>Clear</button>
           </div>
         </div>
@@ -462,7 +499,7 @@ export default function MediaGallery({ initialAssets }: { initialAssets: MediaAs
               onToggleSelect={toggleSelect}
               onLongPress={startSelection}
               onStatusChange={setStatus}
-              onRequestDelete={setPendingDelete}
+              onRequestDelete={requestDelete}
               onPatch={patchAsset}
             />
           ))}
@@ -472,9 +509,19 @@ export default function MediaGallery({ initialAssets }: { initialAssets: MediaAs
       {pendingDelete && (
         <ConfirmDialog
           title={`Delete ${deleteCount} ${deleteCount === 1 ? "asset" : "assets"}?`}
-          message={`This permanently removes ${deleteCount === 1 ? "the asset" : "these assets"} from the CMS. This can't be undone.`}
+          message={
+            <>
+              {usageLoading && <span className={styles.usageChecking}>Checking where {deleteCount === 1 ? "it is" : "they are"} used…</span>}
+              {!usageLoading && deleteUsage && deleteUsage.length > 0 && (
+                <span className={styles.usageWarning}>
+                  <strong>Used on: {deleteUsage.join(", ")}.</strong> {deleteCount === 1 ? "This image" : "These images"} will stop displaying on {deleteUsage.length === 1 ? "that page" : "those pages"}.
+                </span>
+              )}
+              This permanently removes {deleteCount === 1 ? "the asset" : "these assets"} from the CMS. This can&apos;t be undone.
+            </>
+          }
           onConfirm={confirmDelete}
-          onClose={() => setPendingDelete(null)}
+          onClose={closeDelete}
         />
       )}
     </div>

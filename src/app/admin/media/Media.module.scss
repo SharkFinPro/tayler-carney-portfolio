@@ -161,6 +161,9 @@ $draft-soft: rgba(187, 125, 44, 0.12);
 .actionError { color: #b3261e; font-size: 0.8rem; }
 .bulkErrorText { margin-bottom: 1rem; }
 
+.usageChecking { display: block; margin-bottom: 0.5rem; opacity: 0.7; }
+.usageWarning { display: block; margin-bottom: 0.5rem; color: #b3261e; }
+
 .state {
   text-align: center;
   padding: 3rem 1.5rem;
