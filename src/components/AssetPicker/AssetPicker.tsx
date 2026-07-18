@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Modal from "@/components/Modal";
 import styles from "./AssetPicker.module.scss";
-import { fetchAssets } from "@/app/admin/mediaActions";
+import { fetchAssets, publishAsset } from "@/app/admin/mediaActions";
 import MediaUploader from "@/app/admin/media/MediaUploader";
 import type { MediaAsset } from "@/lib/getAssets";
 
@@ -16,9 +16,14 @@ export default function AssetPicker({ onClose, onSelect }: Props) {
   const [assets, setAssets] = useState<MediaAsset[]>([]);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<{ msg: string; error?: boolean } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [selecting, setSelecting] = useState(false);
 
   async function load() {
+    // `loading` starts true; this only runs once from the mount effect, so the
+    // status is cleared after the fetch settles.
     const res = await fetchAssets();
+    setLoading(false);
     if ("error" in res) {
       setStatus({ msg: res.error, error: true });
       return;
@@ -29,6 +34,23 @@ export default function AssetPicker({ onClose, onSelect }: Props) {
   useEffect(() => {
     load();
   }, []);
+
+  // Selecting a draft asset would place an unpublished image on a live page,
+  // where it wouldn't display for visitors — so publish it as part of selection.
+  async function choose(asset: MediaAsset) {
+    if (selecting) return;
+    if (asset.status === "draft") {
+      setSelecting(true);
+      const res = await publishAsset(asset.id);
+      setSelecting(false);
+      if ("error" in res) {
+        setStatus({ msg: res.error, error: true });
+        return;
+      }
+    }
+    onSelect({ url: asset.url, altText: asset.altText });
+    onClose();
+  }
 
   const filtered = assets.filter((a) => {
     const q = query.trim().toLowerCase();
@@ -52,7 +74,9 @@ export default function AssetPicker({ onClose, onSelect }: Props) {
         </div>
 
         <div className={styles.body}>
-          {filtered.length === 0 ? (
+          {loading ? (
+            <p className={styles.empty}>Loading assets…</p>
+          ) : filtered.length === 0 ? (
             <p className={styles.empty}>No assets found.</p>
           ) : (
             <div className={styles.grid}>
@@ -61,10 +85,8 @@ export default function AssetPicker({ onClose, onSelect }: Props) {
                   key={a.id}
                   type="button"
                   className={styles.cell}
-                  onClick={() => {
-                    onSelect({ url: a.url, altText: a.altText });
-                    onClose();
-                  }}
+                  disabled={selecting}
+                  onClick={() => choose(a)}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img className={styles.thumb} src={a.url} alt={a.altText ?? a.title ?? a.fileName} loading="lazy" />
