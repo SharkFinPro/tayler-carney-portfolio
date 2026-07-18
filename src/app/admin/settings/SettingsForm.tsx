@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { updateGlobal, updateSeo } from "@/app/admin/contentActions";
+import { useUnsavedChanges } from "@/components/useUnsavedChanges";
 import type { GlobalContent } from "@/lib/global";
 import type { SeoContent } from "@/lib/seo";
 import styles from "./Settings.module.scss";
@@ -57,6 +58,8 @@ export default function SettingsForm({
   const seoDirty = (Object.keys(savedSeo) as (keyof SeoForm)[]).some(
     (k) => seo[k] !== savedSeo[k]
   );
+
+  useUnsavedChanges(globalDirty || seoDirty);
 
   async function saveGlobal(e: React.FormEvent) {
     e.preventDefault();

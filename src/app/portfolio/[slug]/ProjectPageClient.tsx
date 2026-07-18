@@ -56,12 +56,13 @@ export default function ProjectPageClient({ project, prevProject, nextProject, i
     [project]
   );
   const [blocks, setBlocks] = useState<Block[]>(initialBlocks);
-  // Admins land in edit mode by default; the read view below is the "preview".
-  const [editing, setEditing] = useState(isAdmin);
+  // Admins see the rendered page first, same as visitors, and opt into the
+  // block editor via the "Edit page layout" toggle.
+  const [editing, setEditing] = useState(false);
   useEffect(() => {
     setBlocks(initialBlocks);
-    setEditing(isAdmin);
-  }, [initialBlocks, isAdmin]);
+    setEditing(false);
+  }, [initialBlocks]);
   const sectionBlocks = useMemo(() => blocks.filter(blockHasData), [blocks]);
   const activeSections = useMemo(
     () => sectionBlocks.map((b) => ({ id: b.id, label: b.heading || BLOCK_LABELS[b.type] })),
@@ -182,20 +183,10 @@ export default function ProjectPageClient({ project, prevProject, nextProject, i
               {isAdmin && (
                 <button
                   type="button"
+                  className={styles.editToggle}
                   onClick={() => setEditing((e) => !e)}
-                  style={{
-                    marginTop: "1rem",
-                    fontFamily: "var(--ff-sans)",
-                    fontSize: "0.85rem",
-                    padding: "0.45rem 0.9rem",
-                    border: "1px solid var(--accent)",
-                    borderRadius: "3px",
-                    background: "var(--accent)",
-                    color: "var(--ink-inverse)",
-                    cursor: "pointer",
-                  }}
                 >
-                  {editing ? "Preview" : "Exit preview"}
+                  {editing ? "Done editing" : "Edit page layout"}
                 </button>
               )}
             </motion.div>
