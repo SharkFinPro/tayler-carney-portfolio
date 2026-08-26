@@ -490,3 +490,117 @@ describe("new layouts — swatches", () => {
     expect(block.items.map((i) => i.name)).toEqual(["Keep"]);
   });
 });
+
+describe("new layouts — annotatedImage", () => {
+  const withPoints = (points: unknown) =>
+    one({ type: "annotatedImage", id: "a", heading: "", image: { url: IMG }, points });
+
+  function points(raw: unknown) {
+    const block = withPoints(raw);
+    if (block?.type !== "annotatedImage") throw new Error("expected annotatedImage");
+    return block.points;
+  }
+
+  it("keeps a marker with a label and a position", () => {
+    expect(points([{ x: 25, y: 60, label: "Shoulder seam", detail: "Set 1cm forward." }])).toEqual([
+      { x: 25, y: 60, label: "Shoulder seam", detail: "Set 1cm forward." },
+    ]);
+  });
+
+  it.each([
+    [-40, 0],
+    [140, 100],
+    [100.04, 100],
+  ])("clamps a coordinate of %s to %s", (input, expected) => {
+    // Clamped rather than dropped: a marker off the edge is a bug in whatever
+    // wrote it, and pinning it to the border keeps it visible and fixable.
+    expect(at(points([{ x: input, y: input, label: "L" }]), 0)).toMatchObject({
+      x: expected,
+      y: expected,
+    });
+  });
+
+  it("rounds to a tenth of a percent", () => {
+    expect(at(points([{ x: 33.333333, y: 66.666666, label: "L" }]), 0)).toMatchObject({
+      x: 33.3,
+      y: 66.7,
+    });
+  });
+
+  it.each([null, undefined, "40%", "", NaN, {}, []])(
+    "falls back to centre for the unusable coordinate %j",
+    (x) => {
+      // Note `null`, `""` and `[]` all coerce to 0 through `Number`, which
+      // would pin the marker to the top-left corner and read as deliberate.
+      expect(at(points([{ x, y: 10, label: "L" }]), 0).x).toBe(50);
+    }
+  );
+
+  it("accepts a numeric string, since a form field produces one", () => {
+    expect(at(points([{ x: "42.5", y: "10", label: "L" }]), 0)).toMatchObject({ x: 42.5, y: 10 });
+  });
+
+  it("drops a marker with nothing to say", () => {
+    // A dot on a photograph explains nothing; the coordinate alone is not a
+    // reason to render one.
+    expect(points([{ x: 10, y: 10 }, { x: 20, y: 20, label: "Keep" }, {}, null])).toHaveLength(1);
+  });
+
+  it("keeps a marker that has only a detail", () => {
+    expect(points([{ x: 10, y: 10, detail: "Bar tack here." }])).toHaveLength(1);
+  });
+
+  it("caps the number of markers", () => {
+    const many = Array.from({ length: 60 }, (_, i) => ({ x: i, y: i, label: `L${i}` }));
+    expect(points(many).length).toBeLessThanOrEqual(20);
+  });
+
+  it("survives a points value that is not an array", () => {
+    for (const raw of ["nope", 5, {}, null, undefined]) {
+      expect(points(raw)).toEqual([]);
+    }
+  });
+
+  it("renders with an image and no markers, but not the other way round", () => {
+    const withImage = one({ type: "annotatedImage", id: "a", heading: "", image: { url: IMG }, points: [] });
+    const withoutImage = one({ type: "annotatedImage", id: "a", heading: "", image: null, points: [{ x: 1, y: 1, label: "L" }] });
+    expect(withImage && blockHasData(withImage)).toBe(true);
+    expect(withoutImage && blockHasData(withoutImage)).toBe(false);
+  });
+});
+
+describe("new layouts — stats", () => {
+  function items(raw: unknown) {
+    const block = one({ type: "stats", id: "s", heading: "", items: raw });
+    if (block?.type !== "stats") throw new Error("expected stats");
+    return block.items;
+  }
+
+  it("keeps a figure with a value and a label", () => {
+    expect(items([{ value: "48", label: "Pattern pieces", detail: "Excluding facings." }])).toEqual([
+      { value: "48", label: "Pattern pieces", detail: "Excluding facings." },
+    ]);
+  });
+
+  it("keeps a figure with only one of the two", () => {
+    expect(items([{ value: "48" }, { label: "Fittings" }])).toHaveLength(2);
+  });
+
+  it("drops a figure that is only a detail", () => {
+    expect(items([{ detail: "a caption for nothing" }])).toEqual([]);
+  });
+
+  it("trims, so a stray space never reaches the layout", () => {
+    expect(at(items([{ value: "  12  ", label: " Weeks " }]), 0)).toEqual({
+      value: "12",
+      label: "Weeks",
+      detail: "",
+    });
+  });
+
+  it("survives an items value that is not an array", () => {
+    for (const raw of ["nope", 5, {}, null, undefined]) {
+      expect(items(raw)).toEqual([]);
+    }
+  });
+});

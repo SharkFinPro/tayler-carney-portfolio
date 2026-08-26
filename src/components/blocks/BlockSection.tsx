@@ -8,6 +8,7 @@ import styles from "./BlockSection.module.scss";
 import ImageGrid, { ImageGridItem } from "./ImageGrid";
 import SheetViewer from "./SheetViewer";
 import BeforeAfter from "./BeforeAfter";
+import AnnotatedImage from "./AnnotatedImage";
 import RichTextWidget from "./richText/RichTextWidget";
 import { BLUR_DATA_URL } from "@/components/AnimatedSection";
 import { resolveAlt } from "@/lib/images";
@@ -185,6 +186,25 @@ function BlockContent({ block, onOpen, priority = false }: { block: Block; onOpe
         </ul>
       );
     }
+
+    case "annotatedImage": {
+      const image = block.image;
+      if (!image) return null;
+      return <AnnotatedImage image={image} points={block.points} heading={block.heading} />;
+    }
+
+    case "stats":
+      return (
+        <ul className={styles.statsRow}>
+          {block.items.map((item, i) => (
+            <li key={i} className={styles.stat}>
+              {item.value && <span className={styles.statValue}>{item.value}</span>}
+              {item.label && <span className={styles.statLabel}>{item.label}</span>}
+              {item.detail && <span className={styles.statDetail}>{item.detail}</span>}
+            </li>
+          ))}
+        </ul>
+      );
 
     case "comparison": {
       const views = block.views;

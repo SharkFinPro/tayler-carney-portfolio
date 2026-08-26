@@ -136,7 +136,7 @@ When adding a validator or a pure helper, add its suite in the same commit — t
 ## Extending the project
 
 - **New inline-editable field**: add it to the model's entry in `EDITABLE_FIELDS`, fetch the entry `id` in the query, wrap the value in `EditableText`.
-- **New block type**: add it to the `Block` union, `BLOCK_TYPES`/labels/descriptions, `createEmptyBlock`, `cleanBlock` (sanitizer), `blockSummary`/`blockHasData`, plus a renderer in `BlockSection` and a form in `BlockForms`.
+- **New block type**: add it to the `Block` union, `BLOCK_TYPES`/labels/descriptions, `BLOCK_SHOW_COUNT`, `DEFAULT_HEADINGS`, `createEmptyBlock`, `cleanBlock` (sanitizer), `blockSummary`/`blockHasData`, plus a renderer in `BlockSection` and a form in `BlockForms`. The `Record<BlockType, …>` maps make the compiler name most of these for you; the switches are exhaustive, so it names the rest.
 - **New block-layout page**: add a JSON field to the model, whitelist it in `BLOCK_LAYOUT_FIELDS`, fetch the `id` + field, and render with the block renderer / edit with `BlockEditor`.
 
 ## Maintaining this document

@@ -13,10 +13,13 @@ import {
   createEmptyBlock,
   type Block,
   type BlockType,
+  MAX_ANNOTATIONS,
+  type ImageAnnotation,
   type ImageItem,
   type ImageRef,
   type ComparisonView,
   type SpecRow,
+  type StatItem,
   type SwatchItem,
   type TimelineStage,
   type CalloutVariant,
@@ -291,6 +294,42 @@ function Field({ label, value, onChange, multiline }: {
   );
 }
 
+/**
+ * A percentage field, for the annotation coordinates.
+ *
+ * Kept separate from `Field` rather than adding a `type` prop: this one has to
+ * hold a number, clamp it, and survive the intermediate states of typing (an
+ * empty box, a lone "-"), none of which the string field has any business
+ * knowing about.
+ */
+function NumberField({ label, value, onChange, ariaLabel }: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  ariaLabel?: string;
+}) {
+  return (
+    <label className={styles.field}>
+      <span className={styles.fieldLabel}>{label}</span>
+      <input
+        className={styles.input}
+        type="number"
+        min={0}
+        max={100}
+        step={0.5}
+        value={value}
+        aria-label={ariaLabel}
+        onChange={(e) => {
+          const next = Number(e.target.value);
+          // A half-typed value ("" or "-") parses to NaN; hold the last good
+          // one rather than snapping the marker to a corner mid-keystroke.
+          if (Number.isFinite(next)) onChange(Math.min(100, Math.max(0, next)));
+        }}
+      />
+    </label>
+  );
+}
+
 // The image URL and alt text are metadata on the asset itself, set in the media
 // library — so this just shows the chosen image and a picker button.
 function ImageRefFields({ value, onChange }: { value: ImageRef | null; onChange: (v: ImageRef | null) => void }) {
@@ -516,6 +555,147 @@ function SwatchList({ value, onChange }: { value: SwatchItem[]; onChange: (v: Sw
           onClick={() => onChange([...value, { name: "", detail: "", color: "", image: null }])}
         >
           + Add swatch
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The marker editor for an `annotatedImage`.
+ *
+ * Placing a marker by typing two percentages is possible and awful, so the
+ * preview is the primary control: click where the marker goes. The numbers stay
+ * as inputs underneath because clicking is imprecise and "62.5, not 63" is a
+ * thing an admin will eventually want, and because a click target is not a
+ * keyboard control — the inputs are how this is operated without a pointer.
+ */
+function AnnotationList({
+  image,
+  value,
+  onChange,
+}: {
+  image: ImageRef | null;
+  value: ImageAnnotation[];
+  onChange: (v: ImageAnnotation[]) => void;
+}) {
+  const update = rowUpdater(value, onChange);
+
+  function placeFromClick(e: React.MouseEvent<HTMLElement>) {
+    // The sanitizer drops anything past the cap on save, so stopping here is
+    // the difference between "you can't add another" and "the one you added
+    // vanished when you saved".
+    if (value.length >= MAX_ANNOTATIONS) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const x = Math.round(((e.clientX - rect.left) / rect.width) * 1000) / 10;
+    const y = Math.round(((e.clientY - rect.top) / rect.height) * 1000) / 10;
+    onChange([...value, { x, y, label: "", detail: "" }]);
+  }
+
+  return (
+    <div className={styles.subGroup}>
+      {image?.url ? (
+        <div className={styles.annotateHint}>
+          <span>
+            {value.length >= MAX_ANNOTATIONS
+              ? `That's the maximum of ${MAX_ANNOTATIONS} markers.`
+              : "Click the image to drop a marker."}
+          </span>
+          {/* The preview is a convenience for pointer users; every marker it
+              creates is fully editable through the numeric fields below, which
+              is the keyboard path. Adding a key handler here would be a second
+              way to do the same thing, and a worse one — "place at where?" */}
+          {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
+          <figure className={styles.annotateCanvas} onClick={placeFromClick}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={image.url} alt="" className={styles.annotateImg} />
+            {value.map((point, i) => (
+              <span
+                key={i}
+                className={styles.annotateDot}
+                style={{ left: `${point.x}%`, top: `${point.y}%` }}
+                aria-hidden="true"
+              >
+                {i + 1}
+              </span>
+            ))}
+          </figure>
+        </div>
+      ) : (
+        <p className={styles.annotateHint}>Choose an image first — markers are placed on it.</p>
+      )}
+
+      {value.map((point, i) => (
+        <div key={i} className={styles.subGroup}>
+          <div className={styles.row}>
+            <span className={styles.annotateIndex} aria-hidden="true">{i + 1}</span>
+            <Field label="Label" value={point.label} onChange={(v) => update(i, { label: v })} />
+            <NumberField
+              label="X %"
+              value={point.x}
+              onChange={(v) => update(i, { x: v })}
+              ariaLabel={`Horizontal position of marker ${i + 1}, in percent`}
+            />
+            <NumberField
+              label="Y %"
+              value={point.y}
+              onChange={(v) => update(i, { y: v })}
+              ariaLabel={`Vertical position of marker ${i + 1}, in percent`}
+            />
+            <ReorderControls index={i} count={value.length} onMove={(to) => onChange(move(value, i, to))} />
+            <button type="button" className={styles.iconBtn} onClick={() => update(i, null)} aria-label={`Remove marker ${i + 1}`}>
+              Remove
+            </button>
+          </div>
+          <Field label="Detail" value={point.detail} onChange={(v) => update(i, { detail: v })} />
+        </div>
+      ))}
+
+      <div className={styles.addRow}>
+        <button
+          type="button"
+          className={styles.iconBtn}
+          onClick={() => onChange([...value, { x: 50, y: 50, label: "", detail: "" }])}
+          disabled={value.length >= MAX_ANNOTATIONS}
+        >
+          + Add marker
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function StatList({ value, onChange }: { value: StatItem[]; onChange: (v: StatItem[]) => void }) {
+  const drag = useRowDrag((from, to) => onChange(move(value, from, to)));
+  const update = rowUpdater(value, onChange);
+  return (
+    <div className={styles.subGroup}>
+      {value.map((item, i) => (
+        <Fragment key={i}>
+          {drag.showBoxBefore(i) && <div className={styles.rowPlaceholder} style={{ height: drag.size.h }} />}
+          <div
+            ref={drag.registerRow(i)}
+            className={`${styles.row} ${drag.dragIndex === i ? styles.rowDragging : ""}`}
+          >
+            <DragHandle {...drag.handleProps(i)} />
+            <Field label="Figure" value={item.value} onChange={(v) => update(i, { value: v })} />
+            <Field label="Label" value={item.label} onChange={(v) => update(i, { label: v })} />
+            <Field label="Detail" value={item.detail} onChange={(v) => update(i, { detail: v })} />
+            <ReorderControls index={i} count={value.length} onMove={(to) => onChange(move(value, i, to))} />
+            <button type="button" className={styles.iconBtn} onClick={() => update(i, null)} aria-label="Remove figure">Remove</button>
+          </div>
+        </Fragment>
+      ))}
+      {drag.showBoxBefore(value.length) && <div className={styles.rowPlaceholder} style={{ height: drag.size.h }} />}
+      <RowDragLayer drag={drag} />
+      <div className={styles.addRow}>
+        <button
+          type="button"
+          className={styles.iconBtn}
+          onClick={() => onChange([...value, { value: "", label: "", detail: "" }])}
+        >
+          + Add figure
         </button>
       </div>
     </div>
@@ -818,6 +998,29 @@ export default function BlockForm({ block, onChange }: { block: Block; onChange:
           {heading}
           <span className={styles.fieldLabel}>Swatches</span>
           <SwatchList value={block.items} onChange={(items) => onChange({ ...block, items })} />
+        </>
+      );
+
+    case "annotatedImage":
+      return (
+        <>
+          {heading}
+          <ImageRefFields value={block.image} onChange={(image) => onChange({ ...block, image })} />
+          <span className={styles.fieldLabel}>Markers</span>
+          <AnnotationList
+            image={block.image}
+            value={block.points}
+            onChange={(points) => onChange({ ...block, points })}
+          />
+        </>
+      );
+
+    case "stats":
+      return (
+        <>
+          {heading}
+          <span className={styles.fieldLabel}>Figures</span>
+          <StatList value={block.items} onChange={(items) => onChange({ ...block, items })} />
         </>
       );
 
