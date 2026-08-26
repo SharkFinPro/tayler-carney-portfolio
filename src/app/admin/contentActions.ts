@@ -1,6 +1,7 @@
 "use server";
 
 import { PublishFailedError, toActionError } from "@/lib/actionError";
+import { auditEvent } from "@/lib/observability";
 import { requireAuth } from "@/lib/auth";
 import { cmsMutate } from "@/lib/cms";
 import { sanitizeBlocks, type Block } from "@/components/blocks/blocks";
@@ -19,6 +20,11 @@ type Result = { ok: true } | { ok: false; error: string };
 
 
 async function updateAndPublish(model: string, id: string, data: Record<string, unknown>) {
+  // Every content write funnels through here, so one audit call covers all of
+  // them. Field names only — never values, which are the content itself and
+  // would put whole page bodies into the log stream.
+  const field = Object.keys(data).join(",");
+
   await cmsMutate(
     `mutation Update($id: ID!, $data: ${model}UpdateInput!) {
        update${model}(where: { id: $id }, data: $data) { id }
@@ -34,8 +40,11 @@ async function updateAndPublish(model: string, id: string, data: Record<string, 
       { id }
     );
   } catch (error) {
+    auditEvent({ action: "updateAndPublish", model, entryId: id, field, outcome: "failed" });
     throw new PublishFailedError(error);
   }
+
+  auditEvent({ action: "updateAndPublish", model, entryId: id, field, outcome: "ok" });
 }
 
 export async function updateContentField(

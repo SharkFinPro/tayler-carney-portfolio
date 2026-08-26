@@ -12,6 +12,15 @@ afterEach(() => {
 const messageFor = (error: unknown) =>
   toActionError(error, "test", "Couldn't save that.").error;
 
+/**
+ * The structured record `reportError` wrote. Errors go to the log as one JSON
+ * line now, so these assertions check fields rather than a string prefix.
+ */
+function logged(): Record<string, unknown> {
+  const calls = vi.mocked(console.error).mock.calls;
+  return JSON.parse(String(calls[calls.length - 1][0]));
+}
+
 describe("toActionError — nothing internal leaks", () => {
   // These are the shapes Hygraph actually returns. None of the identifiers in
   // them should ever reach a browser.
@@ -39,18 +48,21 @@ describe("toActionError — nothing internal leaks", () => {
   });
 
   it("still logs the full error server-side", () => {
-    const error = new Error("field 'projectPage' is not defined");
-    toActionError(error, "updateBlockLayout", "Couldn't save that.");
+    // The raw CMS text is redacted from the *response*, not from the log —
+    // whoever is debugging still needs it.
+    toActionError(new Error("field 'projectPage' is not defined"), "updateBlockLayout", "Couldn't save that.");
     expect(console.error).toHaveBeenCalledOnce();
-    // The original object is passed through, not a stringified copy.
-    expect(vi.mocked(console.error).mock.calls[0]).toContain(error);
+    expect(logged().error).toMatchObject({
+      message: "field 'projectPage' is not defined",
+    });
   });
 
-  it("tags the log line with the action context", () => {
+  it("tags the record with the action context and scope", () => {
     toActionError(new Error("boom"), "updateBlockLayout", "Couldn't save that.");
-    expect(String(vi.mocked(console.error).mock.calls[0][0])).toContain(
-      "[action:updateBlockLayout]"
-    );
+    expect(logged()).toMatchObject({
+      scope: "server-action",
+      context: "updateBlockLayout",
+    });
   });
 });
 

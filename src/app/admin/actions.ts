@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { checkAdminKey } from "@/lib/session";
 import { setSession, clearSession } from "@/lib/auth";
+import { auditEvent } from "@/lib/observability";
 import {
   checkTiered,
   clientKeyFromHeaders,
@@ -41,7 +42,7 @@ export async function login(_prev: { error?: string } | undefined, formData: For
   if (!limit.allowed) {
     // Deliberately says nothing about whether the key was right — a
     // rate-limited response must not become an oracle.
-    console.warn(`[admin] rate-limited login attempt from ${client}`);
+    auditEvent({ action: "login", outcome: "failed", client, extra: { reason: "rate-limited" } });
     return {
       error: `Too many attempts. Try again in ${formatRetryAfter(limit.retryAfterMs)}.`,
     };
@@ -50,7 +51,7 @@ export async function login(_prev: { error?: string } | undefined, formData: For
   const key = String(formData.get("key") ?? "");
 
   if (!(await checkAdminKey(key))) {
-    console.warn(`[admin] failed login attempt from ${client}`);
+    auditEvent({ action: "login", outcome: "failed", client, extra: { reason: "wrong-key" } });
     await delay(FAILURE_DELAY_MS);
     return { error: "Incorrect key." };
   }
@@ -62,7 +63,7 @@ export async function login(_prev: { error?: string } | undefined, formData: For
   // can fill it now that it is only consulted for requests that passed the
   // per-client check.
   perClient.reset(client);
-  console.info(`[admin] successful login from ${client}`);
+  auditEvent({ action: "login", outcome: "ok", client });
 
   await setSession();
   redirect("/");

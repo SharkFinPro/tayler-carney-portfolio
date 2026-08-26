@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { reportError } from "@/lib/observability";
 import styles from "./error.module.scss";
 
 // Root error boundary. Catches render/data failures from any route (including a
@@ -15,7 +16,15 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("Unhandled route error:", error);
+    // Client-side, so this reaches the browser console rather than the server
+    // log — but it goes through the same reporter, so wiring a client SDK
+    // later is one call rather than a hunt for every boundary.
+    reportError({
+      scope: "route",
+      context: "route-error-boundary",
+      error,
+      correlationId: error.digest,
+    });
   }, [error]);
 
   return (

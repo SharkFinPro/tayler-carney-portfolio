@@ -98,6 +98,17 @@ Server-only env vars (`.env.local` + Vercel): `CMS_ENDPOINT`, `CMS_TOKEN` (publi
 - **Upload ingestion** is async: `uploadAsset` polls `getAssetById` until `size` populates (bounded) so the new asset renders immediately.
 - **No middleware**: never assume `/admin` is protected by a proxy — add `isAuthed()`/`redirect` to any new admin page, and re-verify in any new Server Action.
 
+## Observability
+
+[observability.ts](src/lib/observability.ts) emits one JSON object per line, so Vercel's log viewer and any drain can filter on `event`, `level`, `scope`, and `action` rather than grepping prose.
+
+- `reportError({ scope, context, error, correlationId })` — every error boundary and every Server Action catch goes through this. The `correlationId` is the same reference shown to the admin in the UI, so a support question maps to a log line.
+- `auditEvent({ action, model, entryId, outcome, client })` — content mutations, asset deletion, project deletion, and login attempts. **Field names only, never values**: values are the content itself, and logging them would put whole page bodies into the log stream.
+
+There is no Sentry dependency, deliberately — that is an account, a config file, and a build plugin, which is a decision for whoever maintains this rather than for the change that noticed the gap. `setErrorReporter` is the seam; wiring an SDK later is one call in `instrumentation.ts` with every call site already in place.
+
+Authentication is a single shared key, so the audit trail records **what** changed and **from where**, not **who**. Distinguishing people needs per-user credentials.
+
 ## Testing
 
 Vitest, ~480 tests, colocated as `*.test.ts` beside the module. `vitest.config.mts` mirrors the tsconfig aliases and stubs `server-only` (Next aliases that package away itself, so Vitest cannot resolve it).

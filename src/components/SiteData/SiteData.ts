@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { CACHE_TAGS, cmsRead } from "@/lib/cachedReads";
 import { rethrowIfControlFlow } from "@/lib/nextErrors";
+import { reportError } from "@/lib/observability";
 import { sanitizeGlobal, type GlobalContent } from "@/lib/global";
 import { sanitizeSeo, type SeoContent } from "@/lib/seo";
 
@@ -52,9 +53,9 @@ const getSiteData = cache(async function getSiteData(): Promise<SiteData> {
     // has to go back up untouched.
     rethrowIfControlFlow(error);
 
-    // Logged rather than swallowed silently: the page still renders, so this
-    // is the only signal that the CMS is unreachable.
-    console.error("[SiteData] falling back to defaults — CMS read failed:", error);
+    // Reported rather than swallowed silently: the page still renders, so
+    // this is the only signal that the CMS is unreachable.
+    reportError({ scope: "cms", context: "getSiteData", error });
   }
 
   return {
