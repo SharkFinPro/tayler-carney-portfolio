@@ -75,9 +75,18 @@ describe("validateEnv", () => {
 
     it("explains the consequence and how to fix it", () => {
       const issue = only(validateEnv({ ...VALID, ADMIN_KEY: "short" }));
-      expect(issue.message).toMatch(/brute-forceable/);
+      // The consequence has to be the *offline* attack on the HMAC key. Login
+      // is rate-limited, so an explanation resting on online guessing would be
+      // both wrong and reassuring in the wrong direction.
+      expect(issue.message).toMatch(/offline/);
+      expect(issue.message).toMatch(/HMAC key/);
       expect(issue.message).toMatch(/openssl rand/);
       expect(issue.message).toMatch(/signs out every existing admin session/);
+    });
+
+    it("does not claim the login is unlimited, because it is not", () => {
+      const issue = only(validateEnv({ ...VALID, ADMIN_KEY: "short" }));
+      expect(issue.message).not.toMatch(/no rate limit/i);
     });
   });
 

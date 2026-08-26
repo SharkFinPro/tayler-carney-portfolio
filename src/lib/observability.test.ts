@@ -153,12 +153,12 @@ describe("setErrorReporter — the SDK seam", () => {
 
 describe("auditEvent", () => {
   it("emits a parseable info record", () => {
-    auditEvent({ action: "updateAndPublish", model: "Project", entryId: "p1", outcome: "ok" });
+    auditEvent({ action: "updateDraft", model: "Project", entryId: "p1", outcome: "ok" });
 
     expect(lastInfoLine()).toMatchObject({
       level: "info",
       event: "audit",
-      action: "updateAndPublish",
+      action: "updateDraft",
       model: "Project",
       entryId: "p1",
       outcome: "ok",
@@ -166,12 +166,12 @@ describe("auditEvent", () => {
   });
 
   it("records failures as well as successes", () => {
-    auditEvent({ action: "updateAndPublish", model: "SiteData", outcome: "failed" });
+    auditEvent({ action: "updateDraft", model: "SiteData", outcome: "failed" });
     expect(lastInfoLine()).toMatchObject({ outcome: "failed" });
   });
 
   it("records which field changed", () => {
-    auditEvent({ action: "updateAndPublish", model: "SiteData", field: "about", outcome: "ok" });
+    auditEvent({ action: "updateDraft", model: "SiteData", field: "about", outcome: "ok" });
     expect(lastInfoLine()).toMatchObject({ field: "about" });
   });
 

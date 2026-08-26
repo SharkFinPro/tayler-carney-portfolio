@@ -67,7 +67,7 @@ Model names are interpolated into the mutation string, so a value is only ever w
 
 - **Inline editing**: wrap a CMS value in `<EditableText model="<Model>" id={entry.id} field="<field>" value={...} editable={isAdmin}>{...}</EditableText>`. Any query feeding an editable field must also fetch the entry `id`. Pass `floatEdit` for headings (keeps the pencil out of flow) and `multiline` for paragraphs.
 - **Writes are optimistic**: actions update + publish, but do **not** call `revalidatePath` — the read CDN lags briefly after a write and a refetch would clobber the optimistic UI. Client components hold local state and show the saved value immediately. Don't reintroduce revalidation without accounting for that.
-- **Update + publish**: every write goes through `updateAndPublish` (mutate DRAFT, then `publish<Model>`). Asset metadata edits are **stage-aware** (`updateAsset` only re-publishes when the asset was already published, so editing a draft doesn't auto-publish it).
+- **Update + publish**: every content write funnels through `updateDraft` (mutate DRAFT) in [contentActions.ts](src/app/admin/contentActions.ts), and publishing is the separate `publishEntry` step — split so the admin can save a draft without shipping it. There is no transaction across the two, which is what `PublishFailedError` exists to report. Asset metadata edits are **stage-aware** (`updateAsset` only re-publishes when the asset was already published, so editing a draft doesn't auto-publish it).
 - **Styling**: SCSS modules + CSS custom properties emitted from `src/styles/_themes.scss` into `:root` by `src/styles/global.scss`. **Light theme only** — no `data-theme` / dark-mode toggle. Fonts are loaded via `next/font` (Noto Serif / Inter / DM Mono) and exposed as `--ff-serif|sans|mono`. Match surrounding files.
 - **Accessibility is linted**: the full `jsx-a11y` recommended set runs in `npm run lint` (not just the six rules Next enables). A violation is a lint error, so it fails CI. The three disables in the tree are each for a pointer convenience that duplicates an existing keyboard control, and each says which one — match that bar before adding a fourth.
 - **Indexed access is unchecked-safe**: `noUncheckedIndexedAccess` is on, so `list[i]` and `record[key]` are typed `T | undefined` everywhere. Handle it at the read — a named `const` plus a guard, `.at()`, `?? fallback`, or a non-empty tuple type for a literal list. Don't reach for `!`; the point of the flag is that the guard is visible.
@@ -116,7 +116,7 @@ Authentication is a single shared key, so the audit trail records **what** chang
 
 ## Testing
 
-Vitest, ~515 tests, colocated as `*.test.ts` beside the module. `vitest.config.mts` mirrors the tsconfig aliases and stubs `server-only` (Next aliases that package away itself, so Vitest cannot resolve it).
+Vitest, colocated as `*.test.ts` beside the module. (No count here on purpose — a number in a document is a fact that goes stale on the next PR.) `vitest.config.mts` mirrors the tsconfig aliases and stubs `server-only` (Next aliases that package away itself, so Vitest cannot resolve it).
 
 What is tested, and why those things:
 

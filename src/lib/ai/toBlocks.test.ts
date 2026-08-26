@@ -76,7 +76,7 @@ describe("toBlocks — image allowlisting", () => {
       page([{ kind: "gallery", heading: "G", imageUrls: [A], altText: "model-written" }]),
       images
     );
-    expect(oneBlock(out, "gallery").images[0]?.altText).toBe("Front flat of a wool coat");
+    expect(at(oneBlock(out, "gallery").images, 0).altText).toBe("Front flat of a wool coat");
   });
 
   it("drops a captioned item whose image is not allowed", () => {
