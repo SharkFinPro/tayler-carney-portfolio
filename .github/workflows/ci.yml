@@ -46,5 +46,11 @@ jobs:
       # rendered on demand, so nothing is fetched at build time. If that ever
       # changes (e.g. adding generateStaticParams), this step will fail loudly
       # rather than silently prerendering empty pages.
+      #
+      # SKIP_ENV_VALIDATION is the deliberate opt-out for exactly this case:
+      # next.config.ts asserts the env contract at build time so a misconfigured
+      # *deploy* fails, but CI has no production secrets to assert against.
       - name: Build
         run: npm run build
+        env:
+          SKIP_ENV_VALIDATION: "1"
