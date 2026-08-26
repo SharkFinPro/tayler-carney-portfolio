@@ -8,8 +8,6 @@ import { assertEnv } from "./src/lib/env";
 // compiles and deliberately holds no production secrets.
 assertEnv();
 
-const isDev = process.env.NODE_ENV === 'development';
-
 const nextConfig: NextConfig = {
   // Dev-only (Next ignores this in production builds). After moving reads onto
   // the fetch cache, the thing you most need to see while developing is which
@@ -64,20 +62,10 @@ const nextConfig: NextConfig = {
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-          {
-            key: 'Content-Security-Policy',
-            value: [
-              "default-src 'self'",
-              "img-src 'self' https: data:",
-              "media-src 'self' https://*.graphassets.com",
-              `script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com${isDev ? " 'unsafe-eval'" : ""}`,
-              "style-src 'self' 'unsafe-inline'",
-              "connect-src 'self' https://vitals.vercel-insights.com https://*.graphassets.com",
-              "font-src 'self'",
-              "frame-ancestors 'none'",
-              "object-src 'none'",
-            ].join('; '),
-          },
+          // Content-Security-Policy is NOT set here. It carries a per-request
+          // nonce, so it is built in src/middleware.ts; a second static copy
+          // from this file would be enforced alongside it, and two policies
+          // intersect rather than override.
         ],
       },
     ];

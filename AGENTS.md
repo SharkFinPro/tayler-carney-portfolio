@@ -13,7 +13,7 @@ The site has a lightweight, **database-free admin editor**: log in with an env-v
 - **Rendering**: Server Components by default. Routes are dynamic because every page calls `isAuthed()` (reading cookies) to decide whether to render edit affordances — but reads are **cached at the fetch layer**, which is where the win is. See [cachedReads.ts](src/lib/cachedReads.ts): visitors read through a 60s tagged cache, **admins always read fresh** so the editor never loads stale content it might then save back over. Writes still do not call `revalidateTag` — the read-CDN lag would clobber optimistic UI, which is the original reason and still holds. `getSiteData` and `getProject` are wrapped in React `cache()` for per-request dedupe. Interactive bits are small `"use client"` islands; page-entry animations use Framer Motion (`MotionProvider`, `AnimatedSection`).
 - **Data flow**: pages `POST` GraphQL to `process.env.CMS_ENDPOINT`. Public reads attach a read token (`CMS_TOKEN`); writes go through Server Actions using a secret mutation token — never the client.
 - **Admin mode**: a single signed, httpOnly cookie. Each server page reads it via `isAuthed()` and threads an `isAdmin` boolean into its client islands; when true, inline edit controls render.
-- **Auth boundary**: there is **no middleware/proxy**. Admin pages (`/admin`, `/admin/media`) guard themselves with `if (!(await isAuthed())) redirect("/admin/login")`. **The real authorization boundary is the Server Action** — every write re-verifies the session via `requireAuth`, which now lives in [auth.ts](src/lib/auth.ts) rather than as three private copies. Login is rate-limited and every attempt is logged; see [rateLimit.ts](src/lib/rateLimit.ts).
+- **Auth boundary**: middleware exists, but it only attaches the CSP — it does **not** proxy or gate anything. Admin pages (`/admin`, `/admin/media`) guard themselves with `if (!(await isAuthed())) redirect("/admin/login")`. **The real authorization boundary is the Server Action** — every write re-verifies the session via `requireAuth`, which now lives in [auth.ts](src/lib/auth.ts) rather than as three private copies. Login is rate-limited and every attempt is logged; see [rateLimit.ts](src/lib/rateLimit.ts).
 
 ## Key directories & modules
 
@@ -23,6 +23,7 @@ The site has a lightweight, **database-free admin editor**: log in with an env-v
   - `cms.ts` — `cmsQuery` (public read, `CMS_TOKEN`) / `cmsQueryAuthed` (draft read, mutation token) / `cmsMutate` (write) / `cmsUpload` (Hygraph direct-upload via pre-signed S3 POST). Honors optional `CMS_MUTATION_ENDPOINT`.
   - `getAssets.ts` — Media Library data layer; reads assets at DRAFT stage and derives `status` from `documentInStages`.
   - `session.ts` — pure Web-Crypto HMAC session sign/verify + `checkAdminKey` (dependency-free; no `next/headers`).
+  - `csp.ts` — the Content Security Policy, built per request around a fresh nonce. Web Crypto only, because it runs in middleware on the Edge runtime.
   - `auth.ts` — cookie-store helpers (`setSession`/`clearSession`/`isAuthed`); imports `next/headers`, server-only.
   - `images.ts` — `resolveAlt` alt-text fallback helper.
   - `env.ts` — the environment contract, asserted from `next.config.ts` at build time. Errors fail the build; warnings print and continue. `SKIP_ENV_VALIDATION=1` opts out (CI does).
@@ -70,7 +71,7 @@ Model names are interpolated into the mutation string, so a value is only ever w
 - **Styling**: SCSS modules + CSS custom properties emitted from `src/styles/_themes.scss` into `:root` by `src/styles/global.scss`. **Light theme only** — no `data-theme` / dark-mode toggle. Fonts are loaded via `next/font` (Noto Serif / Inter / DM Mono) and exposed as `--ff-serif|sans|mono`. Match surrounding files.
 - **Accessibility is linted**: the full `jsx-a11y` recommended set runs in `npm run lint` (not just the six rules Next enables). A violation is a lint error, so it fails CI. The three disables in the tree are each for a pointer convenience that duplicates an existing keyboard control, and each says which one — match that bar before adding a fourth.
 - **Indexed access is unchecked-safe**: `noUncheckedIndexedAccess` is on, so `list[i]` and `record[key]` are typed `T | undefined` everywhere. Handle it at the read — a named `const` plus a guard, `.at()`, `?? fallback`, or a non-empty tuple type for a literal list. Don't reach for `!`; the point of the flag is that the guard is visible.
-- **Edge-safety**: session crypto lives in `session.ts` (Web Crypto only, no `next/headers`) separately from `auth.ts` so it stays portable; keep it that way even though there's no middleware today.
+- **Edge-safety**: session crypto lives in `session.ts` (Web Crypto only, no `next/headers`) separately from `auth.ts` so it stays portable. `csp.ts` follows the same rule for the same reason, and now actually runs there — middleware is Edge runtime, where `node:crypto` and `Buffer` are not a safe assumption.
 
 ## Common commands
 
@@ -87,7 +88,7 @@ CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs all four on every
 
 Server-only env vars (`.env.local` + Vercel): `CMS_ENDPOINT`, `CMS_TOKEN` (public read), `HYGRAPH_MUTATION_TOKEN` (draft read + write), optional `CMS_MUTATION_ENDPOINT`, `ADMIN_KEY` (admin login + session signing), and `WEBSITE_URL` (metadata base / sitemap / OpenGraph). Contact is handled with `mailto:` + social links (no email-sending backend). Deployed on Vercel; `@vercel/speed-insights` is wired in.
 
-`next.config.ts` sets strict security headers (CSP, `X-Frame-Options: DENY`, etc.) and an image `remotePatterns` allowlist (`**.graphassets.com`, plus LinkedIn / Google / Unsplash hosts) — add a host there before referencing its images.
+`next.config.ts` sets the static security headers (`X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`, `nosniff`) and an image `remotePatterns` allowlist (`**.graphassets.com`, plus LinkedIn / Google / Unsplash hosts) — add a host there before referencing its images.
 
 ## Cautions / non-obvious behavior
 
@@ -98,7 +99,9 @@ Server-only env vars (`.env.local` + Vercel): `CMS_ENDPOINT`, `CMS_TOKEN` (publi
 - **Mutation endpoint**: if `CMS_ENDPOINT` is the read CDN (`*.cdn.hygraph.com`), writes may be rejected — set `CMS_MUTATION_ENDPOINT` to the regular Content API host.
 - **Asset rename** writes a custom `title` field on the Asset model (Hygraph won't edit `fileName` in place); the UI falls back to the filename minus extension when `title` is empty.
 - **Upload ingestion** is async: `uploadAsset` polls `getAssetById` until `size` populates (bounded) so the new asset renders immediately.
-- **No middleware**: never assume `/admin` is protected by a proxy — add `isAuthed()`/`redirect` to any new admin page, and re-verify in any new Server Action.
+- **Middleware sets the CSP and nothing else.** Never assume `/admin` is protected by a proxy: middleware does not check authorization, so every new admin page still needs its own `isAuthed()`/`redirect`, and every new Server Action still has to re-verify.
+- **`script-src` has no `'unsafe-inline'`.** Inline `<script>` and `onclick="…"` attributes will not run. Next stamps its own inline scripts with the request nonce automatically, which covers everything the framework emits — but hand-written inline script needs the nonce from the `x-nonce` request header, and inline event-handler attributes cannot be made to work at all. Use a client component.
+- **Two `Content-Security-Policy` headers are enforced together, not overridden.** That is why `next.config.ts` no longer sets one; adding a second copy there would intersect with the nonce policy rather than replace it.
 
 ## Observability
 
