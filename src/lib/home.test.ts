@@ -124,3 +124,28 @@ describe("sanitizeHome", () => {
     expect(sanitizeHome(once)).toEqual(once);
   });
 });
+
+describe("archive.imageUrl", () => {
+  // Previously the one URL in this module that went through plain str(), so an
+  // unsafe scheme could be persisted here while the sibling buttonHref rejected it.
+  it.each(UNSAFE)("rejects an unsafe scheme (%s)", (imageUrl) => {
+    expect(sanitizeHome({ archive: { imageUrl } }).archive.imageUrl).toBe(
+      DEFAULT_HOME.archive.imageUrl
+    );
+  });
+
+  it("rejects a protocol-relative URL", () => {
+    expect(sanitizeHome({ archive: { imageUrl: "//evil.com/x.jpg" } }).archive.imageUrl).toBe(
+      DEFAULT_HOME.archive.imageUrl
+    );
+  });
+
+  it("keeps a real asset URL", () => {
+    const imageUrl = "https://media.graphassets.com/abc.jpg";
+    expect(sanitizeHome({ archive: { imageUrl } }).archive.imageUrl).toBe(imageUrl);
+  });
+
+  it("keeps the empty default, so an unset image stays unset", () => {
+    expect(sanitizeHome({ archive: { imageUrl: "" } }).archive.imageUrl).toBe("");
+  });
+});

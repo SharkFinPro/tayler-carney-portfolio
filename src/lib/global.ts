@@ -40,6 +40,38 @@ const assetId = (v: unknown): string => {
 };
 
 /**
+ * Reduce a social handle to the bare username the URL templates expect.
+ *
+ * These values are interpolated straight into `https://…/in/${handle}`, so an
+ * un-normalized value produces a broken link rather than an obvious error. The
+ * two realistic mistakes are both handled: a leading `@`, and pasting the whole
+ * profile URL when the field asks for "the part after linkedin.com/in/".
+ *
+ * Anything still containing a slash, a dot, or whitespace after that is not a
+ * username and is dropped — an empty handle hides the link, which is a better
+ * outcome than rendering one that 404s.
+ */
+export function normalizeHandle(v: unknown): string {
+  let s = str(v).trim();
+  if (!s) return "";
+
+  // Strip a pasted profile URL down to its last meaningful path segment.
+  // Covers linkedin.com/in/name, instagram.com/name, with or without scheme,
+  // "www.", a trailing slash, or a query string.
+  s = s.replace(/^https?:\/\//i, "").replace(/^www\./i, "");
+  if (s.includes("/")) {
+    s = s.split(/[?#]/)[0].replace(/\/+$/, "");
+    s = s.split("/").pop() ?? "";
+  }
+
+  s = s.replace(/^@+/, "").trim();
+
+  // A real handle has no separators left. Reject rather than store something
+  // that would build a dead URL.
+  return /^[A-Za-z0-9._-]+$/.test(s) ? s : "";
+}
+
+/**
  * Coerce arbitrary JSON (from the CMS or the admin settings form) into a complete,
  * well-typed GlobalContent. Missing keys fall back to DEFAULT_GLOBAL; unexpected
  * types are dropped. Strings are trimmed so stray whitespace never reaches the UI.
@@ -51,8 +83,8 @@ export function sanitizeGlobal(raw: unknown): GlobalContent {
     displayName: str(data.displayName, d.displayName).trim(),
     focus: str(data.focus, d.focus).trim(),
     email: str(data.email, d.email).trim(),
-    linkedInHandle: str(data.linkedInHandle, d.linkedInHandle).trim(),
-    instagramHandle: str(data.instagramHandle, d.instagramHandle).trim(),
+    linkedInHandle: normalizeHandle(data.linkedInHandle ?? d.linkedInHandle),
+    instagramHandle: normalizeHandle(data.instagramHandle ?? d.instagramHandle),
     resumeAssetId: assetId(data.resumeAssetId),
   };
 }

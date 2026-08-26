@@ -173,7 +173,10 @@ export function sanitizeHome(raw: unknown): HomeContent {
       body: str(archive.body, d.archive.body),
       buttonLabel: str(archive.buttonLabel, d.archive.buttonLabel),
       buttonHref: safeHref(archive.buttonHref, d.archive.buttonHref),
-      imageUrl: str(archive.imageUrl, d.archive.imageUrl),
+      // Through safeHref like every other URL in this module. It was the one
+      // that went through plain str(), so an unsafe scheme could be persisted
+      // here even though the sibling buttonHref rejected it.
+      imageUrl: safeHref(archive.imageUrl, d.archive.imageUrl),
       imageAlt: str(archive.imageAlt, d.archive.imageAlt),
     },
     exploreTitle: str(data.exploreTitle, d.exploreTitle),

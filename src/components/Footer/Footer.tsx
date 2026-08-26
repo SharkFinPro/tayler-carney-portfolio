@@ -17,18 +17,22 @@ export default async function Footer() {
   const { global } = await getSiteData();
   const resume = await resolveResumeAsset(global.resumeAssetId);
 
+  // An unset handle must not render an icon linking to a bare
+  // "linkedin.com/in/" — filter the channel out entirely instead.
   const socials = [
     {
       label: "LinkedIn",
+      handle: global.linkedInHandle,
       href: `https://www.linkedin.com/in/${global.linkedInHandle}`,
       icon: faLinkedin,
     },
     {
       label: "Instagram",
+      handle: global.instagramHandle,
       href: `https://instagram.com/${global.instagramHandle}`,
       icon: faInstagram,
     },
-  ];
+  ].filter((s) => s.handle);
 
   return (
     <footer className={styles.wrapper}>

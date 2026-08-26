@@ -77,20 +77,24 @@ export default function ContactPageClient({
     return () => { document.body.style.overflow = ""; };
   }, [modal]);
 
+  // An unset handle would otherwise render a channel reading "@" that links to
+  // a bare "instagram.com/" — drop the channel instead.
   const socials = [
     {
       title: "LinkedIn",
+      value: linkedInHandle,
       handle: `linkedin.com/in/${linkedInHandle}`,
       href: `https://www.linkedin.com/in/${linkedInHandle}`,
       icon: faLinkedin,
     },
     {
       title: "Instagram",
+      value: instagramHandle,
       handle: `@${instagramHandle}`,
       href: `https://instagram.com/${instagramHandle}`,
       icon: faInstagram,
     },
-  ];
+  ].filter((s) => s.value);
 
   // The email + socials are sourced from the SiteData scalars (edited in admin
   // settings), not the block layout — so they live outside the editor.

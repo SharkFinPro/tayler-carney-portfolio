@@ -17,8 +17,18 @@ type Marks = { bold?: boolean; italic?: boolean; underline?: boolean; code?: boo
 // Only allow link hrefs that can't trigger script execution when rendered for
 // visitors: absolute http(s)/mailto URLs, site-relative paths, and anchors.
 // Blocks javascript:/data:/vbscript: and other active schemes (click-XSS).
+//
+// The site-relative case excludes a second separator on purpose. A bare `\/`
+// also matches "//evil.com", which browsers resolve as a protocol-relative
+// *absolute* URL to another origin rather than as a path on this site — not an
+// XSS hole, but an unintended off-site link vector in editor-authored content.
+//
+// A backslash is excluded as well as a slash, because the WHATWG URL parser
+// treats a backslash as a slash for http(s) URLs. So "/\evil.com" resolves to
+// "https://evil.com/" in every real browser, exactly like "//evil.com" — and a
+// check that only excludes a second forward slash lets it straight through.
 export function isSafeUrl(url: string): boolean {
-  return /^(https?:\/\/|mailto:|\/|#)/i.test(url.trim());
+  return /^(https?:\/\/|mailto:|\/(?![/\\])|#)/i.test(url.trim());
 }
 
 /**
