@@ -1,0 +1,60 @@
+// ESLint flat config (ESLint 9+). `eslint-config-next` v16 ships flat-config
+// arrays directly, so they are spread in rather than wrapped by FlatCompat.
+//
+// `core-web-vitals` is the Next base plus the perf rules promoted to errors;
+// `typescript` layers on typescript-eslint. Project-specific rules follow so
+// they win the cascade.
+import next from "eslint-config-next/core-web-vitals";
+import nextTypescript from "eslint-config-next/typescript";
+
+const config = [
+  {
+    // Build output, deps, and generated type shims are never linted.
+    ignores: [
+      ".next/**",
+      "node_modules/**",
+      "next-env.d.ts",
+      "tsconfig.tsbuildinfo",
+    ],
+  },
+
+  ...next,
+  ...nextTypescript,
+
+  {
+    rules: {
+      // `_`-prefixed args are the established convention for the deliberately
+      // unused callback params in the block/lightbox signatures.
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrors: "none",
+        },
+      ],
+      // The rich-text AST is genuinely untyped JSON from Hygraph; the boundary
+      // is narrowed by `sanitizeRichTextAst` rather than by the type system.
+      "@typescript-eslint/no-explicit-any": "warn",
+
+      // --- React Compiler rules: warn, not error (deliberate, tracked) ---
+      //
+      // eslint-plugin-react-hooks v7 ships the React Compiler ruleset. Both
+      // rules below fire on existing, working code, and silencing them properly
+      // means real refactors — not something to smuggle into a tooling change.
+      // They stay visible as warnings so new violations are still obvious, and
+      // are promoted back to "error" once the existing sites are fixed.
+      //
+      // `refs`: mostly false positives from the `toolbarButton(icon, label, cb)`
+      // helper in RichTextEditor — the rule can't prove the callbacks aren't
+      // invoked during render, so every ref-closing callback is flagged.
+      "react-hooks/refs": "warn",
+      // `set-state-in-effect`: the prop-to-state sync in the page clients
+      // (`useEffect(() => setBlocks(initialBlocks), [initialBlocks])`). A real
+      // anti-pattern, but unwinding it changes admin-mode behavior.
+      "react-hooks/set-state-in-effect": "warn",
+    },
+  },
+];
+
+export default config;
