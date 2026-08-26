@@ -12,7 +12,16 @@ type Options<T> = {
   items: T[];
   setItems: (next: T[]) => void;
   getKey: (item: T) => string;
-  onCommit: (orderedKeys: string[]) => void;
+  /**
+   * Called once, at the end of a reorder.
+   *
+   * `beforeKeys` is the order as it stood before the interaction started. A
+   * pointer drag reorders the list live on every pointermove, so by the time
+   * this fires the caller's own state already holds the new arrangement — it
+   * has no way to reconstruct what the list looked like a moment ago, which is
+   * exactly what an undo needs.
+   */
+  onCommit: (orderedKeys: string[], beforeKeys: string[]) => void;
   /**
    * "y" (default) — a single vertical column: insertion is the first card whose
    * vertical midpoint the pointer is above. "grid" — a 2-D layout: insertion is
@@ -33,6 +42,8 @@ export function useDragReorder<T>({ items, setItems, getKey, onCommit, mode = "y
   const dragIndexRef = useRef<number | null>(null);
   const draggingKeyRef = useRef<string | null>(null);
   const itemsRef = useRef(items);
+  // The order as it was when the current interaction began.
+  const beforeKeysRef = useRef<string[]>([]);
   const pointerRef = useRef({ x: 0, y: 0 });
   const autoScrollRef = useRef<number | null>(null);
 
@@ -149,7 +160,7 @@ export function useDragReorder<T>({ items, setItems, getKey, onCommit, mode = "y
     draggingKeyRef.current = null;
     dragIndexRef.current = null;
     setDraggingKey(null);
-    onCommit(itemsRef.current.map(getKey));
+    onCommit(itemsRef.current.map(getKey), beforeKeysRef.current);
   }
 
   useEffect(() => {
@@ -173,12 +184,13 @@ export function useDragReorder<T>({ items, setItems, getKey, onCommit, mode = "y
       setAnnouncement(to < from ? "Already at the start of the list." : "Already at the end of the list.");
       return;
     }
+    const before = list.map(getKey);
     const next = [...list];
     const [moved] = next.splice(from, 1);
     next.splice(clamped, 0, moved);
     itemsRef.current = next;
     setItems(next);
-    onCommit(next.map(getKey));
+    onCommit(next.map(getKey), before);
     setAnnouncement(`Moved to position ${clamped + 1} of ${next.length}.`);
   }
 
@@ -222,6 +234,8 @@ export function useDragReorder<T>({ items, setItems, getKey, onCommit, mode = "y
     pointerRef.current = { x: e.clientX, y: e.clientY };
     dragIndexRef.current = index;
     draggingKeyRef.current = key;
+    // Captured before the first pointermove reorders anything.
+    beforeKeysRef.current = itemsRef.current.map(getKey);
     setDraggingKey(key);
     startAutoScroll();
   }

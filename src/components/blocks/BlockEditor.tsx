@@ -17,6 +17,7 @@ import {
   blockSummary,
 } from "./blocks";
 import { useDragReorder } from "./useDragReorder";
+import { useUndoStack } from "./useUndoStack";
 import { useUnsavedChanges } from "@/components/useUnsavedChanges";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import AiDraftModal from "./AiDraftModal";
@@ -52,22 +53,38 @@ export default function BlockEditor({ model, field, id, initialBlocks, onBlocksC
   const [status, setStatus] = useState("");
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
+  const undo = useUndoStack<Block[]>();
 
   // An open block form means a draft that hasn't been committed yet.
   useUnsavedChanges(draft !== null);
 
   const blocksRef = useRef(blocks);
+  // Set while an add is in flight; see addBlock.
+  const preAddRef = useRef<Block[] | null>(null);
   useEffect(() => {
     blocksRef.current = blocks;
     onBlocksChange(blocks);
   }, [blocks, onBlocksChange]);
 
-  async function persist(next: Block[]): Promise<{ ok: true } | { ok: false; error: string }> {
+  async function persist(
+    next: Block[],
+    options: { recordUndo?: boolean; previous?: Block[] } = {}
+  ): Promise<{ ok: true } | { ok: false; error: string }> {
     // Snapshot before the optimistic update. Previously a failed save left the
     // new arrangement on screen while Hygraph still held the old one, so an
     // admin who missed the small status message believed their work was saved
     // — and reloading silently discarded it.
-    const previous = blocksRef.current;
+    //
+    // Live state is the right snapshot for anything that changes the list in
+    // one step. Two interactions change it *before* they commit — a pointer
+    // drag reorders on every pointermove, and adding a block inserts an empty
+    // placeholder while the form is open — so those pass what to go back to.
+    const previous = options.previous ?? blocksRef.current;
+
+    // Every structural change funnels through here, so one snapshot covers
+    // add, edit, reorder, delete, duplicate, and AI insert alike. Restores opt
+    // out, or undoing would just push its own inverse onto the stack.
+    if (options.recordUndo !== false) undo.push(previous);
 
     setBlocks(next);
     setSaving(true);
@@ -78,6 +95,7 @@ export default function BlockEditor({ model, field, id, initialBlocks, onBlocksC
     if ("error" in result) {
       // Roll back so what is on screen always matches what persisted.
       setBlocks(previous);
+      if (options.recordUndo !== false) undo.pop();
       setError(result.error);
       return { ok: false, error: result.error };
     }
@@ -90,10 +108,15 @@ export default function BlockEditor({ model, field, id, initialBlocks, onBlocksC
     items: blocks,
     setItems: setBlocks,
     getKey: (b) => b.id,
-    onCommit: (orderedKeys) => {
+    onCommit: (orderedKeys, beforeKeys) => {
       const byId = new Map(blocksRef.current.map((b) => [b.id, b]));
-      const ordered = orderedKeys.map((k) => byId.get(k)).filter(Boolean) as Block[];
-      void persist(ordered);
+      const resolve = (keys: string[]) =>
+        keys.map((k) => byId.get(k)).filter(Boolean) as Block[];
+      // `beforeKeys` is the order from before the drag started. Without it the
+      // undo entry would be the arrangement that was just committed, because a
+      // drag has already rewritten `blocks` by the time it commits — so Undo
+      // after a drag did nothing at all.
+      void persist(resolve(orderedKeys), { previous: resolve(beforeKeys) });
     },
   });
 
@@ -106,6 +129,11 @@ export default function BlockEditor({ model, field, id, initialBlocks, onBlocksC
   function addBlock(type: BlockType) {
     setPaletteOpen(false);
     const block = createEmptyBlock(type);
+    // The placeholder is inserted now, but nothing persists until the form is
+    // committed — so this, not the list with the placeholder in it, is what
+    // undoing the add has to restore. Otherwise Undo leaves an empty block
+    // behind that the admin then has to delete by hand.
+    preAddRef.current = blocksRef.current;
     setBlocks((prev) => [...prev, block]);
     setEditingId(block.id);
     setDraft(structuredClone(block));
@@ -126,6 +154,7 @@ export default function BlockEditor({ model, field, id, initialBlocks, onBlocksC
     if (isNew && editingId) {
       setBlocks((prev) => prev.filter((b) => b.id !== editingId));
     }
+    preAddRef.current = null;
     collapseEdit();
   }
 
@@ -136,8 +165,12 @@ export default function BlockEditor({ model, field, id, initialBlocks, onBlocksC
       return;
     }
     const next = blocksRef.current.map((b) => (b.id === draft.id ? draft : b));
-    const result = await persist(next);
-    if (!("error" in result)) collapseEdit();
+    const previous = isNew ? preAddRef.current ?? undefined : undefined;
+    const result = await persist(next, { previous });
+    if (!("error" in result)) {
+      preAddRef.current = null;
+      collapseEdit();
+    }
   }
 
   // Inserted directly after its source rather than appended, so the copy shows
@@ -151,6 +184,21 @@ export default function BlockEditor({ model, field, id, initialBlocks, onBlocksC
     const copy = duplicateBlock(block);
     const next = [...current.slice(0, index + 1), copy, ...current.slice(index + 1)];
     await persist(next);
+  }
+
+  async function undoLast() {
+    const snapshot = undo.pop();
+    if (!snapshot) return;
+    collapseEdit();
+    const result = await persist(snapshot, { recordUndo: false });
+    if ("error" in result) {
+      // The restore failed, so the step was never taken — put it back rather
+      // than silently spending it. `persist` has already rolled the UI back to
+      // what the server holds.
+      undo.push(snapshot);
+      return;
+    }
+    setStatus("Undone");
   }
 
   async function insertDrafted(drafted: Block[]) {
@@ -167,6 +215,19 @@ export default function BlockEditor({ model, field, id, initialBlocks, onBlocksC
   return (
     <div className={styles.editorRoot}>
       <div className={styles.statusBar}>
+        <button
+          type="button"
+          className={styles.undoBtn}
+          onClick={undoLast}
+          disabled={undo.depth === 0 || saving}
+          title={
+            undo.depth === 0
+              ? "Nothing to undo"
+              : `Undo the last change (${undo.depth} available this session)`
+          }
+        >
+          Undo
+        </button>
         {error ? (
           <span className={styles.statusError} role="alert">{error}</span>
         ) : (
@@ -340,7 +401,7 @@ export default function BlockEditor({ model, field, id, initialBlocks, onBlocksC
       {pendingDeleteId && (
         <ConfirmDialog
           title="Delete this block?"
-          message="This permanently removes the block from the CMS. This can't be undone."
+          message="This removes the block from the CMS. Undo can bring it back until you leave the page."
           onConfirm={() => deleteBlock(pendingDeleteId)}
           onClose={() => setPendingDeleteId(null)}
         />

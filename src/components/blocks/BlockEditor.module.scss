@@ -519,3 +519,27 @@
 
   &:disabled { opacity: 0.5; cursor: not-allowed; }
 }
+
+// Sits in the status bar beside the save state, since it is about the same
+// thing: what just happened to this page.
+.undoBtn {
+  font: inherit;
+  font-size: 0.78rem;
+  padding: 0.35rem 0.75rem;
+  color: var(--ink-soft);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+
+  &:hover:not(:disabled) {
+    border-color: var(--line-strong);
+    color: var(--ink);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
