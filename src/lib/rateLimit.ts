@@ -109,6 +109,35 @@ export function createRateLimiter({
  * back to a single shared bucket when no address is available — which degrades
  * to a global limit rather than to no limit at all.
  */
+/**
+ * Check a per-client limiter, then a shared backstop — in that order, and only
+ * if the first one passed.
+ *
+ * The ordering is the whole point, and getting it wrong inverts what the
+ * backstop is for. If both limiters are consulted unconditionally, a single
+ * attacker who has already burned their own budget keeps spending the shared
+ * one on every further request. A blocked request returns in milliseconds, so
+ * they can drain a 60-per-15-minutes backstop in about a second — and from
+ * then on every *other* client, the real admin included, is locked out. One
+ * unauthenticated attacker turns the anti-brute-force measure into a denial of
+ * service against the account it protects.
+ *
+ * Consulting the backstop only for requests that got past the per-client check
+ * means the shared budget is spent at most `perClientLimit` times per client,
+ * so filling it genuinely requires many distinct clients — which is the
+ * distributed attempt it exists to catch.
+ */
+export function checkTiered(
+  perClient: RateLimiter,
+  clientKey: string,
+  backstop: RateLimiter,
+  backstopKey: string
+): RateLimitResult {
+  const client = perClient.check(clientKey);
+  if (!client.allowed) return client;
+  return backstop.check(backstopKey);
+}
+
 export function clientKeyFromHeaders(headers: {
   get: (name: string) => string | null;
 }): string {

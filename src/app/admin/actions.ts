@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { checkAdminKey } from "@/lib/session";
 import { setSession, clearSession } from "@/lib/auth";
 import {
+  checkTiered,
   clientKeyFromHeaders,
   createRateLimiter,
   formatRetryAfter,
@@ -32,16 +33,17 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 export async function login(_prev: { error?: string } | undefined, formData: FormData) {
   const client = clientKeyFromHeaders(await headers());
 
-  const clientLimit = perClient.check(client);
-  const globalLimit = global.check(GLOBAL_KEY);
-  const blocked = !clientLimit.allowed ? clientLimit : !globalLimit.allowed ? globalLimit : null;
+  // Tiered, not both-at-once: the backstop is only consulted for a request
+  // that already passed the per-client check. See `checkTiered` for why the
+  // other order hands one attacker a lockout of the real admin.
+  const limit = checkTiered(perClient, client, global, GLOBAL_KEY);
 
-  if (blocked && !blocked.allowed) {
+  if (!limit.allowed) {
     // Deliberately says nothing about whether the key was right — a
     // rate-limited response must not become an oracle.
     console.warn(`[admin] rate-limited login attempt from ${client}`);
     return {
-      error: `Too many attempts. Try again in ${formatRetryAfter(blocked.retryAfterMs)}.`,
+      error: `Too many attempts. Try again in ${formatRetryAfter(limit.retryAfterMs)}.`,
     };
   }
 
@@ -53,8 +55,12 @@ export async function login(_prev: { error?: string } | undefined, formData: For
     return { error: "Incorrect key." };
   }
 
-  // A correct key clears the budget, so a legitimate admin who fumbled their
-  // password a few times is not left locked out afterwards.
+  // A correct key clears this client's budget, so a legitimate admin who
+  // fumbled their password a few times is not left locked out afterwards. The
+  // global backstop is deliberately NOT reset: one success does not say
+  // anything about attempts from other addresses, which is the only thing that
+  // can fill it now that it is only consulted for requests that passed the
+  // per-client check.
   perClient.reset(client);
   console.info(`[admin] successful login from ${client}`);
 

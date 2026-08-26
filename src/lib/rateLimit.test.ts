@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  checkTiered,
   clientKeyFromHeaders,
   createRateLimiter,
   formatRetryAfter,
@@ -184,5 +185,62 @@ describe("formatRetryAfter", () => {
     [900_000, "15 minutes"],
   ])("formats %dms as %s", (ms, expected) => {
     expect(formatRetryAfter(ms)).toBe(expected);
+  });
+});
+
+describe("checkTiered — the backstop must not become the attack", () => {
+  // The bug this pins: consulting both limiters unconditionally lets one
+  // already-blocked attacker keep spending the shared budget, until every
+  // other client — the real admin included — is locked out.
+  function tier() {
+    let clock = 0;
+    const now = () => clock;
+    return {
+      perClient: createRateLimiter({ limit: 3, windowMs: 1000, now }),
+      backstop: createRateLimiter({ limit: 10, windowMs: 1000, now }),
+      advance: (ms: number) => {
+        clock += ms;
+      },
+    };
+  }
+
+  it("blocks the client that exceeded its own budget", () => {
+    const { perClient, backstop } = tier();
+    for (let i = 0; i < 3; i++) {
+      expect(checkTiered(perClient, "a", backstop, "all").allowed).toBe(true);
+    }
+    expect(checkTiered(perClient, "a", backstop, "all").allowed).toBe(false);
+  });
+
+  it("does not spend backstop budget on a client that is already blocked", () => {
+    const { perClient, backstop } = tier();
+
+    // Burn the client's own budget, then keep hammering.
+    for (let i = 0; i < 3 + 50; i++) checkTiered(perClient, "attacker", backstop, "all");
+
+    // A different client must still get in. Before the fix, those 50 refused
+    // requests each consumed a shared slot and this was false.
+    expect(checkTiered(perClient, "admin", backstop, "all").allowed).toBe(true);
+  });
+
+  it("still catches a genuinely distributed attempt", () => {
+    const { perClient, backstop } = tier();
+
+    // Ten distinct clients, spending their own budgets: that is what the
+    // backstop exists for, and it should trip.
+    for (let c = 0; c < 10; c++) checkTiered(perClient, `client-${c}`, backstop, "all");
+
+    const eleventh = checkTiered(perClient, "client-10", backstop, "all");
+    expect(eleventh.allowed).toBe(false);
+  });
+
+  it("reports the backstop's own retry time when the backstop is what blocked", () => {
+    const { perClient, backstop, advance } = tier();
+    for (let c = 0; c < 10; c++) checkTiered(perClient, `client-${c}`, backstop, "all");
+
+    advance(400);
+    const blocked = checkTiered(perClient, "fresh", backstop, "all");
+    if (blocked.allowed) throw new Error("expected the backstop to block");
+    expect(blocked.retryAfterMs).toBe(600);
   });
 });
