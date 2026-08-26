@@ -148,3 +148,27 @@ describe("pageMetadata", () => {
     }
   });
 });
+
+describe("sanitizeSeo — keywords", () => {
+  it("keeps a keyword that contains a comma", () => {
+    // The reason the Settings form sends an array rather than a joined string:
+    // splitting on "," tears this one in two, silently, after the field has
+    // stopped being the admin's to look at.
+    const out = sanitizeSeo({ keywords: ["structural design, menswear", "tailoring"] });
+    expect(out.keywords).toEqual(["structural design, menswear", "tailoring"]);
+  });
+
+  it("trims and drops blanks from an array", () => {
+    expect(sanitizeSeo({ keywords: ["  a  ", "", "   ", "b"] }).keywords).toEqual(["a", "b"]);
+  });
+
+  it("still splits a legacy comma-joined string, so stored values keep loading", () => {
+    expect(sanitizeSeo({ keywords: "a, b ,c" }).keywords).toEqual(["a", "b", "c"]);
+  });
+
+  it("falls back to the defaults when keywords is neither", () => {
+    for (const raw of [null, undefined, 42, {}]) {
+      expect(sanitizeSeo({ keywords: raw }).keywords).toEqual(DEFAULT_SEO.keywords);
+    }
+  });
+});

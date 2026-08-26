@@ -98,6 +98,9 @@ export function sanitizeSeo(raw: unknown): SeoContent {
   if (Array.isArray(data.keywords)) {
     keywords = data.keywords.map((k) => str(k).trim()).filter(Boolean);
   } else if (typeof data.keywords === "string") {
+    // Legacy shape only. The Settings form sends an array, because a comma is
+    // a legitimate character inside a keyword phrase and splitting on it tears
+    // such a keyword in two. A string that predates that still has to load.
     keywords = data.keywords.split(",").map((k) => k.trim()).filter(Boolean);
   } else {
     keywords = d.keywords;

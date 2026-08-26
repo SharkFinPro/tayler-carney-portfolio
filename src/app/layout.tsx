@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import AdminBar from "@/components/AdminBar";
 import MotionProvider from "@/components/MotionProvider";
 import getSiteData from "@/components/SiteData";
+import { resolveAssetRef } from "@/lib/assetRef";
 
 const notoSerif = Noto_Serif({
   subsets: ["latin"],
@@ -30,7 +31,13 @@ const dmMono = DM_Mono({
 // SEO metadata is driven by the SiteData `seo` JSON field (editable in admin
 // settings), with DEFAULT_SEO as the fallback when the entry is empty.
 export async function generateMetadata(): Promise<Metadata> {
-  const { seo } = await getSiteData();
+  const { seo, global } = await getSiteData();
+
+  // The share card was a static file in src/app/, so the highest-visibility
+  // asset on the site was the one an admin couldn't change. When one is picked
+  // in Settings it wins; otherwise Next's file-based opengraph-image.png still
+  // applies, because omitting the key leaves that convention untouched.
+  const ogImage = await resolveAssetRef(global.ogImageAssetId, "Social preview");
 
   return {
     metadataBase: new URL(process.env.WEBSITE_URL ?? "http://localhost:3000"),
@@ -45,11 +52,13 @@ export async function generateMetadata(): Promise<Metadata> {
       description: seo.ogDescription,
       type: "website",
       url: process.env.WEBSITE_URL,
+      ...(ogImage ? { images: [{ url: ogImage.url, alt: seo.ogTitle }] } : {}),
     },
     twitter: {
       card: "summary_large_image",
       title: seo.ogTitle,
       description: seo.ogDescription,
+      ...(ogImage ? { images: [ogImage.url] } : {}),
     },
     robots: {
       index: true,

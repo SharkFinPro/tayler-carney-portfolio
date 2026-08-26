@@ -8,8 +8,16 @@ import { MAX_NAV_ITEMS, type GlobalContent, type NavItem } from "@/lib/global";
 import { SEO_PAGE_KEYS, type SeoContent, type SeoPage, type SeoPageKey } from "@/lib/seo";
 import styles from "./Settings.module.scss";
 
-// SEO keywords are edited as a single comma-separated line; the sanitizer also
-// accepts an array, but the form keeps it as a string for a simple input.
+// SEO keywords are edited one per line, not comma-separated.
+//
+// A comma is a legitimate character inside a keyword phrase, so joining on it
+// means any keyword containing one is silently torn in two on the next save —
+// and the admin has no way to tell, because the split happens after the field
+// stops being theirs. A newline cannot occur inside a single-line item, so it
+// is the only separator here that round-trips.
+//
+// The form still holds a string (a textarea's value is a string); it is split
+// into an array on save, so the lossless value is what reaches the sanitizer.
 type SeoForm = Omit<SeoContent, "keywords"> & { keywords: string };
 
 type GlobalTextField = {
@@ -32,12 +40,24 @@ const SEO_FIELDS: { name: SeoTextField; label: string; hint?: string; multiline?
   { name: "title", label: "Site title", hint: "Default browser/tab title and homepage <title>." },
   { name: "titleTemplate", label: "Title template", hint: 'Per-page title pattern. Use "%s" for the page name, e.g. "%s | Tayler Carney".' },
   { name: "description", label: "Meta description", hint: "Shown in search results.", multiline: true },
-  { name: "keywords", label: "Keywords", hint: "Comma-separated." },
+  { name: "keywords", label: "Keywords", hint: "One per line.", multiline: true },
   { name: "ogTitle", label: "Social (OpenGraph) title", hint: "Title used when the site is shared." },
   { name: "ogDescription", label: "Social (OpenGraph) description", hint: "Description used when shared.", multiline: true },
 ];
 
-const toSeoForm = (seo: SeoContent): SeoForm => ({ ...seo, keywords: seo.keywords.join(", ") });
+const toSeoForm = (seo: SeoContent): SeoForm => ({
+  ...seo,
+  keywords: seo.keywords.join("\n"),
+});
+
+/** The reverse: one keyword per line, blank lines dropped. */
+const fromSeoForm = (form: SeoForm): SeoContent => ({
+  ...form,
+  keywords: form.keywords
+    .split("\n")
+    .map((k) => k.trim())
+    .filter(Boolean),
+});
 
 // Human labels for the per-route overrides. Project pages are absent on
 // purpose: they already derive their metadata from the project's own editable
@@ -62,12 +82,15 @@ export default function SettingsForm({
   initialGlobal,
   initialSeo,
   initialResume,
+  initialOgImage,
 }: {
   id: string;
   initialGlobal: GlobalContent;
   initialSeo: SeoContent;
   /** Resolved server-side from `initialGlobal.resumeAssetId`; null when unset or the asset is gone. */
   initialResume: ResumeDisplay | null;
+  /** Same, for `initialGlobal.ogImageAssetId`. */
+  initialOgImage: ResumeDisplay | null;
 }) {
   const [global, setGlobal] = useState<GlobalContent>(initialGlobal);
   const [seo, setSeo] = useState<SeoForm>(() => toSeoForm(initialSeo));
@@ -80,9 +103,11 @@ export default function SettingsForm({
   const [globalStatus, setGlobalStatus] = useState<Status>(null);
   const [seoStatus, setSeoStatus] = useState<Status>(null);
   const [resumePickerOpen, setResumePickerOpen] = useState(false);
+  const [ogPickerOpen, setOgPickerOpen] = useState(false);
   // Local display info for the referenced asset; the saved value is only the
   // asset id (public pages re-resolve it on render, so renames propagate).
   const [resume, setResume] = useState<ResumeDisplay | null>(initialResume);
+  const [ogImage, setOgImage] = useState<ResumeDisplay | null>(initialOgImage);
 
   const globalDirty = (Object.keys(savedGlobal) as (keyof GlobalContent)[]).some(
     (k) => global[k] !== savedGlobal[k]
@@ -148,7 +173,7 @@ export default function SettingsForm({
     e.preventDefault();
     setSavingSeo(true);
     setSeoStatus(null);
-    const res = await updateSeo(id, seo);
+    const res = await updateSeo(id, fromSeoForm(seo));
     setSavingSeo(false);
     if ("error" in res) {
       setSeoStatus({ ok: false, message: res.error });
@@ -322,6 +347,65 @@ export default function SettingsForm({
           </div>
         </div>
 
+        <div className={styles.field}>
+          <span className={styles.label}>Social preview image</span>
+          <span className={styles.hint}>
+            The image shown when the site is shared on social media or in a chat. Referenced
+            live, so replacing it in the Media Library updates every share card. Leave it unset
+            to keep the built-in default. Around 1200&times;630 works best.
+          </span>
+          <div className={styles.assetRow}>
+            {global.ogImageAssetId ? (
+              <>
+                {ogImage ? (
+                  <a
+                    href={ogImage.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.assetName}
+                    title={ogImage.name}
+                  >
+                    {ogImage.name}
+                  </a>
+                ) : (
+                  <span className={styles.assetEmpty}>
+                    The selected image no longer exists in the Media Library.
+                  </span>
+                )}
+                <button
+                  type="button"
+                  className={styles.assetBtn}
+                  onClick={() => setOgPickerOpen(true)}
+                >
+                  Change…
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.assetBtn} ${styles.assetBtnDanger}`}
+                  onClick={() => {
+                    setGlobal((v) => ({ ...v, ogImageAssetId: "" }));
+                    setOgImage(null);
+                    setGlobalStatus(null);
+                  }}
+                >
+                  Remove
+                </button>
+              </>
+            ) : (
+              <>
+                <span className={styles.assetEmpty}>Using the built-in default.</span>
+                <button
+                  type="button"
+                  className={styles.assetBtn}
+                  onClick={() => setOgPickerOpen(true)}
+                >
+                  Select image…
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
         <div className={styles.actions}>
           <button type="submit" className={styles.button} disabled={savingGlobal || !globalDirty}>
             {savingGlobal ? "Saving…" : "Save identity"}
@@ -420,6 +504,17 @@ export default function SettingsForm({
           )}
         </div>
       </form>
+
+      {ogPickerOpen && (
+        <AssetPicker
+          onClose={() => setOgPickerOpen(false)}
+          onSelect={(asset) => {
+            setGlobal((v) => ({ ...v, ogImageAssetId: asset.id }));
+            setOgImage({ url: asset.url, name: asset.title?.trim() || baseName(asset.fileName) });
+            setGlobalStatus(null);
+          }}
+        />
+      )}
 
       {resumePickerOpen && (
         <AssetPicker

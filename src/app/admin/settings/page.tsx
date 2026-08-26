@@ -18,18 +18,22 @@ export default async function SiteSettings() {
 
   const { id, global, seo } = await getSiteData();
 
-  // Resolve the referenced resume asset for display (authed read, so a
-  // still-draft PDF shows up too). Null when unset or the asset was deleted.
-  let resume: ResumeDisplay | null = null;
-  if (global.resumeAssetId) {
-    const asset = await getAssetById(global.resumeAssetId).catch(() => null);
-    if (asset) {
-      resume = {
-        url: asset.url,
-        name: asset.title?.trim() || asset.fileName.replace(/\.[^.]+$/, ""),
-      };
-    }
+  // Resolve the referenced assets for display. This is the authed read, so a
+  // still-draft file shows up too; null means unset or deleted.
+  async function displayAsset(assetId: string): Promise<ResumeDisplay | null> {
+    if (!assetId) return null;
+    const asset = await getAssetById(assetId).catch(() => null);
+    if (!asset) return null;
+    return {
+      url: asset.url,
+      name: asset.title?.trim() || asset.fileName.replace(/\.[^.]+$/, ""),
+    };
   }
+
+  const [resume, ogImage] = await Promise.all([
+    displayAsset(global.resumeAssetId),
+    displayAsset(global.ogImageAssetId),
+  ]);
 
   return (
     <div className={styles.wrap}>
@@ -43,7 +47,13 @@ export default async function SiteSettings() {
         </p>
       </div>
 
-      <SettingsForm id={id} initialGlobal={global} initialSeo={seo} initialResume={resume} />
+      <SettingsForm
+        id={id}
+        initialGlobal={global}
+        initialSeo={seo}
+        initialResume={resume}
+        initialOgImage={ogImage}
+      />
     </div>
   );
 }

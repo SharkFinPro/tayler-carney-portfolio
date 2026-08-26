@@ -30,6 +30,13 @@ export type GlobalContent = {
    * reflected everywhere. Empty hides the download links.
    */
   resumeAssetId: string;
+  /**
+   * Hygraph Asset id of the social preview (OpenGraph) image. Same reference
+   * pattern as the resume: stored as an id, resolved at render, so replacing
+   * the asset updates every share card. Empty falls back to the static
+   * opengraph-image.png in src/app/.
+   */
+  ogImageAssetId: string;
 };
 
 // Seed identity — the fallback when `global` is null (e.g. a fresh CMS entry).
@@ -51,6 +58,7 @@ export const DEFAULT_GLOBAL: GlobalContent = {
   linkedInHandle: "",
   instagramHandle: "",
   resumeAssetId: "",
+  ogImageAssetId: "",
 };
 
 const str = (v: unknown, fallback = ""): string => (typeof v === "string" ? v : fallback);
@@ -140,5 +148,6 @@ export function sanitizeGlobal(raw: unknown): GlobalContent {
     linkedInHandle: normalizeHandle(data.linkedInHandle ?? d.linkedInHandle),
     instagramHandle: normalizeHandle(data.instagramHandle ?? d.instagramHandle),
     resumeAssetId: assetId(data.resumeAssetId),
+    ogImageAssetId: assetId(data.ogImageAssetId),
   };
 }
