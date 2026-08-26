@@ -9,12 +9,18 @@ import type { ImageGridItem } from "./ImageGrid";
 interface SheetViewerProps {
   items: ImageGridItem[];
   onOpen: (src: string, title: string, items: ImageGridItem[], index: number) => void;
+  /**
+   * Preload the sheet on screen. Safe to pass unconditionally: only one sheet
+   * is rendered at a time, so this marks exactly one image however many the
+   * block holds.
+   */
+  priority?: boolean;
 }
 
 // A paginated single-document viewer: a dropdown picks one of N large sheets,
 // shown one at a time with a position counter. Generic across page types
 // (tech-pack pages, line sheets, plates, …).
-export default function SheetViewer({ items, onOpen }: SheetViewerProps) {
+export default function SheetViewer({ items, onOpen, priority = false }: SheetViewerProps) {
   const [index, setIndex] = useState(0);
   if (!items.length) return null;
   const selected = items[Math.min(index, items.length - 1)];
@@ -49,6 +55,7 @@ export default function SheetViewer({ items, onOpen }: SheetViewerProps) {
       >
         <Image
           src={selected.url}
+          priority={priority}
           alt={selected.alt ?? selected.title}
           width={1600}
           height={2200}

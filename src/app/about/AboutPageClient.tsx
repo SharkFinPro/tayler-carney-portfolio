@@ -57,8 +57,8 @@ export default function AboutPageClient({ siteId, about, isAdmin = false }: Abou
             <p className={styles.empty}>No content yet</p>
           ) : (
             <div className={styles.blocks}>
-              {sectionBlocks.map((block) => (
-                <BlockSection key={block.id} block={block} onOpen={lightbox.open} />
+              {sectionBlocks.map((block, i) => (
+                <BlockSection key={block.id} block={block} onOpen={lightbox.open} priority={i === 0} />
               ))}
             </div>
           )}

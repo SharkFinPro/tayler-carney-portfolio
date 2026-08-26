@@ -82,7 +82,7 @@ function blockCount(b: Block): number | undefined {
 // separate from BlockSection so a split container can render its children's
 // bodies inside columns. A standalone component so per-block hooks (comparison's
 // active view) get a stable instance.
-function BlockContent({ block, onOpen }: { block: Block; onOpen: OnOpen }) {
+function BlockContent({ block, onOpen, priority = false }: { block: Block; onOpen: OnOpen; priority?: boolean }) {
   // Declared unconditionally so hook order is stable (only comparison uses it).
   // -1 is the "view all" mode (all views shown side-by-side); it's the default.
   const [activeView, setActiveView] = useState(-1);
@@ -93,7 +93,7 @@ function BlockContent({ block, onOpen }: { block: Block; onOpen: OnOpen }) {
 
     case "gallery": {
       const items = refsToItems(block.images, block.heading || "Image");
-      return <ImageGrid items={items} variant={block.layout === "feature" ? "feature" : "gallery"} onOpen={onOpen} />;
+      return <ImageGrid items={items} variant={block.layout === "feature" ? "feature" : "gallery"} onOpen={onOpen} priority={priority} />;
     }
 
     case "singleImage": {
@@ -107,14 +107,22 @@ function BlockContent({ block, onOpen }: { block: Block; onOpen: OnOpen }) {
             `View ${block.heading || "image"}`
           )}
         >
-          <Image src={block.image.url} alt={alt} width={1600} height={1200} placeholder="blur" blurDataURL={BLUR_DATA_URL} />
+          <Image
+            src={block.image.url}
+            alt={alt}
+            width={1600}
+            height={1200}
+            priority={priority}
+            placeholder="blur"
+            blurDataURL={BLUR_DATA_URL}
+          />
         </div>
       );
     }
 
     case "mediaShowcase": {
       const items = itemsToGrid(block.items, block.heading || "Item");
-      return <ImageGrid items={items} variant={block.layout === "grid" ? "grid" : "cards"} onOpen={onOpen} />;
+      return <ImageGrid items={items} variant={block.layout === "grid" ? "grid" : "cards"} onOpen={onOpen} priority={priority} />;
     }
 
     case "comparison": {
@@ -140,7 +148,7 @@ function BlockContent({ block, onOpen }: { block: Block; onOpen: OnOpen }) {
             ))}
           </div>
           <div className={styles.comparisonDisplay}>
-            {shown.map((v) => {
+            {shown.map((v, shownIndex) => {
               const idx = views.indexOf(v);
               const alt = gallery[idx].alt;
               return (
@@ -150,7 +158,19 @@ function BlockContent({ block, onOpen }: { block: Block; onOpen: OnOpen }) {
                   {...clickableProps(() => onOpen(v.image.url, v.label, gallery, idx), `View ${v.label}`)}
                 >
                   <h3>{v.label}</h3>
-                  <Image src={v.image.url} alt={alt} width={1000} height={1000} placeholder="blur" blurDataURL={BLUR_DATA_URL} />
+                  <Image
+                    src={v.image.url}
+                    alt={alt}
+                    width={1000}
+                    height={1000}
+                    // "View all" renders every view at once, so restrict the
+                    // preload to the leading one — preloading all of them is
+                    // the same mistake as preloading none, in the other
+                    // direction.
+                    priority={priority && shownIndex === 0}
+                    placeholder="blur"
+                    blurDataURL={BLUR_DATA_URL}
+                  />
                 </div>
               );
             })}
@@ -173,7 +193,7 @@ function BlockContent({ block, onOpen }: { block: Block; onOpen: OnOpen }) {
 
     case "documentViewer": {
       const items = itemsToGrid(block.items, block.heading || "Sheet");
-      return <SheetViewer items={items} onOpen={onOpen} />;
+      return <SheetViewer items={items} onOpen={onOpen} priority={priority} />;
     }
 
     case "callout": {
@@ -235,6 +255,9 @@ function BlockContent({ block, onOpen }: { block: Block; onOpen: OnOpen }) {
                       height={0}
                       sizes="(max-width: 860px) 90vw, 40vw"
                       className={styles.imageNatural}
+                      // Only the first image of the strip. `priority` on all of
+                      // them would preload the whole entry and defeat the point.
+                      priority={priority && i === 0}
                     />
                   </div>
                   {(item.title || item.description) && (
@@ -265,6 +288,7 @@ function BlockContent({ block, onOpen }: { block: Block; onOpen: OnOpen }) {
                 fill
                 sizes="(max-width: 768px) 90vw, 40vw"
                 className={styles.profilePortraitImg}
+                priority={priority}
                 placeholder="blur"
                 blurDataURL={BLUR_DATA_URL}
               />
@@ -347,6 +371,13 @@ function BlockContent({ block, onOpen }: { block: Block; onOpen: OnOpen }) {
       if (!children.length) return null;
       return (
         <div className={styles.columns} data-count={children.length}>
+          {/*
+            No `priority` here, for the same reason as SplitColumn: a columns
+            block renders two to four children at once, and marking them all
+            above-the-fold preloads several images and preloads none of them
+            usefully. A page that leads with columns is choosing a layout with
+            no single leading image.
+          */}
           {children.map((child) => (
             <div key={child.id} className={styles.column}>
               <BlockContent block={child} onOpen={onOpen} />
@@ -365,6 +396,11 @@ function SplitColumn({ block, onOpen }: { block: Block; onOpen: OnOpen }) {
   return (
     <div className={styles.splitColumn}>
       {block.heading && <h3 className={styles.splitColHeading}>{block.heading}</h3>}
+      {/*
+        No `priority` here on purpose. A split has two children, and marking
+        both would have them competing to be the LCP element — preloading two
+        images helps neither. Split children stay lazy.
+      */}
       <BlockContent block={block} onOpen={onOpen} />
     </div>
   );
@@ -374,7 +410,13 @@ function SplitColumn({ block, onOpen }: { block: Block; onOpen: OnOpen }) {
 // heading + optional count badge) wrapped around the block's content. The DOM id
 // is the block id (types can repeat on a page). `onOpen` hands image clicks back
 // to the host page's lightbox.
-export default function BlockSection({ block, onOpen }: { block: Block; onOpen: OnOpen }) {
+/**
+ * `priority` marks this section as above the fold, so its leading image is
+ * preloaded instead of lazy-loaded. Set it only on the first block of a page:
+ * on an image-heavy portfolio that photograph is what LCP measures, and before
+ * this every image on the site was lazy.
+ */
+export default function BlockSection({ block, onOpen, priority = false }: { block: Block; onOpen: OnOpen; priority?: boolean }) {
   const count = blockCount(block);
   // Some blocks render their own heading/layout (the editorial entry, the
   // About/Contact page blocks), so they skip the generic section chrome (the
@@ -382,7 +424,7 @@ export default function BlockSection({ block, onOpen }: { block: Block; onOpen: 
   if (SELF_CHROME_TYPES.includes(block.type)) {
     return (
       <motion.div id={block.id} {...sectionMotion}>
-        <BlockContent block={block} onOpen={onOpen} />
+        <BlockContent block={block} onOpen={onOpen} priority={priority} />
       </motion.div>
     );
   }
@@ -394,7 +436,7 @@ export default function BlockSection({ block, onOpen }: { block: Block; onOpen: 
           {count != null && <span>{count}</span>}
         </h2>
       )}
-      <BlockContent block={block} onOpen={onOpen} />
+      <BlockContent block={block} onOpen={onOpen} priority={priority} />
     </motion.div>
   );
 }
