@@ -1,0 +1,50 @@
+name: CI
+
+# Vercel already builds every push, but that is a *deployment*, not a gate: it
+# runs no lint and no tests, and by the time it fails a bad commit is already on
+# main. This workflow runs the same checks a developer runs locally, on the pull
+# request, so a failure arrives before the merge rather than after it.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A new push to the same branch makes the in-flight run irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Typecheck, lint, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Node 22 is what Vercel runs, so that is what should gate the merge.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm run test
+
+      # The production build needs no secrets: every CMS-backed route is
+      # rendered on demand, so nothing is fetched at build time. If that ever
+      # changes (e.g. adding generateStaticParams), this step will fail loudly
+      # rather than silently prerendering empty pages.
+      - name: Build
+        run: npm run build
