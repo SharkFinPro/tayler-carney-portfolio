@@ -3,7 +3,7 @@
 // must never be able to store a shape the renderer can't handle.
 
 import { describe, expect, it } from "vitest";
-import { DEFAULT_GLOBAL, sanitizeGlobal } from "./global";
+import { DEFAULT_GLOBAL, normalizeHandle, sanitizeGlobal } from "./global";
 
 describe("sanitizeGlobal", () => {
   it("returns the defaults for an empty or absent value", () => {
@@ -87,5 +87,71 @@ describe("sanitizeGlobal", () => {
       resumeAssetId: "abc123",
     });
     expect(sanitizeGlobal(once)).toEqual(once);
+  });
+});
+
+describe("normalizeHandle", () => {
+  it("keeps a bare username unchanged", () => {
+    expect(normalizeHandle("taylercarney")).toBe("taylercarney");
+    expect(normalizeHandle("tayler-carney")).toBe("tayler-carney");
+    expect(normalizeHandle("tayler.carney_01")).toBe("tayler.carney_01");
+  });
+
+  it("strips a leading @", () => {
+    expect(normalizeHandle("@taylercarney")).toBe("taylercarney");
+    expect(normalizeHandle("@@taylercarney")).toBe("taylercarney");
+  });
+
+  it("trims surrounding whitespace", () => {
+    expect(normalizeHandle("  taylercarney  ")).toBe("taylercarney");
+  });
+
+  it.each([
+    // The realistic mistake: pasting the whole profile URL into a field whose
+    // hint says "the part after linkedin.com/in/".
+    ["https://www.linkedin.com/in/taylercarney", "taylercarney"],
+    ["https://linkedin.com/in/taylercarney", "taylercarney"],
+    ["http://www.linkedin.com/in/taylercarney/", "taylercarney"],
+    ["www.linkedin.com/in/taylercarney", "taylercarney"],
+    ["linkedin.com/in/taylercarney", "taylercarney"],
+    ["https://instagram.com/taylercarney", "taylercarney"],
+    ["https://www.instagram.com/taylercarney/", "taylercarney"],
+    ["https://instagram.com/taylercarney?hl=en", "taylercarney"],
+  ])("reduces %j to the bare handle", (input, expected) => {
+    expect(normalizeHandle(input)).toBe(expected);
+  });
+
+  it("drops values that still are not a username", () => {
+    // Better to hide the link than render one that 404s.
+    for (const bad of ["   ", "two words", "https://", "@", "//", 42, null, {}, []]) {
+      expect(normalizeHandle(bad), String(bad)).toBe("");
+    }
+  });
+
+  it("takes the last path segment of any slashed value", () => {
+    // Consequence of the URL-paste handling, and the right call: whatever the
+    // shape of the pasted link, the trailing segment is the username.
+    expect(normalizeHandle("a/b/c/")).toBe("c");
+    expect(normalizeHandle("some.site/u/name")).toBe("name");
+  });
+
+  it("is idempotent", () => {
+    const once = normalizeHandle("https://www.linkedin.com/in/taylercarney/");
+    expect(normalizeHandle(once)).toBe(once);
+  });
+
+  it("is applied by sanitizeGlobal", () => {
+    const out = sanitizeGlobal({
+      linkedInHandle: "https://www.linkedin.com/in/taylercarney",
+      instagramHandle: "@taylercarney",
+    });
+    expect(out.linkedInHandle).toBe("taylercarney");
+    expect(out.instagramHandle).toBe("taylercarney");
+  });
+
+  it("leaves an empty handle empty, so the render guards hide the channel", () => {
+    const out = sanitizeGlobal({ linkedInHandle: "", instagramHandle: "   " });
+    expect(out.linkedInHandle).toBe("");
+    expect(out.instagramHandle).toBe("");
   });
 });

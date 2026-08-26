@@ -294,3 +294,47 @@ describe("imageNodeFromRef", () => {
     expect(() => imageNodeFromRef({ url: "https://media.graphassets.com/a.jpg" })).not.toThrow();
   });
 });
+
+describe("isSafeUrl — protocol-relative URLs", () => {
+  it.each(["//evil.com", "//evil.com/path", "  //evil.com", "///evil.com"])(
+    "rejects %j, which resolves off-site rather than as a path",
+    (url) => {
+      expect(isSafeUrl(url)).toBe(false);
+    }
+  );
+
+  // The WHATWG URL parser treats a backslash as a slash for http(s) URLs, so
+  // these resolve to another origin exactly like "//evil.com" does. A check
+  // that only excluded a second forward slash let every one of them through.
+  it.each([
+    "/\\evil.com",
+    "/\\\\evil.com",
+    "/\\/evil.com",
+    "/\\evil.com/path",
+    "  /\\evil.com",
+  ])("rejects the backslash form %j", (url) => {
+    // Assert the premise as well as the check: if a future runtime stopped
+    // resolving these off-site, this test would be guarding nothing.
+    expect(new URL(url.trim(), "https://site.test/page").origin).toBe("https://evil.com");
+    expect(isSafeUrl(url)).toBe(false);
+  });
+
+  it("still accepts ordinary site-relative paths", () => {
+    for (const url of ["/", "/portfolio", "/portfolio/coat", "/a/b/c", "/a/b?c=1#d"]) {
+      expect(isSafeUrl(url), url).toBe(true);
+    }
+  });
+
+  it("strips a protocol-relative link href during sanitization", () => {
+    const out = sanitizeRichTextAst({
+      children: [
+        {
+          type: "paragraph",
+          children: [{ type: "link", href: "//evil.com", children: [{ text: "click" }] }],
+        },
+      ],
+    });
+    expect(JSON.stringify(out)).not.toContain("evil.com");
+    expect(JSON.stringify(out)).toContain("click");
+  });
+});
