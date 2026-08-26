@@ -22,6 +22,16 @@ export type RichTextAST = { children: unknown[] };
 
 export type ComparisonView = { label: string; image: ImageRef };
 export type SpecRow = { label: string; value: string };
+
+/** One stage in a `timeline` block. `marker` is a date, week, or phase label. */
+export type TimelineStage = { marker: string; title: string; description: string };
+
+/**
+ * One entry in a `swatches` block. Either a flat colour or a material photo —
+ * `image` wins when both are set, since a photograph of a fabric carries more
+ * information than its average colour.
+ */
+export type SwatchItem = { name: string; detail: string; color: string; image: ImageRef | null };
 // A single entry in a `credentials` block. Flexible enough to cover both the
 // Education list (title = degree, meta = institution · years, description = notes)
 // and the Exhibitions list (term = year, title, description).
@@ -39,6 +49,9 @@ export type BlockType =
   | "singleImage"
   | "mediaShowcase"
   | "comparison"
+  | "beforeAfter"
+  | "timeline"
+  | "swatches"
   | "specs"
   | "documentViewer"
   | "callout"
@@ -63,6 +76,14 @@ export type Block =
   | (BaseBlock & { type: "mediaShowcase"; items: ImageItem[]; layout: ShowcaseLayout })
   | (BaseBlock & { type: "comparison"; views: ComparisonView[] })
   | (BaseBlock & { type: "specs"; rows: SpecRow[] })
+  // Two images under a draggable divider. The obvious use here is a sketch
+  // against the finished garment, which a side-by-side pair reads less clearly
+  // than an overlay you can wipe between.
+  | (BaseBlock & { type: "beforeAfter"; before: ComparisonView; after: ComparisonView })
+  // An ordered process rail — development stages, fittings, production weeks.
+  | (BaseBlock & { type: "timeline"; stages: TimelineStage[] })
+  // Material or colourway swatches, each a flat colour or a fabric photo.
+  | (BaseBlock & { type: "swatches"; items: SwatchItem[] })
   // A set of large documents/sheets browsed one at a time via a dropdown.
   | (BaseBlock & { type: "documentViewer"; items: ImageItem[] })
   | (BaseBlock & { type: "callout"; variant: CalloutVariant; text: string; attribution?: string })
@@ -96,7 +117,10 @@ export const BLOCK_TYPES: BlockType[] = [
   "singleImage",
   "mediaShowcase",
   "comparison",
+  "beforeAfter",
   "specs",
+  "timeline",
+  "swatches",
   "documentViewer",
   "callout",
   "split",
@@ -129,7 +153,10 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   singleImage: "Single image",
   mediaShowcase: "Media showcase",
   comparison: "Side-by-side",
+  beforeAfter: "Before / after",
   specs: "Specs table",
+  timeline: "Process timeline",
+  swatches: "Material swatches",
   documentViewer: "Document viewer",
   callout: "Callout",
   split: "Split layout",
@@ -149,7 +176,10 @@ export const BLOCK_DESCRIPTIONS: Record<BlockType, string> = {
   singleImage: "A single large image.",
   mediaShowcase: "Captioned media cards with a title and description.",
   comparison: "Labeled views shown one at a time (e.g. front / back / side).",
+  beforeAfter: "Two images under a divider you drag to wipe between them.",
   specs: "A table of label / value rows.",
+  timeline: "An ordered process rail — stages, fittings, production weeks.",
+  swatches: "Material or colourway swatches, as flat colours or fabric photos.",
   documentViewer: "Large documents/sheets browsed one at a time via a dropdown.",
   callout: "A highlighted note or pull quote.",
   split: "Two blocks side-by-side (e.g. a specs table beside a document viewer).",
@@ -169,7 +199,10 @@ export const BLOCK_SHOW_COUNT: Record<BlockType, boolean> = {
   singleImage: false,
   mediaShowcase: true,
   comparison: true,
+  beforeAfter: false,
   specs: false,
+  timeline: true,
+  swatches: true,
   documentViewer: true,
   callout: false,
   split: false,
@@ -188,7 +221,10 @@ const DEFAULT_HEADINGS: Record<BlockType, string> = {
   singleImage: "Image",
   mediaShowcase: "Showcase",
   comparison: "Comparison",
+  beforeAfter: "Before / After",
   specs: "Specifications",
+  timeline: "Process",
+  swatches: "Materials",
   documentViewer: "Documents",
   callout: "",
   split: "",
@@ -252,6 +288,20 @@ export function createEmptyBlock(type: BlockType): Block {
       return { id, type, heading, views: [] };
     case "specs":
       return { id, type, heading, rows: [] };
+    case "beforeAfter":
+      // Both sides start empty; blockHasData requires two real images, so an
+      // unfinished comparison never renders a half-empty wipe.
+      return {
+        id,
+        type,
+        heading,
+        before: { label: "Before", image: { url: "" } },
+        after: { label: "After", image: { url: "" } },
+      };
+    case "timeline":
+      return { id, type, heading, stages: [] };
+    case "swatches":
+      return { id, type, heading, items: [] };
     case "documentViewer":
       return { id, type, heading, items: [] };
     case "callout":
@@ -298,6 +348,12 @@ export function blockSummary(b: Block): string {
       return `${b.views.length} view${b.views.length === 1 ? "" : "s"}`;
     case "specs":
       return `${b.rows.length} row${b.rows.length === 1 ? "" : "s"}`;
+    case "beforeAfter":
+      return b.before.image.url && b.after.image.url ? "2 images" : "needs both images";
+    case "timeline":
+      return `${b.stages.length} stage${b.stages.length === 1 ? "" : "s"}`;
+    case "swatches":
+      return `${b.items.length} swatch${b.items.length === 1 ? "" : "es"}`;
     case "documentViewer":
       return `${b.items.length} document${b.items.length === 1 ? "" : "s"}`;
     case "callout":
@@ -350,6 +406,57 @@ function cleanItem(raw: unknown): ImageItem | null {
 function cleanItems(raw: unknown): ImageItem[] {
   if (!Array.isArray(raw)) return [];
   return raw.map(cleanItem).filter((x): x is ImageItem => x !== null);
+}
+
+/**
+ * One side of a before/after. Unlike `cleanViews`, a missing or unsafe image
+ * yields an empty url rather than dropping the side — the block always has two
+ * sides structurally, and `blockHasData` is what decides whether it renders.
+ */
+function cleanSide(raw: unknown, fallbackLabel: string): ComparisonView {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  return {
+    label: str(r.label) ?? fallbackLabel,
+    image: cleanImageRef(r.image) ?? { url: "" },
+  };
+}
+
+/** Timeline stages. A stage needs at least one of its three fields to survive. */
+function cleanStages(raw: unknown): TimelineStage[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((v): TimelineStage => {
+      const r = (v ?? {}) as Record<string, unknown>;
+      return {
+        marker: str(r.marker) ?? "",
+        title: str(r.title) ?? "",
+        description: str(r.description) ?? "",
+      };
+    })
+    .filter((stage) => stage.marker || stage.title || stage.description);
+}
+
+/** CSS hex colours only — a swatch value is interpolated into an inline style. */
+const isHexColor = (v: unknown): v is string =>
+  typeof v === "string" && /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(v.trim());
+
+/**
+ * Swatches. An entry survives if it can actually show something — a photo, a
+ * colour, or at minimum a name.
+ */
+function cleanSwatches(raw: unknown): SwatchItem[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((v): SwatchItem => {
+      const r = (v ?? {}) as Record<string, unknown>;
+      return {
+        name: str(r.name) ?? "",
+        detail: str(r.detail) ?? "",
+        color: isHexColor(r.color) ? r.color.trim().toLowerCase() : "",
+        image: cleanImageRef(r.image),
+      };
+    })
+    .filter((item) => item.image || item.color || item.name);
 }
 
 function cleanViews(raw: unknown): ComparisonView[] {
@@ -454,6 +561,18 @@ function cleanBlock(raw: unknown): Block | null {
       return { id, type, heading, views: cleanViews(r.views) };
     case "specs":
       return { id, type, heading, rows: cleanRows(r.rows) };
+    case "beforeAfter":
+      return {
+        id,
+        type,
+        heading,
+        before: cleanSide(r.before, "Before"),
+        after: cleanSide(r.after, "After"),
+      };
+    case "timeline":
+      return { id, type, heading, stages: cleanStages(r.stages) };
+    case "swatches":
+      return { id, type, heading, items: cleanSwatches(r.items) };
     case "documentViewer":
       return { id, type, heading, items: cleanItems(r.items) };
     case "callout": {
@@ -548,6 +667,13 @@ export function blockHasData(b: Block): boolean {
       return b.views.length > 0;
     case "specs":
       return b.rows.length > 0;
+    case "beforeAfter":
+      // Both sides are required: a wipe with one image is not a comparison.
+      return !!b.before.image.url && !!b.after.image.url;
+    case "timeline":
+      return b.stages.length > 0;
+    case "swatches":
+      return b.items.length > 0;
     case "documentViewer":
       return b.items.length > 0;
     case "callout":
