@@ -121,6 +121,9 @@ function MediaCard({
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState(asset.title ?? "");
   const [altText, setAltText] = useState(asset.altText ?? "");
+  // Only images need alt text — a PDF in the library is linked by name, never
+  // rendered as an <img>.
+  const isImage = fileKind(asset.mimeType) === "image";
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // A long-press engages selection on pointer-down; swallow the click that
   // fires on the following pointer-up so it doesn't immediately toggle back off.
@@ -201,6 +204,9 @@ function MediaCard({
         )}
         <Preview asset={asset} />
         {compact && isDraft && <span className={styles.compactBadge}>Draft</span>}
+        {isImage && !altText.trim() && (
+          <span className={styles.altBadge} title="No alt text">Alt</span>
+        )}
       </div>
 
       {compact ? (
@@ -212,8 +218,20 @@ function MediaCard({
             <input className={styles.input} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={baseName(asset.fileName)} />
           </label>
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Alt text</span>
-            <input className={styles.input} value={altText} onChange={(e) => setAltText(e.target.value)} />
+            <span className={styles.fieldLabel}>
+              Alt text
+              {isImage && !altText.trim() && (
+                <span className={styles.altWarning} title="Screen readers will fall back to a generated description">
+                  missing
+                </span>
+              )}
+            </span>
+            <input
+              className={styles.input}
+              value={altText}
+              onChange={(e) => setAltText(e.target.value)}
+              placeholder="Describe the image for screen readers"
+            />
           </label>
           <p className={styles.subName} title={asset.fileName}>{asset.fileName}</p>
           <dl className={styles.specs}>
@@ -254,11 +272,19 @@ export default function MediaGallery({ initialAssets }: { initialAssets: MediaAs
   const [bulkError, setBulkError] = useState<string | null>(null);
 
   const [query, setQuery] = useState("");
+  const [altFilter, setAltFilter] = useState<"all" | "missing">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | MediaAsset["status"]>("all");
   const [kindFilter, setKindFilter] = useState<"all" | FileKind>("all");
   const [sortKey, setSortKey] = useState<"date" | "name" | "size" | "type" | "status">("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [hideMetadata, setHideMetadata] = useState(false);
+
+  // Only images carry meaningful alt text — a PDF in the library is linked by
+  // name, never rendered as an <img>.
+  const needsAlt = (a: MediaAsset) =>
+    fileKind(a.mimeType) === "image" && !(a.altText ?? "").trim();
+
+  const missingAltCount = useMemo(() => items.filter(needsAlt).length, [items]);
 
   const availableKinds = useMemo(() => {
     const kinds = new Set<FileKind>();
@@ -272,6 +298,7 @@ export default function MediaGallery({ initialAssets }: { initialAssets: MediaAs
       if (statusFilter !== "all" && a.status !== statusFilter) return false;
       if (kindFilter !== "all" && fileKind(a.mimeType) !== kindFilter) return false;
       if (q && !`${a.title ?? ""} ${a.fileName}`.toLowerCase().includes(q)) return false;
+      if (altFilter === "missing" && !needsAlt(a)) return false;
       return true;
     });
     const dir = sortDir === "asc" ? 1 : -1;
@@ -285,13 +312,15 @@ export default function MediaGallery({ initialAssets }: { initialAssets: MediaAs
         default: return (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * dir;
       }
     });
-  }, [items, query, statusFilter, kindFilter, sortKey, sortDir]);
+  }, [items, query, statusFilter, kindFilter, altFilter, sortKey, sortDir]);
 
-  const hasActiveFilters = query.trim() !== "" || statusFilter !== "all" || kindFilter !== "all";
+  const hasActiveFilters =
+    query.trim() !== "" || statusFilter !== "all" || kindFilter !== "all" || altFilter !== "all";
   function resetFilters() {
     setQuery("");
     setStatusFilter("all");
     setKindFilter("all");
+    setAltFilter("all");
   }
 
   function setStatus(id: string, status: MediaAsset["status"]) {
@@ -430,6 +459,13 @@ export default function MediaGallery({ initialAssets }: { initialAssets: MediaAs
             <select value={kindFilter} onChange={(e) => setKindFilter(e.target.value as typeof kindFilter)}>
               <option value="all">All</option>
               {availableKinds.map((k) => <option key={k} value={k}>{KIND_LABELS[k]}</option>)}
+            </select>
+          </label>
+          <label className={styles.control}>
+            <span>Alt text</span>
+            <select value={altFilter} onChange={(e) => setAltFilter(e.target.value as typeof altFilter)}>
+              <option value="all">All</option>
+              <option value="missing">Missing{missingAltCount ? ` (${missingAltCount})` : ""}</option>
             </select>
           </label>
           <label className={styles.control}>

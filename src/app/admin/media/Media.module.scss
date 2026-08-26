@@ -494,3 +494,36 @@ $draft-soft: rgba(187, 125, 44, 0.12);
 }
 
 .modalActions { display: flex; justify-content: flex-end; gap: 0.6rem; }
+
+// --- Alt-text warnings -------------------------------------------------------
+// resolveAlt falls back to a generated string when an asset has no alt text, so
+// an image ships with mediocre alt text and nothing surfaces it. These make the
+// gap visible where it can actually be fixed.
+
+.altWarning {
+  margin-left: 0.45rem;
+  font-family: var(--ff-mono);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent, #9a5a12);
+}
+
+.altBadge {
+  position: absolute;
+  left: 0.4rem;
+  bottom: 0.4rem;
+  font-family: var(--ff-mono);
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.35rem;
+  border-radius: 4px;
+  // Amber rather than red: a missing description is a gap to close, not a
+  // failure — and every image on the site still renders.
+  background: color-mix(in srgb, var(--accent, #9a5a12) 88%, transparent);
+  color: #fff;
+  pointer-events: none;
+}
