@@ -12,6 +12,8 @@
 // and everything else falls back to a generic message plus a correlation id
 // that ties the UI back to the server log.
 
+import { reportError } from "@/lib/observability";
+
 export type SafeError = { ok: false; error: string };
 
 /**
@@ -92,8 +94,10 @@ export function toActionError(error: unknown, context: string, fallback: string)
   const id = correlationId();
   const raw = error instanceof Error ? error.message : String(error);
 
-  // The full error, including the raw CMS text, stays on the server.
-  console.error(`[action:${context}] ${id}:`, error);
+  // The full error, including the raw CMS text, stays on the server — now as a
+  // structured record rather than a free-form line, so it can be filtered by
+  // scope and correlated with the reference shown in the UI.
+  reportError({ scope: "server-action", context, error, correlationId: id });
 
   // A partial write already carries an accurate, actionable message of its own
   // — it says the draft saved but publishing didn't, which none of the generic

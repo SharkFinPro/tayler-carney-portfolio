@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { reportError } from "@/lib/observability";
 
 /**
  * Last-resort boundary for failures in the root layout itself.
@@ -27,7 +28,12 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("Root layout failure:", error);
+    reportError({
+      scope: "root-layout",
+      context: "global-error-boundary",
+      error,
+      correlationId: error.digest,
+    });
   }, [error]);
 
   return (

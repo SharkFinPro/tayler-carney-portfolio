@@ -2,6 +2,7 @@
 
 import { checkUpload, safeFileName } from "@/lib/uploads";
 import { toActionError } from "@/lib/actionError";
+import { auditEvent } from "@/lib/observability";
 import { requireAuth } from "@/lib/auth";
 import { cmsMutate, cmsUpload, cmsQueryAuthed } from "@/lib/cms";
 import { getAssets, getAssetById, type MediaAsset } from "@/lib/getAssets";
@@ -80,6 +81,9 @@ export async function deleteAsset(id: string): Promise<Ok<object> | Err> {
       /* not published — fine */
     }
     await cmsMutate(`mutation Del($id: ID!) { deleteAsset(where: { id: $id }) { id } }`, { id });
+    // Deleting an asset can silently break any page still referencing it, and
+    // findAssetUsage is only a warning — so record that it happened.
+    auditEvent({ action: "deleteAsset", model: "Asset", entryId: id, outcome: "ok" });
     return { ok: true };
   } catch (e) {
     return toActionError(e, "deleteAsset", "Couldn’t delete that asset.");

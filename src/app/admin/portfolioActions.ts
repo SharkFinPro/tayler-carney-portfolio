@@ -1,6 +1,7 @@
 "use server";
 
 import { toActionError } from "@/lib/actionError";
+import { auditEvent } from "@/lib/observability";
 import { requireAuth } from "@/lib/auth";
 import { cmsMutate, cmsQuery } from "@/lib/cms";
 import { sanitizePortfolio, slugify, type PortfolioConfig } from "@/lib/portfolio";
@@ -65,6 +66,10 @@ export async function deleteProject(id: string): Promise<Result> {
        }`,
       { id }
     );
+    // A permanent delete is the one operation with no undo anywhere — not in
+    // the editor's in-session stack, not in the CMS. Worth being able to
+    // reconstruct after the fact.
+    auditEvent({ action: "deleteProject", model: "Project", entryId: id, outcome: "ok" });
   } catch (e) {
     return toActionError(e, "deleteProject", "Couldn’t delete that project.");
   }
