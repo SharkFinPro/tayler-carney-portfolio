@@ -119,9 +119,35 @@ npm start
 ### Other Commands
 
 ```bash
-npm run lint      # Lint with eslint-config-next
-npx tsc --noEmit  # Type-check
+npm run verify        # typecheck + lint + test — what CI runs
+npm run typecheck     # tsc --noEmit
+npm run lint          # ESLint (flat config)
+npm test              # Vitest, single run
+npm run test:watch    # Vitest, watch mode
+npm run test:coverage # Vitest with a coverage report
 ```
+
+### Environment validation
+
+The environment contract in [.env.example](.env.example) is checked at **build**
+time by [src/lib/env.ts](src/lib/env.ts). A missing or malformed required
+variable fails the build rather than producing a subtly wrong deploy — an
+unset `WEBSITE_URL`, for instance, would otherwise point every canonical URL
+and OpenGraph tag at localhost.
+
+Questionable-but-working configurations are warnings instead, printed on every
+build without blocking it. Set `SKIP_ENV_VALIDATION=1` to skip the check
+entirely; CI does this, since it builds to prove the app compiles and holds no
+production secrets.
+
+### AI page drafting (optional)
+
+With an `ANTHROPIC_API_KEY` set, the block editor offers **Draft with AI**:
+pick images from the Media Library, answer a few short questions, and get draft
+content blocks back for review. Nothing is saved until you insert it.
+
+Without a key the feature hides itself and everything else works unchanged —
+no one needs a key to run the site.
 
 ## License
 
