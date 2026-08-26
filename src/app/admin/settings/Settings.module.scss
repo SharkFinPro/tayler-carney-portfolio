@@ -170,3 +170,96 @@
 .error {
   color: #b3261e;
 }
+
+// --- Navigation editor -------------------------------------------------------
+// A short list of label/link rows. Deliberately buttons rather than drag: the
+// list is small, and up/down controls are operable by keyboard without any of
+// the announcement machinery a pointer-drag affordance needs.
+
+.navList {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.navRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+
+  // The shared .input sets a top margin for stacked fields; inside a row the
+  // grid owns the spacing.
+  .input {
+    margin-top: 0;
+  }
+
+  @media (max-width: 720px) {
+    grid-template-columns: 1fr;
+    padding: 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+}
+
+.navRowActions {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.navMove,
+.navRemove {
+  font-family: var(--ff-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--canvas);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: border-color 0.16s ease, color 0.16s ease, background-color 0.16s ease;
+
+  &:hover:not(:disabled) {
+    border-color: var(--line-strong);
+    color: var(--ink);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.navRemove {
+  text-transform: uppercase;
+}
+
+.navAdd {
+  align-self: flex-start;
+  margin-top: 0.6rem;
+  font-family: var(--ff-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  padding: 0.55rem 0.9rem;
+  border: 1px dashed var(--line-strong);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: border-color 0.16s ease, color 0.16s ease;
+
+  &:hover:not(:disabled) {
+    border-style: solid;
+    color: var(--ink);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
