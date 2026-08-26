@@ -285,6 +285,7 @@
 }
 
 .addRow { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.addRow > .addBlockBtn { flex: 1 1 12rem; width: auto; }
 
 // Grab handle that starts a native drag for list reordering.
 .listDragHandle {
@@ -492,3 +493,29 @@
 
 .paletteItemName { font-weight: 600; color: var(--ink); }
 .paletteItemDesc { font-size: 0.8rem; color: var(--ink-muted); line-height: 1.4; }
+
+// Sits beside "+ Add block". Deliberately the quieter of the two: drafting is
+// a shortcut into the same editor, not the primary way to build a page.
+.draftBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0.75rem 1.1rem;
+  white-space: nowrap;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+
+  &:hover:not(:disabled) {
+    border-color: var(--line-strong);
+    color: var(--ink);
+  }
+
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}

@@ -19,6 +19,7 @@ import {
 import { useDragReorder } from "./useDragReorder";
 import { useUnsavedChanges } from "@/components/useUnsavedChanges";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import AiDraftModal from "./AiDraftModal";
 import { updateBlockLayout } from "@/app/admin/contentActions";
 
 interface Props {
@@ -28,6 +29,8 @@ interface Props {
   id: string;
   initialBlocks: Block[];
   onBlocksChange: (blocks: Block[]) => void;
+  /** Subject of the page, used to prefill the AI drafting modal. */
+  pageTitle?: string;
 }
 
 const noop = () => {};
@@ -38,7 +41,7 @@ const noop = () => {};
 // reordering); editing a row expands its form inline. Structural changes and
 // commits persist through updateBlockLayout, which returns the sanitized list we
 // adopt; onBlocksChange keeps the host's layout (sidebar, preview) in sync.
-export default function BlockEditor({ model, field, id, initialBlocks, onBlocksChange }: Props) {
+export default function BlockEditor({ model, field, id, initialBlocks, onBlocksChange, pageTitle = "" }: Props) {
   const [blocks, setBlocks] = useState<Block[]>(initialBlocks);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Block | null>(null);
@@ -48,6 +51,7 @@ export default function BlockEditor({ model, field, id, initialBlocks, onBlocksC
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [aiOpen, setAiOpen] = useState(false);
 
   // An open block form means a draft that hasn't been committed yet.
   useUnsavedChanges(draft !== null);
@@ -147,6 +151,11 @@ export default function BlockEditor({ model, field, id, initialBlocks, onBlocksC
     const copy = duplicateBlock(block);
     const next = [...current.slice(0, index + 1), copy, ...current.slice(index + 1)];
     await persist(next);
+  }
+
+  async function insertDrafted(drafted: Block[]) {
+    collapseEdit();
+    await persist([...blocksRef.current, ...drafted]);
   }
 
   async function deleteBlock(blockId: string): Promise<string | null> {
@@ -303,12 +312,30 @@ export default function BlockEditor({ model, field, id, initialBlocks, onBlocksC
               </ul>
             </motion.div>
           ) : (
-            <button type="button" className={styles.addBlockBtn} onClick={() => setPaletteOpen(true)}>
-              + Add block
-            </button>
+            <div className={styles.addRow}>
+              <button type="button" className={styles.addBlockBtn} onClick={() => setPaletteOpen(true)}>
+                + Add block
+              </button>
+              <button
+                type="button"
+                className={styles.draftBtn}
+                onClick={() => setAiOpen(true)}
+                disabled={saving}
+              >
+                Draft with AI
+              </button>
+            </div>
           )}
         </AnimatePresence>
       </div>
+
+      {aiOpen && (
+        <AiDraftModal
+          initialTitle={pageTitle}
+          onInsert={(drafted) => void insertDrafted(drafted)}
+          onClose={() => setAiOpen(false)}
+        />
+      )}
 
       {pendingDeleteId && (
         <ConfirmDialog
