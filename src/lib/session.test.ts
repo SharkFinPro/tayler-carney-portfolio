@@ -83,6 +83,7 @@ describe("signSession / verifySession", () => {
   it("rejects a token whose signature was tampered with", async () => {
     const token = await signSession(Date.now() + SESSION_TTL_MS);
     const [expiry, sig] = token.split(".");
+    if (!expiry || !sig) throw new Error(`Malformed session token: ${token}`);
     const flipped = sig[0] === "a" ? "b" : "a";
     await expect(verifySession(`${expiry}.${flipped}${sig.slice(1)}`)).resolves.toBe(false);
   });

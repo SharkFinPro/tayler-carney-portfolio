@@ -33,6 +33,7 @@ export default defineConfig({
       "@/styles": r("./src/styles"),
       "@/lib": r("./src/lib"),
       "@/app": r("./src/app"),
+      "@/test": r("./src/test"),
       // `server-only` is a build-time guard that Next aliases away itself; it
       // is not a real installed package, so Vitest can't resolve the import.
       // Point it at an empty module — the guard is meaningless under test

@@ -68,6 +68,7 @@ Model names are interpolated into the mutation string, so a value is only ever w
 - **Writes are optimistic**: actions update + publish, but do **not** call `revalidatePath` — the read CDN lags briefly after a write and a refetch would clobber the optimistic UI. Client components hold local state and show the saved value immediately. Don't reintroduce revalidation without accounting for that.
 - **Update + publish**: every write goes through `updateAndPublish` (mutate DRAFT, then `publish<Model>`). Asset metadata edits are **stage-aware** (`updateAsset` only re-publishes when the asset was already published, so editing a draft doesn't auto-publish it).
 - **Styling**: SCSS modules + CSS custom properties emitted from `src/styles/_themes.scss` into `:root` by `src/styles/global.scss`. **Light theme only** — no `data-theme` / dark-mode toggle. Fonts are loaded via `next/font` (Noto Serif / Inter / DM Mono) and exposed as `--ff-serif|sans|mono`. Match surrounding files.
+- **Indexed access is unchecked-safe**: `noUncheckedIndexedAccess` is on, so `list[i]` and `record[key]` are typed `T | undefined` everywhere. Handle it at the read — a named `const` plus a guard, `.at()`, `?? fallback`, or a non-empty tuple type for a literal list. Don't reach for `!`; the point of the flag is that the guard is visible.
 - **Edge-safety**: session crypto lives in `session.ts` (Web Crypto only, no `next/headers`) separately from `auth.ts` so it stays portable; keep it that way even though there's no middleware today.
 
 ## Common commands
@@ -111,7 +112,7 @@ Authentication is a single shared key, so the audit trail records **what** chang
 
 ## Testing
 
-Vitest, ~480 tests, colocated as `*.test.ts` beside the module. `vitest.config.mts` mirrors the tsconfig aliases and stubs `server-only` (Next aliases that package away itself, so Vitest cannot resolve it).
+Vitest, ~515 tests, colocated as `*.test.ts` beside the module. `vitest.config.mts` mirrors the tsconfig aliases and stubs `server-only` (Next aliases that package away itself, so Vitest cannot resolve it).
 
 What is tested, and why those things:
 
@@ -121,6 +122,8 @@ What is tested, and why those things:
 - **`ai/toBlocks.ts`** — the model-output trust boundary.
 
 Untested by design: `cms.ts`, `getAssets.ts`, and the React components, which need network or DOM mocking heavy enough to test the mocks rather than the code. Prefer an end-to-end test for those.
+
+Because `noUncheckedIndexedAccess` applies to test files too, `src/test/at.ts` provides `at(list, i)`, `only(list)`, and `prop(record, key)`. Use those rather than `list[0]?.field`: optional chaining turns "the list was empty" into "expected undefined to be 'Flats'", while these throw naming the real problem, and they hand back a definite value that narrowing sticks to.
 
 When adding a validator or a pure helper, add its suite in the same commit — that is the established pattern here, and the reason these modules are pure in the first place.
 

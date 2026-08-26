@@ -11,6 +11,7 @@ import {
   sanitizePortfolio,
   slugify,
 } from "./portfolio";
+import { at } from "@/test/at";
 
 const COVER = "https://media.graphassets.com/cover.jpg";
 const p = (id: string) => ({ id, slug: id, title: id.toUpperCase() });
@@ -70,14 +71,14 @@ describe("sanitizePortfolio", () => {
     // isSafeUrl permits these; a cover image must still be absolute http(s).
     for (const coverUrl of ["/local/path.jpg", "#anchor", "mailto:a@b.com", "javascript:alert(1)"]) {
       const out = sanitizePortfolio({ entries: [{ id: "a", coverUrl }] });
-      expect(out.entries[0].coverUrl, coverUrl).toBeUndefined();
+      expect(at(out.entries, 0).coverUrl, coverUrl).toBeUndefined();
     }
   });
 
   it("omits coverAlt when it is blank rather than storing an empty string", () => {
     const out = sanitizePortfolio({ entries: [{ id: "a", coverUrl: COVER, coverAlt: "   " }] });
-    expect(out.entries[0].coverUrl).toBe(COVER);
-    expect(out.entries[0].coverAlt).toBeUndefined();
+    expect(at(out.entries, 0).coverUrl).toBe(COVER);
+    expect(at(out.entries, 0).coverAlt).toBeUndefined();
   });
 
   it("is idempotent", () => {
@@ -133,7 +134,7 @@ describe("orderProjects", () => {
       sanitizePortfolio({ entries: [{ id: "a", coverUrl: COVER, coverAlt: "alt" }, { id: "b" }] })
     );
     expect(out[0]).toMatchObject({ coverUrl: COVER, coverAlt: "alt" });
-    expect(out[1].coverUrl).toBeUndefined();
+    expect(at(out, 1).coverUrl).toBeUndefined();
   });
 
   it("preserves the original project fields", () => {

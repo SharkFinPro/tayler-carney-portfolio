@@ -10,6 +10,8 @@
 import { describe, expect, it } from "vitest";
 import { toBlocks } from "./toBlocks";
 import type { GeneratedPage, SourceImage } from "./types";
+import type { Block } from "@/components/blocks/blocks";
+import { at, only } from "@/test/at";
 
 const A = "https://media.graphassets.com/aaa.jpg";
 const B = "https://media.graphassets.com/bbb.jpg";
@@ -21,12 +23,23 @@ const images: SourceImage[] = [
 
 const page = (sections: unknown[]): GeneratedPage => ({ sections }) as GeneratedPage;
 
+/**
+ * The single block a one-section page produced, checked to be of the expected
+ * type. Every case that uses this feeds in exactly one section, so a wrong
+ * count or a wrong type IS the failure -- and naming the block up front lets
+ * the assertion after it read as a plain property access.
+ */
+function oneBlock<K extends Block["type"]>(out: Block[], kind: K): Extract<Block, { type: K }> {
+  const found = only(out);
+  if (found.type !== kind) throw new Error(`Expected a ${kind} block, got ${found.type}.`);
+  return found as Extract<Block, { type: K }>;
+}
+
 describe("toBlocks — image allowlisting", () => {
   it("keeps images the admin supplied", () => {
     const out = toBlocks(page([{ kind: "gallery", heading: "Flats", imageUrls: [A, B] }]), images);
     expect(out).toHaveLength(1);
-    if (out[0].type !== "gallery") throw new Error("expected gallery");
-    expect(out[0].images.map((i) => i.url)).toEqual([A, B]);
+    expect(oneBlock(out, "gallery").images.map((i) => i.url)).toEqual([A, B]);
   });
 
   it("drops a URL the model invented", () => {
@@ -42,8 +55,7 @@ describe("toBlocks — image allowlisting", () => {
       ]),
       images
     );
-    if (out[0].type !== "gallery") throw new Error("expected gallery");
-    expect(out[0].images.map((i) => i.url)).toEqual([A]);
+    expect(oneBlock(out, "gallery").images.map((i) => i.url)).toEqual([A]);
   });
 
   it.each([
@@ -64,8 +76,7 @@ describe("toBlocks — image allowlisting", () => {
       page([{ kind: "gallery", heading: "G", imageUrls: [A], altText: "model-written" }]),
       images
     );
-    if (out[0].type !== "gallery") throw new Error("expected gallery");
-    expect(out[0].images[0].altText).toBe("Front flat of a wool coat");
+    expect(oneBlock(out, "gallery").images[0]?.altText).toBe("Front flat of a wool coat");
   });
 
   it("drops a captioned item whose image is not allowed", () => {
@@ -82,9 +93,9 @@ describe("toBlocks — image allowlisting", () => {
       ]),
       images
     );
-    if (out[0].type !== "mediaShowcase") throw new Error("expected mediaShowcase");
-    expect(out[0].items).toHaveLength(1);
-    expect(out[0].items[0].title).toBe("Collar");
+    const showcase = oneBlock(out, "mediaShowcase");
+    expect(showcase.items).toHaveLength(1);
+    expect(at(showcase.items, 0).title).toBe("Collar");
   });
 
   it("allows nothing at all when the admin supplied no images", () => {
@@ -104,8 +115,7 @@ describe("toBlocks — section mapping", () => {
 
   it("maps prose to richText, splitting paragraphs on blank lines", () => {
     const out = toBlocks(page([{ kind: "prose", heading: "Notes", body: "One.\n\nTwo." }]), images);
-    if (out[0].type !== "richText") throw new Error("expected richText");
-    expect(out[0].content.children).toHaveLength(2);
+    expect(oneBlock(out, "richText").content.children).toHaveLength(2);
   });
 
   it("maps specs rows", () => {
@@ -127,8 +137,7 @@ describe("toBlocks — section mapping", () => {
       ]),
       images
     );
-    if (out[0].type !== "timeline") throw new Error("expected timeline");
-    expect(out[0].stages).toHaveLength(1);
+    expect(oneBlock(out, "timeline").stages).toHaveLength(1);
   });
 
   it("honors the gallery layout choice", () => {

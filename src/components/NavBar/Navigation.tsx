@@ -49,8 +49,11 @@ export default function Navigation({ navItems }: { navItems: NavItem[] }) {
       );
       if (focusable.length === 0) return;
 
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
+      // Non-empty per the check above, but read as values so the compiler can
+      // narrow them rather than trusting an index.
+      const first = focusable.at(0);
+      const last = focusable.at(-1);
+      if (!first || !last) return;
       const active = document.activeElement;
 
       // The toggle sits outside the menu but is part of the same widget, so

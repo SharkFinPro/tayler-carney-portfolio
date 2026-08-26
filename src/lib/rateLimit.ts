@@ -73,8 +73,11 @@ export function createRateLimiter({
       const recent = prune(key, at);
 
       if (recent.length >= limit) {
-        // Room frees up when the oldest attempt in the window expires.
-        const retryAfterMs = Math.max(1, recent[0] + windowMs - at);
+        // Room frees up when the oldest attempt in the window expires. `recent`
+        // is non-empty here whenever `limit` is at least 1; `at` is the correct
+        // floor for the degenerate limit-0 case, which would mean "never allow".
+        const oldest = recent[0] ?? at;
+        const retryAfterMs = Math.max(1, oldest + windowMs - at);
         return { allowed: false, retryAfterMs };
       }
 

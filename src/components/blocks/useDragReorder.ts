@@ -81,8 +81,8 @@ export function useDragReorder<T>({ items, setItems, getKey, onCommit, mode = "y
       let bestDist = Infinity;
       let bestIdx = -1;
       let after = false;
-      for (let i = 0; i < others.length; i++) {
-        const el = cardRefs.current.get(getKey(others[i]));
+      for (const [i, other] of others.entries()) {
+        const el = cardRefs.current.get(getKey(other));
         if (!el) continue;
         const r = el.getBoundingClientRect();
         const cx = r.left + r.width / 2;
@@ -100,8 +100,8 @@ export function useDragReorder<T>({ items, setItems, getKey, onCommit, mode = "y
       }
       insertBefore = bestIdx === -1 ? others.length : bestIdx + (after ? 1 : 0);
     } else {
-      for (let i = 0; i < others.length; i++) {
-        const el = cardRefs.current.get(getKey(others[i]));
+      for (const [i, other] of others.entries()) {
+        const el = cardRefs.current.get(getKey(other));
         if (!el) continue;
         const r = el.getBoundingClientRect();
         if (y < r.top + r.height / 2) {
@@ -114,7 +114,11 @@ export function useDragReorder<T>({ items, setItems, getKey, onCommit, mode = "y
     const next = [...others];
     next.splice(insertBefore, 0, dragged);
 
-    const changed = next.some((it, idx) => getKey(it) !== getKey(list[idx]));
+    // Compare keys positionally. Reading the previous keys up front means an
+    // index past the end compares against undefined -- i.e. "changed" -- rather
+    // than needing the two lists to be provably the same length.
+    const previousKeys = list.map(getKey);
+    const changed = next.some((it, idx) => getKey(it) !== previousKeys[idx]);
     if (changed) {
       itemsRef.current = next;
       setItems(next);
@@ -187,6 +191,9 @@ export function useDragReorder<T>({ items, setItems, getKey, onCommit, mode = "y
     const before = list.map(getKey);
     const next = [...list];
     const [moved] = next.splice(from, 1);
+    // `from` came from findIndex on this same array, so splice always yields an
+    // element; bail rather than reinserting a hole if that ever stops holding.
+    if (moved === undefined) return;
     next.splice(clamped, 0, moved);
     itemsRef.current = next;
     setItems(next);

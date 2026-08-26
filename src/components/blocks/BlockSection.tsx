@@ -190,7 +190,14 @@ function BlockContent({ block, onOpen, priority = false }: { block: Block; onOpe
       const views = block.views;
       if (!views.length) return null;
       // "View all" (activeView === -1) shows every view; otherwise a single one.
-      const shown = activeView === -1 ? views : [views[Math.min(activeView, views.length - 1)]];
+      // Each entry carries its index in `views`, so the lightbox opens on the
+      // right gallery slot without an indexOf lookup -- which two identical
+      // views would have answered with the same index.
+      const single = Math.min(Math.max(activeView, 0), views.length - 1);
+      const shown =
+        activeView === -1
+          ? views.map((view, index) => ({ view, index }))
+          : views.slice(single, single + 1).map((view) => ({ view, index: single }));
       const gallery = views.map((v) => ({
         url: v.image.url,
         title: v.label,
@@ -209,18 +216,18 @@ function BlockContent({ block, onOpen, priority = false }: { block: Block; onOpe
             ))}
           </div>
           <div className={styles.comparisonDisplay}>
-            {shown.map((v, shownIndex) => {
-              const idx = views.indexOf(v);
-              const alt = gallery[idx].alt;
+            {shown.map(({ view, index }, shownIndex) => {
+              // Same expression `gallery` was built from, one slot over.
+              const alt = resolveAlt(view.image.altText, view.label);
               return (
                 <div
-                  key={idx}
+                  key={index}
                   className={styles.comparisonView}
-                  {...clickableProps(() => onOpen(v.image.url, v.label, gallery, idx), `View ${v.label}`)}
+                  {...clickableProps(() => onOpen(view.image.url, view.label, gallery, index), `View ${view.label}`)}
                 >
-                  <h3>{v.label}</h3>
+                  <h3>{view.label}</h3>
                   <Image
-                    src={v.image.url}
+                    src={view.image.url}
                     alt={alt}
                     width={1000}
                     height={1000}

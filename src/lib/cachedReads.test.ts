@@ -5,6 +5,7 @@
 // could load a stale page and save it back over a newer version.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { at } from "@/test/at";
 
 const isAuthed = vi.hoisted(() => vi.fn());
 const cmsQuery = vi.hoisted(() => vi.fn());
@@ -16,6 +17,14 @@ vi.mock("@/lib/cms", () => ({ cmsQuery, cmsQueryAuthed }));
 const { CACHE_TAGS, CONTENT_TTL, cmsRead } = await import("./cachedReads");
 
 const QUERY = "query Test { siteDatas { id } }";
+
+/**
+ * The argument list of the first `cmsQuery` call. Every assertion below is
+ * about a single read, so naming it beats repeating the subscript -- and `at`
+ * reports "the list has 0" rather than a property access on undefined when the
+ * call never happened, which is the interesting failure.
+ */
+const firstQueryCall = () => at(cmsQuery.mock.calls, 0);
 
 beforeEach(() => {
   isAuthed.mockReset();
@@ -39,19 +48,19 @@ describe("cmsRead — visitors", () => {
 
   it("applies the default TTL when none is given", async () => {
     await cmsRead(QUERY);
-    expect(cmsQuery.mock.calls[0][2].revalidate).toBe(CONTENT_TTL);
+    expect(firstQueryCall()[2].revalidate).toBe(CONTENT_TTL);
   });
 
   it("honors an explicit TTL", async () => {
     await cmsRead(QUERY, {}, { revalidate: 5 });
-    expect(cmsQuery.mock.calls[0][2].revalidate).toBe(5);
+    expect(firstQueryCall()[2].revalidate).toBe(5);
   });
 
   it("passes variables through, so per-slug entries key separately", async () => {
     await cmsRead(QUERY, { slug: "wool-coat" }, { tags: [CACHE_TAGS.project("wool-coat")] });
 
-    expect(cmsQuery.mock.calls[0][1]).toEqual({ slug: "wool-coat" });
-    expect(cmsQuery.mock.calls[0][2].tags).toEqual(["project:wool-coat"]);
+    expect(firstQueryCall()[1]).toEqual({ slug: "wool-coat" });
+    expect(firstQueryCall()[2].tags).toEqual(["project:wool-coat"]);
   });
 
   it("returns the response body unchanged", async () => {
@@ -69,12 +78,12 @@ describe("cmsRead — admins", () => {
     // No third argument at all, which cms.ts maps to `no-store` — the exact
     // behavior that existed before caching was introduced.
     expect(cmsQuery).toHaveBeenCalledWith(QUERY, {});
-    expect(cmsQuery.mock.calls[0]).toHaveLength(2);
+    expect(firstQueryCall()).toHaveLength(2);
   });
 
   it("bypasses regardless of the options passed", async () => {
     await cmsRead(QUERY, { slug: "x" }, { tags: ["t"], revalidate: 3600 });
-    expect(cmsQuery.mock.calls[0]).toHaveLength(2);
+    expect(firstQueryCall()).toHaveLength(2);
   });
 });
 
@@ -103,7 +112,7 @@ describe("cmsRead — stage selection", () => {
   it("sends PUBLISHED for a visitor", async () => {
     isAuthed.mockResolvedValue(false);
     await cmsRead(STAGED);
-    expect(cmsQuery.mock.calls[0][1]).toMatchObject({ stage: "PUBLISHED" });
+    expect(firstQueryCall()[1]).toMatchObject({ stage: "PUBLISHED" });
   });
 
   it("never sends DRAFT to a visitor, whatever else is passed", async () => {
@@ -111,7 +120,7 @@ describe("cmsRead — stage selection", () => {
     // by anyone who isn't signed in.
     isAuthed.mockResolvedValue(false);
     await cmsRead(STAGED, { stage: "DRAFT" });
-    expect(cmsQuery.mock.calls[0][1]).toMatchObject({ stage: "PUBLISHED" });
+    expect(firstQueryCall()[1]).toMatchObject({ stage: "PUBLISHED" });
   });
 
   it("routes an admin read through the mutation token, at DRAFT", async () => {
@@ -130,7 +139,7 @@ describe("cmsRead — stage selection", () => {
     const UNSTAGED = "query Sitemap { projects { slug } }";
     isAuthed.mockResolvedValue(false);
     await cmsRead(UNSTAGED);
-    expect(cmsQuery.mock.calls[0][1]).toEqual({});
+    expect(firstQueryCall()[1]).toEqual({});
   });
 
   it("keeps an unstaged admin read on the public token", async () => {
@@ -144,6 +153,6 @@ describe("cmsRead — stage selection", () => {
   it("preserves the caller's other variables", async () => {
     isAuthed.mockResolvedValue(false);
     await cmsRead("query P($slug: String!, $stage: Stage!) { x }", { slug: "coat" });
-    expect(cmsQuery.mock.calls[0][1]).toEqual({ slug: "coat", stage: "PUBLISHED" });
+    expect(firstQueryCall()[1]).toEqual({ slug: "coat", stage: "PUBLISHED" });
   });
 });

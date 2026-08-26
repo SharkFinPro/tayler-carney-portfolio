@@ -6,6 +6,7 @@ import {
   setErrorReporter,
   type ErrorReporter,
 } from "./observability";
+import { at } from "@/test/at";
 
 /** The default reporter, restored after any test that swaps it out. */
 let original: ErrorReporter;
@@ -24,12 +25,12 @@ afterEach(() => {
 /** Parse the single JSON line the default reporter emits. */
 function lastErrorLine(): Record<string, unknown> {
   const calls = vi.mocked(console.error).mock.calls;
-  return JSON.parse(String(calls[calls.length - 1][0]));
+  return JSON.parse(String(at(at(calls, calls.length - 1), 0)));
 }
 
 function lastInfoLine(): Record<string, unknown> {
   const calls = vi.mocked(console.info).mock.calls;
-  return JSON.parse(String(calls[calls.length - 1][0]));
+  return JSON.parse(String(at(at(calls, calls.length - 1), 0)));
 }
 
 describe("reportError — structured output", () => {

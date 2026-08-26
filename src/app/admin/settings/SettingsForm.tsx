@@ -148,7 +148,13 @@ export default function SettingsForm({
     const target = index + delta;
     if (target < 0 || target >= global.navItems.length) return;
     const next = [...global.navItems];
-    [next[index], next[target]] = [next[target], next[index]];
+    // Read both ends before writing either: `target` is bounds-checked above,
+    // and naming them keeps the swap readable as a swap.
+    const a = next[index];
+    const b = next[target];
+    if (!a || !b) return;
+    next[index] = b;
+    next[target] = a;
     setNav(next);
   }
 

@@ -200,11 +200,13 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   if (!isAdmin && currentIndex === -1) {
     notFound();
   }
-  const prevProject = currentIndex > 0 ? allProjects[currentIndex - 1] : null;
+  // `?? null` rather than a cast: an index that is in range by arithmetic can
+  // still miss if the list changed, and prev/next are optional anyway.
+  const prevProject = (currentIndex > 0 ? allProjects[currentIndex - 1] : null) ?? null;
   const nextProject =
-    currentIndex !== -1 && currentIndex < allProjects.length - 1
+    (currentIndex !== -1 && currentIndex < allProjects.length - 1
       ? allProjects[currentIndex + 1]
-      : null;
+      : null) ?? null;
 
   return (
     <ProjectPageClient
