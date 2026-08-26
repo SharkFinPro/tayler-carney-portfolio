@@ -10,7 +10,7 @@ export default function Navigation() {
 
   const pathname = usePathname();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = useRef(null);
+  const dropdownRef = useRef<HTMLElement>(null);
   const toggleButtonRef = useRef<HTMLButtonElement>(null);
 
   const navItems = [
@@ -23,8 +23,13 @@ export default function Navigation() {
 
   // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event: any) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target;
+      if (
+        dropdownRef.current &&
+        target instanceof Node &&
+        !dropdownRef.current.contains(target)
+      ) {
         setIsDropdownOpen(false);
       }
     };
