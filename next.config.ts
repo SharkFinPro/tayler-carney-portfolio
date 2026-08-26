@@ -1,4 +1,12 @@
 import type { NextConfig } from "next";
+import { assertEnv } from "./src/lib/env";
+
+// Fail the build, not a request at 3am. Every required variable has a silent
+// failure mode (localhost OpenGraph URLs, an admin login that appears to work
+// and never does), so a misconfigured deploy should never reach production.
+// Skipped when SKIP_ENV_VALIDATION is set — CI builds to prove the app
+// compiles and deliberately holds no production secrets.
+assertEnv();
 
 const isDev = process.env.NODE_ENV === 'development';
 

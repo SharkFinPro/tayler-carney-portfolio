@@ -7,6 +7,7 @@
 // is unpublished — callers hide the download links in that case.
 
 import { cmsQuery } from "@/lib/cms";
+import { rethrowIfControlFlow } from "@/lib/nextErrors";
 
 export type ResumeAsset = {
   url: string;
@@ -32,7 +33,12 @@ export async function resolveResumeAsset(assetId: string): Promise<ResumeAsset |
     if (!asset?.url) return null;
     const base = (asset.fileName ?? "").replace(/\.[^.]+$/, "");
     return { url: asset.url, name: asset.title?.trim() || base || "Resume" };
-  } catch {
+  } catch (error) {
+    // Never swallow Next's control-flow signals — this runs in the Footer, and
+    // therefore inside the root layout, where eating a DynamicServerError would
+    // leave the route marked static.
+    rethrowIfControlFlow(error);
+
     // A broken reference should never take a page down — just hide the link.
     return null;
   }
