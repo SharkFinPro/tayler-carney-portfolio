@@ -48,7 +48,9 @@ const isHttpUrl = (value: string): boolean => {
 };
 
 // The admin key is both the login secret and the HMAC signing key for the
-// session cookie, so a short one weakens authentication twice over.
+// session cookie, so a short one weakens authentication twice over — and the
+// second way is the one that matters, because it is not rate-limitable.
+// See the check below.
 const MIN_ADMIN_KEY_LENGTH = 16;
 
 const RULES: Rule[] = [
@@ -87,7 +89,7 @@ const RULES: Rule[] = [
     checkSeverity: "warning",
     check: (v) =>
       v.length < MIN_ADMIN_KEY_LENGTH
-        ? `is only ${v.length} characters. It is both the login secret and the session HMAC key, and the login has no rate limiting, so it is brute-forceable. Rotate to at least ${MIN_ADMIN_KEY_LENGTH} (\`openssl rand -base64 32\`) — note this signs out every existing admin session`
+        ? `is only ${v.length} characters. Login is rate-limited, so online guessing is slow — but this same value is the HMAC key that signs the session cookie, and anyone holding one signed cookie can brute-force it offline, where no limiter applies. Rotate to at least ${MIN_ADMIN_KEY_LENGTH} (\`openssl rand -base64 32\`) — note this signs out every existing admin session`
         : null,
   },
   {

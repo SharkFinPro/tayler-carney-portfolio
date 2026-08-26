@@ -29,11 +29,12 @@ export type GenerationInput = {
 /**
  * The shape the model is asked to produce.
  *
- * Deliberately NOT the full `Block` union. The block model has sixteen types,
- * two of them recursive containers, and asking a model to emit that directly
- * means a large schema, more ways to be subtly wrong, and output that is hard
- * to validate. This is a small, flat vocabulary that maps onto real blocks in
- * `toBlocks`, which is where the safety guarantees live.
+ * Deliberately NOT the full `Block` union. That union keeps growing and
+ * includes recursive containers, so asking a model to emit it directly means a
+ * large schema, more ways to be subtly wrong, and output that is hard to
+ * validate. This is a small, flat vocabulary that maps onto real blocks in
+ * `toBlocks`, which is where the safety guarantees live — and it stays this
+ * size as new block types are added.
  */
 export type GeneratedSection =
   | { kind: "intro"; eyebrow: string; heading: string; body: string }

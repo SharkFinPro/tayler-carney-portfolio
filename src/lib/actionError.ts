@@ -19,14 +19,15 @@ export type SafeError = { ok: false; error: string };
 /**
  * Thrown when a draft write succeeded but publishing it did not.
  *
- * `updateAndPublish` issues two sequential mutations with no transaction
- * available through the Hygraph API, so a partial application is genuinely
- * possible: the draft holds the new content while the published entry still
- * holds the old. Reporting that as a flat failure is actively misleading — the
- * admin believes nothing was saved, and the next successful publish of that
- * entry then ships an edit they thought had been discarded.
+ * Saving is two sequential mutations — `updateDraft` then `publishEntry` in
+ * contentActions.ts — with no transaction available through the Hygraph API,
+ * so a partial application is genuinely possible: the draft holds the new
+ * content while the published entry still holds the old. Reporting that as a
+ * flat failure is actively misleading — the admin believes nothing was saved,
+ * and the next successful publish of that entry then ships an edit they
+ * thought had been discarded.
  *
- * Defined here rather than beside `updateAndPublish` because a `"use server"`
+ * Defined here rather than beside `publishEntry` because a `"use server"`
  * module may only export async functions; exporting a class from one fails the
  * build.
  */
