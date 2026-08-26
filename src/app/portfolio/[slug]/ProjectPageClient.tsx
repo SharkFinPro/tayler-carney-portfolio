@@ -1,11 +1,11 @@
 "use client";
 import styles from "./Project.module.scss";
 import Link from "next/link";
-import { CSSProperties, useEffect, useState, useCallback, useMemo } from "react";
+import { CSSProperties, useEffect, useState, useMemo } from "react";
 import { motion, type Variants } from "framer-motion";
-import { ImageGridItem } from "@/components/blocks/ImageGrid";
 import ProjectModal from "./ProjectModal";
 import ProjectSidebar from "./ProjectSidebar";
+import { useLightbox } from "@/components/useLightbox";
 import BlockSection from "@/components/blocks/BlockSection";
 import BlockEditor from "@/components/blocks/BlockEditor";
 import EditableText from "@/components/EditableText";
@@ -38,11 +38,6 @@ interface ProjectPageClientProps {
   isAdmin?: boolean;
 }
 
-interface ModalState {
-  items: ImageGridItem[];
-  index: number;
-}
-
 const fadeInVariant: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
@@ -69,51 +64,8 @@ export default function ProjectPageClient({ project, prevProject, nextProject, i
     [sectionBlocks]
   );
 
-  const [modal, setModal] = useState<ModalState | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
+  const lightbox = useLightbox();
   const [activeSection, setActiveSection] = useState<string>(activeSections[0]?.id ?? "");
-
-  const openModal = useCallback((
-    _src: string,
-    _title: string,
-    items: ImageGridItem[],
-    index: number
-  ) => {
-    setModal({ items, index });
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => setModalVisible(true));
-    });
-  }, []);
-
-  const closeModal = useCallback(() => {
-    setModalVisible(false);
-    setTimeout(() => setModal(null), 300);
-  }, []);
-
-  const goNext = useCallback(() => {
-    setModal((prev) => (prev ? { ...prev, index: (prev.index + 1) % prev.items.length } : prev));
-  }, []);
-
-  const goPrev = useCallback(() => {
-    setModal((prev) => (prev ? { ...prev, index: (prev.index - 1 + prev.items.length) % prev.items.length } : prev));
-  }, []);
-
-  useEffect(() => {
-    // Only steer the lightbox with the arrow keys while it's actually open —
-    // otherwise the global listener hijacks arrow keys during normal browsing.
-    if (!modal) return;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowRight")  goNext();
-      if (e.key === "ArrowLeft")   goPrev();
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [modal, goNext, goPrev]);
-
-  useEffect(() => {
-    document.body.style.overflow = modal ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
-  }, [modal]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -140,11 +92,11 @@ export default function ProjectPageClient({ project, prevProject, nextProject, i
   return (
     <>
       <ProjectModal
-        modal={modal}
-        modalVisible={modalVisible}
-        closeModal={closeModal}
-        goNext={goNext}
-        goPrev={goPrev}
+        modal={lightbox.modal}
+        modalVisible={lightbox.visible}
+        closeModal={lightbox.close}
+        goNext={lightbox.next}
+        goPrev={lightbox.prev}
       />
       <div className={styles.pageWrapper}>
         <div className={styles.pageLayout}>
@@ -200,7 +152,7 @@ export default function ProjectPageClient({ project, prevProject, nextProject, i
               />
             ) : (
               sectionBlocks.map((block) => (
-                <BlockSection key={block.id} block={block} onOpen={openModal} />
+                <BlockSection key={block.id} block={block} onOpen={lightbox.open} />
               ))
             )}
 
