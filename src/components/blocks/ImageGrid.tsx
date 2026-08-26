@@ -17,6 +17,13 @@ interface ImageGridProps {
   items: ImageGridItem[];
   variant: ImageGridVariant;
   onOpen: (src: string, title: string, items: ImageGridItem[], index: number) => void;
+  /**
+   * Marks the FIRST image as the likely LCP element, so it is preloaded rather
+   * than lazy-loaded. Only ever set on the first block of a page: on an
+   * image-heavy portfolio the leading photograph is what Largest Contentful
+   * Paint measures, and every image on the site was lazy before this.
+   */
+  priority?: boolean;
 }
 
 // Renders a list of images in one of several reusable layouts:
@@ -24,7 +31,7 @@ interface ImageGridProps {
 //   feature — bold editorial grid that leads with one large image
 //   cards   — image with a caption (title + description) below
 //   grid    — title + description above the image
-export default function ImageGrid({ items, variant, onOpen }: ImageGridProps) {
+export default function ImageGrid({ items, variant, onOpen, priority = false }: ImageGridProps) {
   if (!items || items.length === 0) return null;
 
   if (variant === "feature") {
@@ -41,8 +48,10 @@ export default function ImageGrid({ items, variant, onOpen }: ImageGridProps) {
               alt={item.alt ?? item.title}
               width={1400}
               height={1400}
+              sizes="(max-width: 860px) 92vw, 1100px"
               placeholder="blur"
               blurDataURL={BLUR_DATA_URL}
+              priority={priority && i === 0}
             />
           </div>
         ))}
@@ -65,8 +74,10 @@ export default function ImageGrid({ items, variant, onOpen }: ImageGridProps) {
                 alt={item.alt ?? item.title}
                 width={1000}
                 height={1000}
+                sizes="(max-width: 600px) 90vw, 320px"
                 placeholder="blur"
                 blurDataURL={BLUR_DATA_URL}
+                priority={priority && i === 0}
               />
             </div>
             {(item.title || item.description) && (
@@ -97,8 +108,10 @@ export default function ImageGrid({ items, variant, onOpen }: ImageGridProps) {
               alt={item.alt ?? item.title}
               width={1000}
               height={1000}
+              sizes="(max-width: 860px) 90vw, 320px"
               placeholder="blur"
               blurDataURL={BLUR_DATA_URL}
+              priority={priority && i === 0}
             />
           </div>
         ))}
@@ -120,8 +133,10 @@ export default function ImageGrid({ items, variant, onOpen }: ImageGridProps) {
             alt={item.alt ?? item.title}
             width={1000}
             height={1000}
+            sizes="(max-width: 860px) 90vw, 400px"
             placeholder="blur"
             blurDataURL={BLUR_DATA_URL}
+            priority={priority && i === 0}
           />
         </div>
       ))}

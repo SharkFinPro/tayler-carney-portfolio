@@ -72,8 +72,8 @@ export default function AtelierPageClient({ siteId, atelier, isAdmin = false }: 
             <p className={styles.empty}>No entries found</p>
           ) : (
             <div className={styles.entries}>
-              {sectionBlocks.map((block) => (
-                <BlockSection key={block.id} block={block} onOpen={lightbox.open} />
+              {sectionBlocks.map((block, i) => (
+                <BlockSection key={block.id} block={block} onOpen={lightbox.open} priority={i === 0} />
               ))}
             </div>
           )}

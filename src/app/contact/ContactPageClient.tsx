@@ -158,8 +158,8 @@ export default function ContactPageClient({
           ) : (
             <div className={styles.grid}>
               <div className={`${styles.left} ${blockStyles.contactDark}`}>
-                {sectionBlocks.map((block) => (
-                  <BlockSection key={block.id} block={block} onOpen={lightbox.open} />
+                {sectionBlocks.map((block, i) => (
+                  <BlockSection key={block.id} block={block} onOpen={lightbox.open} priority={i === 0} />
                 ))}
               </div>
               {channels}

@@ -116,6 +116,17 @@
   }
 }
 
+// Rich-text images rendered through next/image. The renderer emits these
+// inline rather than wrapped in a <figure>, so they need the same treatment the
+// `figure img` rule above gives the fallback path.
+.image {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1.5rem 0;
+  border: 1px solid var(--line);
+}
+
 // Standalone bordered surface (when a rich-text block is shown on its own).
 .card {
   max-width: none;
