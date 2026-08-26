@@ -12,7 +12,7 @@ import blockStyles from "@/components/blocks/BlockSection.module.scss";
 import BlockEditor from "@/components/blocks/BlockEditor";
 import PublishBar from "@/components/blocks/PublishBar";
 import ProjectModal from "@/app/portfolio/[slug]/ProjectModal";
-import { sanitizeBlocks, blockHasData, type Block } from "@/components/blocks/blocks";
+import { sanitizeBlocks, blockHasData, blocksProvideH1, type Block } from "@/components/blocks/blocks";
 import { useLightbox } from "@/components/useLightbox";
 
 interface ContactPageClientProps {
@@ -141,6 +141,10 @@ export default function ContactPageClient({
       />
       <div className={styles.pageWrapper}>
         <div className={styles.pageContainer}>
+          {/* Every page needs exactly one top-level heading. A pageIntro block
+              supplies it where present; this covers a layout built from blocks
+              that do not. */}
+          {!blocksProvideH1(sectionBlocks) && <h1 className="srOnly">Contact</h1>}
           {isAdmin && siteId && (
             <PublishBar model="SiteData" entryId={siteId} refreshKey={savedAt} />
           )}
