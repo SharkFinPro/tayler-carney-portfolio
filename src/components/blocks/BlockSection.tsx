@@ -362,7 +362,7 @@ function BlockContent({ block, onOpen, priority = false }: { block: Block; onOpe
             )}
           </div>
           <div className={styles.profileBio}>
-            {block.heading && <span className={styles.profileBioLabel}>{block.heading}</span>}
+            {block.heading && <h2 className={styles.profileBioLabel}>{block.heading}</h2>}
             {richTextHasContent(block.bio) && <RichTextWidget content={block.bio} variant="bare" />}
           </div>
         </div>
@@ -372,7 +372,7 @@ function BlockContent({ block, onOpen, priority = false }: { block: Block; onOpe
     case "credentials":
       return (
         <div className={styles.credentials}>
-          {block.heading && <span className={styles.colHeader}>{block.heading}</span>}
+          {block.heading && <h2 className={styles.colHeader}>{block.heading}</h2>}
           <div className={styles.credentialsList}>
             {block.items.map((it, i) => (
               <div key={i} className={`${styles.credentialItem} ${it.term ? styles.credentialItemTermed : ""}`}>
@@ -391,7 +391,7 @@ function BlockContent({ block, onOpen, priority = false }: { block: Block; onOpe
     case "tagList":
       return (
         <div className={`${styles.tagList} ${block.tone === "dark" ? styles.tagListDark : ""}`}>
-          {block.heading && <span className={styles.tagListHeader}>{block.heading}</span>}
+          {block.heading && <h2 className={styles.tagListHeader}>{block.heading}</h2>}
           <ul className={styles.tagItems}>
             {block.tags.map((t, i) => (
               <li key={i} className={styles.tagItem}>

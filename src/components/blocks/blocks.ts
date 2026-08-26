@@ -192,6 +192,19 @@ export const BLOCK_DESCRIPTIONS: Record<BlockType, string> = {
   columns: "Two to four blocks laid out side-by-side in a responsive grid.",
 };
 
+/**
+ * Whether a block layout supplies the top-level heading for its page.
+ *
+ * `pageIntro` renders an <h1>; no other block type does. A page composed
+ * only of profileHero/credentials/tagList blocks therefore has no <h1> at
+ * all — which is exactly what the About page was doing. Pages call this to
+ * decide whether to supply their own, so the document outline never depends
+ * on which blocks an admin happened to choose.
+ */
+export function blocksProvideH1(blocks: Block[]): boolean {
+  return blocks.some((b) => b.type === "pageIntro" && b.heading.trim().length > 0);
+}
+
 // Whether the block row / section heading shows a count badge.
 export const BLOCK_SHOW_COUNT: Record<BlockType, boolean> = {
   richText: false,

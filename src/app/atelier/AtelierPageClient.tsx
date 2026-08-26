@@ -53,6 +53,8 @@ export default function AtelierPageClient({ siteId, atelier, isAdmin = false }: 
             <h1 className={styles.headerTitle}>Atelier</h1>
           </motion.div>
 
+          {/* No h1 fallback here: this page renders its own page title above,
+              so adding one would give the document two top-level headings. */}
           {isAdmin && siteId && (
             <PublishBar model="SiteData" entryId={siteId} refreshKey={savedAt} />
           )}
