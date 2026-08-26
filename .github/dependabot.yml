@@ -1,0 +1,61 @@
+version: 2
+
+# Dependabot *security* updates already run on this repo without any config
+# (vulnerability alerts are enabled — PRs #15 and #26 came from that path).
+# What was missing is *version* updates, which is why every dependency had
+# drifted behind while security fixes still arrived.
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+    open-pull-requests-limit: 5
+    # One PR per group rather than one per package, so a routine week is a
+    # single reviewable bump instead of a dozen.
+    # Every group is scoped to minor+patch, so majors fall outside them and
+    # arrive as their own individual PR. That is deliberate: a sharp, next, or
+    # react major needs the crop-and-upload flow verified by hand, and should
+    # never ride along in a batch of routine bumps.
+    groups:
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+        update-types:
+          - minor
+          - patch
+      next:
+        patterns:
+          - "next"
+          - "eslint-config-next"
+          - "@next/*"
+        update-types:
+          - minor
+          - patch
+      dev-tooling:
+        dependency-type: development
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+      production:
+        dependency-type: production
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns:
+          - "*"
