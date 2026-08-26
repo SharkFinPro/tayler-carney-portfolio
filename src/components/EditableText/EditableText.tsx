@@ -14,6 +14,14 @@ interface EditableTextProps {
   value: string | string[];
   editable?: boolean;
   multiline?: boolean;
+  /**
+   * Human name for this field, announced by assistive tech and shown in the
+   * edit tooltip. Without it the accessible name falls back to the raw CMS
+   * field name ("Edit description"), leaking schema vocabulary into the UI —
+   * and on the homepage's nested JSON fields those names are less
+   * recognizable still.
+   */
+  label?: string;
   /** Take the pencil out of flow (for headings/gradient text that must not reflow). */
   floatEdit?: boolean;
   /**
@@ -39,6 +47,7 @@ export default function EditableText({
   id,
   field,
   value,
+  label,
   editable = false,
   multiline = false,
   floatEdit = false,
@@ -46,8 +55,13 @@ export default function EditableText({
   children,
 }: EditableTextProps) {
   const isList = Array.isArray(value);
+  // Prefer the human label; fall back to the field name only when none is given.
+  const name = label ?? field ?? "text";
+  // A list is always edited as a textarea, one item per line, regardless of
+  // what the caller passed for `multiline`.
+  const useTextarea = multiline || isList;
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(isList ? (value as string[]).join(", ") : (value as string));
+  const [draft, setDraft] = useState(isList ? (value as string[]).join("\n") : (value as string));
   const [display, setDisplay] = useState<React.ReactNode | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -65,11 +79,11 @@ export default function EditableText({
   // Focus (and select) the field when editing begins.
   useEffect(() => {
     if (!editing) return;
-    const el = multiline ? textareaRef.current : inputRef.current;
+    const el = useTextarea ? textareaRef.current : inputRef.current;
     el?.focus();
     el?.select();
-    if (multiline) autosize(textareaRef.current);
-  }, [editing, multiline]);
+    if (useTextarea) autosize(textareaRef.current);
+  }, [editing, useTextarea]);
 
   if (!editable) return <>{children}</>;
 
@@ -77,7 +91,7 @@ export default function EditableText({
     setSaving(true);
     setError(null);
     const next: string | string[] = isList
-      ? draft.split(",").map((s) => s.trim()).filter(Boolean)
+      ? draft.split("\n").map((s) => s.trim()).filter(Boolean)
       : draft;
     const res = onSave
       ? await onSave(next)
@@ -92,7 +106,7 @@ export default function EditableText({
   }
 
   function cancel() {
-    setDraft(isList ? (value as string[]).join(", ") : (value as string));
+    setDraft(isList ? (value as string[]).join("\n") : (value as string));
     setError(null);
     setEditing(false);
   }
@@ -102,7 +116,7 @@ export default function EditableText({
     if (e.key === "Escape") {
       e.preventDefault();
       cancel();
-    } else if (e.key === "Enter" && (!multiline || e.metaKey || e.ctrlKey)) {
+    } else if (e.key === "Enter" && (!useTextarea || e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       if (!saving) save();
     }
@@ -115,8 +129,8 @@ export default function EditableText({
         <button
           type="button"
           className={styles.editBtn}
-          aria-label={`Edit ${field ?? "text"}`}
-          title={`Edit ${field ?? "text"}`}
+          aria-label={`Edit ${name}`}
+          title={`Edit ${name}`}
           onClick={() => setEditing(true)}
         >
           <FontAwesomeIcon icon={faPen} />
@@ -127,7 +141,7 @@ export default function EditableText({
 
   return (
     <span className={`${styles.wrap} ${styles.editing}`}>
-      {multiline ? (
+      {useTextarea ? (
         <textarea
           ref={textareaRef}
           className={`${styles.field} ${styles.textarea}`}
@@ -138,7 +152,7 @@ export default function EditableText({
           }}
           onKeyDown={onKeyDown}
           rows={1}
-          aria-label={`Edit ${field ?? "text"}`}
+          aria-label={`Edit ${name}`}
         />
       ) : (
         <input
@@ -147,12 +161,12 @@ export default function EditableText({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onKeyDown}
-          aria-label={`Edit ${field ?? "text"}`}
+          aria-label={`Edit ${name}`}
         />
       )}
 
       {isList && (
-        <span className={styles.hint}>Separate items with commas</span>
+        <span className={styles.hint}>One item per line</span>
       )}
 
       <span className={styles.controls} contentEditable={false}>

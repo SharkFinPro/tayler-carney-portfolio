@@ -209,6 +209,32 @@ function emptyRichText(): RichTextAST {
   return { children: [{ type: "paragraph", children: [{ text: "" }] }] };
 }
 
+/**
+ * Deep-copy a block, giving it and every nested child a fresh id.
+ *
+ * Building a second `entry` or `specs` block similar to an existing one meant
+ * re-entering every field by hand, and those are the most field-heavy types in
+ * the system.
+ *
+ * Re-issuing ids all the way down matters: `split` and `columns` carry child
+ * blocks, and React keys plus the editor's drag reorder both key on `id`, so a
+ * duplicate that shared its children's ids would make the two copies behave as
+ * one.
+ */
+export function duplicateBlock(block: Block): Block {
+  const copy = structuredClone(block) as Block;
+  copy.id = newId();
+
+  if (copy.type === "split") {
+    copy.left = duplicateBlock(copy.left);
+    copy.right = duplicateBlock(copy.right);
+  } else if (copy.type === "columns") {
+    copy.items = copy.items.map(duplicateBlock);
+  }
+
+  return copy;
+}
+
 // Build an empty block of the given type for the editor palette.
 export function createEmptyBlock(type: BlockType): Block {
   const id = newId();

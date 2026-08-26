@@ -12,6 +12,7 @@ import {
   BLOCK_LABELS,
   BLOCK_DESCRIPTIONS,
   createEmptyBlock,
+  duplicateBlock,
   blockHasData,
   blockSummary,
 } from "./blocks";
@@ -135,6 +136,19 @@ export default function BlockEditor({ model, field, id, initialBlocks, onBlocksC
     if (!("error" in result)) collapseEdit();
   }
 
+  // Inserted directly after its source rather than appended, so the copy shows
+  // up where the admin is looking instead of at the bottom of a long page.
+  async function duplicate(block: Block) {
+    collapseEdit();
+    const current = blocksRef.current;
+    const index = current.findIndex((b) => b.id === block.id);
+    if (index === -1) return;
+
+    const copy = duplicateBlock(block);
+    const next = [...current.slice(0, index + 1), copy, ...current.slice(index + 1)];
+    await persist(next);
+  }
+
   async function deleteBlock(blockId: string): Promise<string | null> {
     if (editingId === blockId) cancelEdit();
     const result = await persist(blocksRef.current.filter((b) => b.id !== blockId));
@@ -195,9 +209,20 @@ export default function BlockEditor({ model, field, id, initialBlocks, onBlocksC
                   <span className={styles.blockSummary}>{blockSummary(block)}</span>
                   <div className={styles.blockBarActions}>
                     {!editing && (
-                      <button type="button" className={styles.iconBtn} aria-label={`Edit ${BLOCK_LABELS[block.type]} block`} onClick={() => startEdit(block)}>
-                        Edit
-                      </button>
+                      <>
+                        <button type="button" className={styles.iconBtn} aria-label={`Edit ${BLOCK_LABELS[block.type]} block`} onClick={() => startEdit(block)}>
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.iconBtn}
+                          aria-label={`Duplicate ${BLOCK_LABELS[block.type]} block`}
+                          onClick={() => duplicate(block)}
+                          disabled={saving}
+                        >
+                          Duplicate
+                        </button>
+                      </>
                     )}
                     <button type="button" className={styles.iconBtn} aria-label={`Delete ${BLOCK_LABELS[block.type]} block`} onClick={() => setPendingDeleteId(block.id)}>
                       Delete

@@ -13,6 +13,7 @@ import {
   BLOCK_TYPES,
   blockHasData,
   createEmptyBlock,
+  duplicateBlock,
   sanitizeBlocks,
   type Block,
 } from "./blocks";
@@ -265,5 +266,83 @@ describe("sanitizeBlocks — idempotence", () => {
     const once = sanitizeBlocks(raw);
     const twice = sanitizeBlocks(structuredClone(once));
     expect(twice).toEqual(once);
+  });
+});
+
+describe("duplicateBlock", () => {
+  it("copies content but issues a new id", () => {
+    const original = one({
+      type: "specs",
+      id: "orig",
+      heading: "Spec",
+      rows: [{ label: "Fabric", value: "Wool" }],
+    })!;
+    const copy = duplicateBlock(original);
+
+    expect(copy.id).not.toBe(original.id);
+    expect({ ...copy, id: "" }).toEqual({ ...original, id: "" });
+  });
+
+  it("does not share structure with the original", () => {
+    const original = one({
+      type: "specs",
+      id: "orig",
+      heading: "Spec",
+      rows: [{ label: "A", value: "1" }],
+    })!;
+    const copy = duplicateBlock(original);
+
+    if (copy.type !== "specs" || original.type !== "specs") throw new Error("expected specs");
+    copy.rows[0].value = "changed";
+    expect(original.rows[0].value).toBe("1");
+  });
+
+  it("re-ids a split's children too", () => {
+    // React keys and the drag reorder both key on `id`, so children sharing
+    // ids with the original would make the two copies behave as one.
+    const original = one({
+      type: "split",
+      id: "sp",
+      heading: "",
+      left: { type: "specs", id: "L", heading: "", rows: [{ label: "a", value: "b" }] },
+      right: { type: "callout", id: "R", heading: "", variant: "info", text: "hi" },
+    })!;
+    const copy = duplicateBlock(original);
+
+    if (copy.type !== "split" || original.type !== "split") throw new Error("expected split");
+    expect(copy.left.id).not.toBe(original.left.id);
+    expect(copy.right.id).not.toBe(original.right.id);
+  });
+
+  it("re-ids every child of a columns container", () => {
+    const original = one({
+      type: "columns",
+      id: "c",
+      heading: "",
+      items: [
+        { type: "specs", id: "a", heading: "", rows: [{ label: "x", value: "y" }] },
+        { type: "specs", id: "b", heading: "", rows: [{ label: "x", value: "y" }] },
+      ],
+    })!;
+    const copy = duplicateBlock(original);
+
+    if (copy.type !== "columns" || original.type !== "columns") throw new Error("expected columns");
+    const originalIds = original.items.map((i) => i.id);
+    for (const item of copy.items) expect(originalIds).not.toContain(item.id);
+    // ...and the copies aren't duplicates of each other either.
+    expect(new Set(copy.items.map((i) => i.id)).size).toBe(copy.items.length);
+  });
+
+  it("produces a block that survives the sanitizer", () => {
+    for (const type of BLOCK_TYPES) {
+      const copy = duplicateBlock(createEmptyBlock(type));
+      expect(one(structuredClone(copy)), type).not.toBeNull();
+    }
+  });
+
+  it("gives every duplicate a distinct id", () => {
+    const original = createEmptyBlock("specs");
+    const ids = Array.from({ length: 20 }, () => duplicateBlock(original).id);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });

@@ -122,12 +122,12 @@ export default function ProjectPageClient({ project, prevProject, nextProject, i
               className={styles.mainHeader}
             >
               <h1>
-                <EditableText model="Project" id={project.id} field="title" value={project.title} editable={isAdmin} floatEdit>
+                <EditableText model="Project" id={project.id} field="title" value={project.title} label="Project title" editable={isAdmin} floatEdit>
                   {project.title}
                 </EditableText>
               </h1>
               <p>
-                <EditableText model="Project" id={project.id} field="description" value={project.description} editable={isAdmin} multiline>
+                <EditableText model="Project" id={project.id} field="description" value={project.description} label="Project description" editable={isAdmin} multiline>
                   {project.description}
                 </EditableText>
               </p>
