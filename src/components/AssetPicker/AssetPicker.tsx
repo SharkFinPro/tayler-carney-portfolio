@@ -34,6 +34,9 @@ export default function AssetPicker({ onClose, onSelect, kind = "image" }: Props
   }
 
   useEffect(() => {
+    // The state is set after an await inside load(); fetching on mount is what
+    // an effect is for, and none of it is derived from a prop.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, []);
 

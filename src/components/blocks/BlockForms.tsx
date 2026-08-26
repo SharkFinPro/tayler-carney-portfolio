@@ -198,6 +198,9 @@ function DragHandle({ onPointerDown }: { onPointerDown: (e: React.PointerEvent) 
 // and it reads as the row itself lifted out of the list.
 function RowDragLayer({ drag }: { drag: ReturnType<typeof useRowDrag> }) {
   const [mounted, setMounted] = useState(false);
+  // SSR gate, same as Modal: the drag layer is a portal and needs a document
+  // to exist before it can render.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
   if (!mounted) return null;
   return createPortal(

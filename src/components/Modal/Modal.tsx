@@ -47,6 +47,10 @@ export default function Modal({ onClose, labelledBy, overlayClassName, children 
   // block). `mounted` gates the portal until the client has a document.
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
+    // SSR gate: the portal cannot render until the client has a document, and
+    // a mount effect is the documented way to express that. Nothing here is
+    // derived from a prop, which is what the rule is actually aimed at.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
     lockScroll();
     return unlockScroll;
@@ -104,8 +108,10 @@ export default function Modal({ onClose, labelledBy, overlayClassName, children 
       prev?.focus?.();
     };
     // Runs once the overlay mounts: onClose is read through a ref so a fresh
-    // closure each render doesn't re-run setup and disturb focus.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // closure each render doesn't re-run setup and disturb focus. (The
+    // exhaustive-deps disable that used to sit here is gone — v7 of the plugin
+    // no longer flags this, and a directive for a rule that isn't reporting is
+    // just noise that outlives its reason.)
   }, [mounted]);
 
   if (!mounted) return null;

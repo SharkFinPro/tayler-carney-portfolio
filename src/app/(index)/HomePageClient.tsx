@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -58,12 +58,16 @@ export default function HomePageClient({ siteId, home: initial, isAdmin = false 
   exploreTitleRef.current = exploreTitle;
   cardsRef.current = cards;
 
-  useEffect(() => {
+  // Four pieces of state derived from one prop, so they resync together when
+  // the server sends new content rather than one effect after the paint.
+  const [lastInitial, setLastInitial] = useState(initial);
+  if (lastInitial !== initial) {
+    setLastInitial(initial);
     setHero(initial.hero);
     setArchive(initial.archive);
     setExploreTitle(initial.exploreTitle);
     setCards(initial.destinations.map(withId));
-  }, [initial]);
+  }
 
   const [editor, setEditor] = useState<null | "hero" | "archive" | "explore">(null);
   const [exploreDraft, setExploreDraft] = useState("");

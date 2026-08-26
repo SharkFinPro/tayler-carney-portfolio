@@ -53,6 +53,9 @@ export default function PublishBar({
   }, [model, entryId]);
 
   useEffect(() => {
+    // The state is set after an await inside refresh(). This asks the CMS what
+    // is currently published, which cannot be derived from props.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh();
   }, [refresh, refreshKey]);
 

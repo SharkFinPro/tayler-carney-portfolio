@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import styles from "./Contact.module.scss";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEnvelope, faFileArrowDown } from "@fortawesome/free-solid-svg-icons";
@@ -14,6 +14,7 @@ import PublishBar from "@/components/blocks/PublishBar";
 import ProjectModal from "@/app/portfolio/[slug]/ProjectModal";
 import { sanitizeBlocks, blockHasData, blocksProvideH1, type Block } from "@/components/blocks/blocks";
 import { useLightbox } from "@/components/useLightbox";
+import { useSyncedState } from "@/components/useSyncedState";
 
 interface ContactPageClientProps {
   siteId: string;
@@ -36,12 +37,9 @@ export default function ContactPageClient({
   isAdmin = false,
 }: ContactPageClientProps) {
   const initialBlocks = useMemo(() => sanitizeBlocks(contact), [contact]);
-  const [blocks, setBlocks] = useState<Block[]>(initialBlocks);
-  const [editing, setEditing] = useState(isAdmin);
-  useEffect(() => {
-    setBlocks(initialBlocks);
-    setEditing(isAdmin);
-  }, [initialBlocks, isAdmin]);
+  const [blocks, setBlocks] = useSyncedState<Block[]>(initialBlocks);
+  // Admins land in edit mode; the read view below is the "preview".
+  const [editing, setEditing] = useSyncedState(isAdmin);
 
   const sectionBlocks = useMemo(() => blocks.filter(blockHasData), [blocks]);
 
