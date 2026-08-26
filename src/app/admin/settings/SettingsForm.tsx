@@ -4,7 +4,7 @@ import { useState } from "react";
 import { updateGlobal, updateSeo } from "@/app/admin/contentActions";
 import { useUnsavedChanges } from "@/components/useUnsavedChanges";
 import AssetPicker from "@/components/AssetPicker";
-import type { GlobalContent } from "@/lib/global";
+import { MAX_NAV_ITEMS, type GlobalContent, type NavItem } from "@/lib/global";
 import type { SeoContent } from "@/lib/seo";
 import styles from "./Settings.module.scss";
 
@@ -12,7 +12,11 @@ import styles from "./Settings.module.scss";
 // accepts an array, but the form keeps it as a string for a simple input.
 type SeoForm = Omit<SeoContent, "keywords"> & { keywords: string };
 
-const GLOBAL_FIELDS: { name: keyof GlobalContent; label: string; hint?: string; type?: string }[] = [
+type GlobalTextField = {
+  [K in keyof GlobalContent]: GlobalContent[K] extends string ? K : never;
+}[keyof GlobalContent];
+
+const GLOBAL_FIELDS: { name: GlobalTextField; label: string; hint?: string; type?: string }[] = [
   { name: "displayName", label: "Display name", hint: "Shown in the nav, footer, and copyright." },
   { name: "focus", label: "Focus / tagline", hint: "Short subtitle under the name in the footer." },
   { name: "email", label: "Email", type: "email", hint: "Used for the contact page email link." },
@@ -74,6 +78,37 @@ export default function SettingsForm({
 
   useUnsavedChanges(globalDirty || seoDirty);
 
+  // --- Navigation editing -----------------------------------------------
+  // Kept as plain array operations rather than reusing the block editor's
+  // drag hook: this is a short list of two-field rows, and up/down buttons are
+  // both simpler and more accessible than a pointer-drag affordance here.
+
+  function setNav(next: NavItem[]) {
+    setGlobal((v) => ({ ...v, navItems: next }));
+    setGlobalStatus(null);
+  }
+
+  function updateNavItem(index: number, patch: Partial<NavItem>) {
+    setNav(global.navItems.map((item, i) => (i === index ? { ...item, ...patch } : item)));
+  }
+
+  function addNavItem() {
+    if (global.navItems.length >= MAX_NAV_ITEMS) return;
+    setNav([...global.navItems, { label: "", href: "" }]);
+  }
+
+  function removeNavItem(index: number) {
+    setNav(global.navItems.filter((_, i) => i !== index));
+  }
+
+  function moveNavItem(index: number, delta: number) {
+    const target = index + delta;
+    if (target < 0 || target >= global.navItems.length) return;
+    const next = [...global.navItems];
+    [next[index], next[target]] = [next[target], next[index]];
+    setNav(next);
+  }
+
   async function saveGlobal(e: React.FormEvent) {
     e.preventDefault();
     setSavingGlobal(true);
@@ -109,6 +144,85 @@ export default function SettingsForm({
     <>
       <form className={styles.form} onSubmit={saveGlobal}>
         <h2 className={styles.sectionTitle}>Identity</h2>
+
+        <div className={styles.field}>
+          <span className={styles.label}>Navigation</span>
+          <span className={styles.hint}>
+            The menu shown in the header and the footer. Links can be a path on this site
+            (<code>/portfolio</code>), an anchor (<code>#studio</code>), or a full external URL.
+            An entry needs both a label and a link to appear.
+          </span>
+
+          <ul className={styles.navList}>
+            {global.navItems.map((item, index) => (
+              <li key={index} className={styles.navRow}>
+                <input
+                  className={styles.input}
+                  aria-label={`Navigation label ${index + 1}`}
+                  placeholder="Label"
+                  value={item.label}
+                  onChange={(e) => updateNavItem(index, { label: e.target.value })}
+                />
+                <input
+                  className={styles.input}
+                  aria-label={`Navigation link ${index + 1}`}
+                  placeholder="/path"
+                  value={item.href}
+                  onChange={(e) => updateNavItem(index, { href: e.target.value })}
+                />
+                <div className={styles.navRowActions}>
+                  <button
+                    type="button"
+                    className={styles.navMove}
+                    onClick={() => moveNavItem(index, -1)}
+                    disabled={index === 0}
+                    aria-label={`Move ${item.label || `item ${index + 1}`} up`}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.navMove}
+                    onClick={() => moveNavItem(index, 1)}
+                    disabled={index === global.navItems.length - 1}
+                    aria-label={`Move ${item.label || `item ${index + 1}`} down`}
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.navRemove}
+                    onClick={() => removeNavItem(index)}
+                    aria-label={`Remove ${item.label || `item ${index + 1}`}`}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          {global.navItems.length === 0 && (
+            <p className={styles.hint}>
+              No navigation items — the header and footer menus will be empty.
+            </p>
+          )}
+
+          <button
+            type="button"
+            className={styles.navAdd}
+            onClick={addNavItem}
+            disabled={global.navItems.length >= MAX_NAV_ITEMS}
+          >
+            + Add link
+          </button>
+          {global.navItems.length >= MAX_NAV_ITEMS && (
+            <span className={styles.hint}>
+              {MAX_NAV_ITEMS} is the most the header layout holds.
+            </span>
+          )}
+        </div>
+
         {GLOBAL_FIELDS.map((field) => (
           <div key={field.name} className={styles.field}>
             <label htmlFor={field.name} className={styles.label}>

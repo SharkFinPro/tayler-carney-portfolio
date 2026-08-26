@@ -5,14 +5,6 @@ import { faLinkedin, faInstagram } from "@fortawesome/free-brands-svg-icons";
 import getSiteData from "@/components/SiteData";
 import { resolveResumeAsset } from "@/lib/resume";
 
-const navLinks = [
-  { label: "Home", href: "/" },
-  { label: "Portfolio", href: "/portfolio" },
-  { label: "Atelier",   href: "/atelier" },
-  { label: "About",     href: "/about" },
-  { label: "Contact",   href: "/contact" },
-];
-
 export default async function Footer() {
   const { global } = await getSiteData();
   const resume = await resolveResumeAsset(global.resumeAssetId);
@@ -74,8 +66,8 @@ export default async function Footer() {
 
         {/* Quick links — right */}
         <nav className={styles.nav} aria-label="Footer navigation">
-          {navLinks.map((link) => (
-            <Link key={link.href} href={link.href} className={styles.navLink}>
+          {global.navItems.map((link, index) => (
+            <Link key={`${link.href}-${index}`} href={link.href} className={styles.navLink}>
               {link.label}
             </Link>
           ))}

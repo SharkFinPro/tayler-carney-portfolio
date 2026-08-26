@@ -11,7 +11,7 @@ export default async function NavBar() {
       <div className={styles.container}>
         <Link href="/" className={styles.logo}>{global.displayName}</Link>
 
-        <Navigation />
+        <Navigation navItems={global.navItems} />
       </div>
     </header>
   );

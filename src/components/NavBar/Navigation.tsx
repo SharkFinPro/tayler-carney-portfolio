@@ -5,21 +5,15 @@ import { useState, useRef, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBars, faTimes } from "@fortawesome/free-solid-svg-icons";
 import Link from "next/link";
+import type { NavItem } from "@/lib/global";
 
-export default function Navigation() {
+export default function Navigation({ navItems }: { navItems: NavItem[] }) {
 
   const pathname = usePathname();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLElement>(null);
   const toggleButtonRef = useRef<HTMLButtonElement>(null);
 
-  const navItems = [
-    { label: "Home", path: "/" },
-    { label: "Portfolio", path: "/portfolio" },
-    { label: "Atelier", path: "/atelier" },
-    { label: "About", path: "/about" },
-    { label: "Contact", path: "/contact" }
-  ];
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -59,12 +53,12 @@ export default function Navigation() {
 
   return <>
     <nav className={styles.nav}>
-      {navItems.map((item) => (
+      {navItems.map((item, index) => (
         <Link
-          key={item.label}
-          href={item.path}
-          aria-current={pathname === item.path ? "page" : undefined}
-          className={`${styles.nav_item} ${pathname === item.path ? styles.active : ""}`}
+          key={`${item.href}-${index}`}
+          href={item.href}
+          aria-current={pathname === item.href ? "page" : undefined}
+          className={`${styles.nav_item} ${pathname === item.href ? styles.active : ""}`}
         >
           <span>{item.label}</span>
         </Link>
@@ -84,12 +78,12 @@ export default function Navigation() {
       </button>
       {isDropdownOpen && (
         <div className={styles.dropdownMenu}>
-          {navItems.map((item) => (
+          {navItems.map((item, index) => (
             <Link
-              key={item.label}
-              href={item.path}
-              aria-current={pathname === item.path ? "page" : undefined}
-              className={`${styles.dropdownItem} ${pathname === item.path ? styles.active : ""}`}
+              key={`${item.href}-${index}`}
+              href={item.href}
+              aria-current={pathname === item.href ? "page" : undefined}
+              className={`${styles.dropdownItem} ${pathname === item.href ? styles.active : ""}`}
               onClick={toggleDropdown}
             >
               {item.label}

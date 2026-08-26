@@ -20,7 +20,7 @@ const NAV: NavItem[] = [
   { href: "/admin/settings", label: "Settings", icon: faGear },
 ];
 
-export default function AdminNav() {
+export default function AdminNav({ displayName, monogram }: { displayName: string; monogram: string }) {
   const pathname = usePathname();
 
   // The login screen has no session and no destinations to navigate between,
@@ -31,9 +31,9 @@ export default function AdminNav() {
     <header className={styles.nav}>
       <div className={styles.navInner}>
         <Link href="/admin" className={styles.brand}>
-          <span className={styles.brandMark}>TC</span>
+          <span className={styles.brandMark}>{monogram}</span>
           <span className={styles.brandText}>
-            Tayler Carney
+            {displayName}
             <span className={styles.brandSub}>Control Room</span>
           </span>
         </Link>
