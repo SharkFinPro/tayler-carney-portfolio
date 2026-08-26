@@ -4,6 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import { DEFAULT_HOME, sanitizeHome } from "./home";
+import { at } from "@/test/at";
 
 const UNSAFE = ["javascript:alert(1)", "JAVASCRIPT:alert(1)", "data:text/html,<script>", "vbscript:x"];
 
@@ -50,7 +51,7 @@ describe("sanitizeHome", () => {
 
     it.each(UNSAFE)("rewrites an unsafe destination href (%s) to '/'", (href) => {
       const out = sanitizeHome({ destinations: [{ title: "T", href }] });
-      expect(out.destinations[0].href).toBe("/");
+      expect(at(out.destinations, 0).href).toBe("/");
     });
 
     it("keeps hrefs that are actually safe", () => {

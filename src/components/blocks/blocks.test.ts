@@ -17,6 +17,7 @@ import {
   sanitizeBlocks,
   type Block,
 } from "./blocks";
+import { at } from "@/test/at";
 
 const IMG = "https://media.graphassets.com/abc123";
 
@@ -90,7 +91,7 @@ describe("sanitizeBlocks — never throws", () => {
     // split collapses to an empty richText via cleanChild.
     const out = sanitizeBlocks([node]);
     expect(out).toHaveLength(1);
-    expect(out[0].type).toBe("split");
+    expect(at(out, 0).type).toBe("split");
   });
 });
 
@@ -293,8 +294,8 @@ describe("duplicateBlock", () => {
     const copy = duplicateBlock(original);
 
     if (copy.type !== "specs" || original.type !== "specs") throw new Error("expected specs");
-    copy.rows[0].value = "changed";
-    expect(original.rows[0].value).toBe("1");
+    at(copy.rows, 0).value = "changed";
+    expect(at(original.rows, 0).value).toBe("1");
   });
 
   it("re-ids a split's children too", () => {
@@ -444,13 +445,13 @@ describe("new layouts — swatches", () => {
       items: [{ name: "Oxblood", detail: "Wool melton", color: "#7B1E22" }],
     });
     if (block?.type !== "swatches") throw new Error("expected swatches");
-    expect(block.items[0].color).toBe("#7b1e22");
+    expect(at(block.items, 0).color).toBe("#7b1e22");
   });
 
   it.each(["#fff", "#FFFFFF", "#a0522d"])("accepts the hex form %s", (color) => {
     const block = one({ type: "swatches", id: "s", heading: "", items: [{ name: "x", color }] });
     if (block?.type !== "swatches") throw new Error("expected swatches");
-    expect(block.items[0].color).toBe(color.toLowerCase());
+    expect(at(block.items, 0).color).toBe(color.toLowerCase());
   });
 
   it.each([
@@ -463,7 +464,7 @@ describe("new layouts — swatches", () => {
   ])("rejects %j, since the value goes into an inline style", (color) => {
     const block = one({ type: "swatches", id: "s", heading: "", items: [{ name: "x", color }] });
     if (block?.type !== "swatches") throw new Error("expected swatches");
-    expect(block.items[0].color).toBe("");
+    expect(at(block.items, 0).color).toBe("");
   });
 
   it("keeps an entry that has a photo but no colour", () => {
@@ -475,7 +476,7 @@ describe("new layouts — swatches", () => {
     });
     if (block?.type !== "swatches") throw new Error("expected swatches");
     expect(block.items).toHaveLength(1);
-    expect(block.items[0].image?.url).toBe(IMG);
+    expect(at(block.items, 0).image?.url).toBe(IMG);
   });
 
   it("drops an entry with nothing to show at all", () => {

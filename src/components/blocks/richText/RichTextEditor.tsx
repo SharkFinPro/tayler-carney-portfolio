@@ -20,6 +20,17 @@ import { astToHtml, htmlToAst, imageNodeFromRef, imageNodeHtml, isSafeUrl } from
 import type { RichTextAST } from "../blocks";
 import styles from "./RichTextEditor.module.scss";
 
+// CSS-module lookups go through an index signature, so each one is typed
+// `string | undefined`. Almost every use is a className, which accepts that --
+// but classList takes definite tokens and throws on an empty one. Resolve the
+// single class this file toggles imperatively once, here.
+const IMAGE_SELECTED: string | undefined = styles.imageSelected;
+
+/** Add or remove the "this image is selected" outline on a figure. */
+function markSelected(figure: HTMLElement, selected: boolean) {
+  if (IMAGE_SELECTED) figure.classList.toggle(IMAGE_SELECTED, selected);
+}
+
 type Props = {
   value: RichTextAST;
   onChange: (content: RichTextAST) => void;
@@ -138,7 +149,7 @@ export default function RichTextEditor({ value, onChange }: Props) {
 
   function clearImageSelection() {
     if (selectedFigure.current) {
-      selectedFigure.current.classList.remove(styles.imageSelected);
+      markSelected(selectedFigure.current, false);
       selectedFigure.current = null;
     }
   }
@@ -148,7 +159,7 @@ export default function RichTextEditor({ value, onChange }: Props) {
     if (figure === selectedFigure.current) return;
     clearImageSelection();
     if (figure && editorRef.current?.contains(figure)) {
-      figure.classList.add(styles.imageSelected);
+      markSelected(figure, true);
       selectedFigure.current = figure;
     }
   }

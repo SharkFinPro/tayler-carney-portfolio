@@ -89,8 +89,12 @@ export default function Modal({ onClose, labelledBy, overlayClassName, children 
         e.preventDefault();
         return;
       }
-      const first = f[0];
-      const last = f[f.length - 1];
+      // `f` is non-empty here (the length check above returns early), but the
+      // compiler cannot see that through an index — read them as values it can
+      // narrow instead.
+      const first = f.at(0);
+      const last = f.at(-1);
+      if (!first || !last) return;
       const a = document.activeElement;
       if (e.shiftKey && (a === first || !overlay.contains(a))) {
         e.preventDefault();

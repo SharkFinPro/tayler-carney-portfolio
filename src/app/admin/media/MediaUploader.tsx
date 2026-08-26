@@ -10,7 +10,9 @@ import Modal from "@/components/Modal";
 import styles from "./Media.module.scss";
 
 // Common crop aspect ratios; `value` is width/height, undefined = free-form.
-const RATIOS: { label: string; value: number | undefined }[] = [
+// Non-empty by construction, and typed as such so the first entry can be read
+// as the default without a guard at every use.
+const RATIOS: [{ label: string; value: number | undefined }, ...{ label: string; value: number | undefined }[]] = [
   { label: "Free-form", value: undefined },
   { label: "1:1", value: 1 },
   { label: "4:3", value: 4 / 3 },

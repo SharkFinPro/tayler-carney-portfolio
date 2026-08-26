@@ -24,6 +24,9 @@ export default function SheetViewer({ items, onOpen, priority = false }: SheetVi
   const [index, setIndex] = useState(0);
   if (!items.length) return null;
   const selected = items[Math.min(index, items.length - 1)];
+  // Clamped above and the list is non-empty, but the compiler indexes
+  // conservatively — and rendering nothing beats throwing if that ever changes.
+  if (!selected) return null;
 
   return (
     <div className={styles.sheetViewer}>

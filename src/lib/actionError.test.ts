@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { toActionError } from "./actionError";
+import { at } from "@/test/at";
 
 beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => {});
@@ -18,7 +19,7 @@ const messageFor = (error: unknown) =>
  */
 function logged(): Record<string, unknown> {
   const calls = vi.mocked(console.error).mock.calls;
-  return JSON.parse(String(calls[calls.length - 1][0]));
+  return JSON.parse(String(at(at(calls, calls.length - 1), 0)));
 }
 
 describe("toActionError — nothing internal leaks", () => {
@@ -75,7 +76,7 @@ describe("toActionError — correlation id", () => {
     const message = messageFor(new Error("novel failure"));
     const id = message.match(/\(ref ([0-9A-Z]{6})\)/)?.[1];
     expect(id).toBeTruthy();
-    expect(String(vi.mocked(console.error).mock.calls[0][0])).toContain(id!);
+    expect(String(at(at(vi.mocked(console.error).mock.calls, 0), 0))).toContain(id!);
   });
 
   it("issues a different id per call", () => {

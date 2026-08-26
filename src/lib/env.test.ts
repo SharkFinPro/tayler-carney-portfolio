@@ -6,6 +6,7 @@ import {
   validateEnv,
   type EnvSeverity,
 } from "./env";
+import { at, only } from "@/test/at";
 
 const VALID: Record<string, string> = {
   WEBSITE_URL: "https://taylercarney.com",
@@ -73,7 +74,7 @@ describe("validateEnv", () => {
     });
 
     it("explains the consequence and how to fix it", () => {
-      const [issue] = validateEnv({ ...VALID, ADMIN_KEY: "short" });
+      const issue = only(validateEnv({ ...VALID, ADMIN_KEY: "short" }));
       expect(issue.message).toMatch(/brute-forceable/);
       expect(issue.message).toMatch(/openssl rand/);
       expect(issue.message).toMatch(/signs out every existing admin session/);
@@ -156,7 +157,7 @@ describe("assertEnv", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     expect(() => assertEnv({ ...VALID, ADMIN_KEY: "short" })).not.toThrow();
     expect(warn).toHaveBeenCalledOnce();
-    expect(String(warn.mock.calls[0][0])).toContain("ADMIN_KEY");
+    expect(String(at(at(warn.mock.calls, 0), 0))).toContain("ADMIN_KEY");
     warn.mockRestore();
   });
 

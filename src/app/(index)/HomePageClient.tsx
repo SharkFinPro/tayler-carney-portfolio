@@ -30,6 +30,17 @@ type CardEditState = { mode: "edit"; id: string } | { mode: "add" };
 const withId = (c: HomeDestination): CardRow => ({ ...c, _id: newId() });
 const stripId = ({ _id, ...rest }: CardRow): HomeDestination => rest;
 
+// The starting values for a brand-new card, and the fallback if the card the
+// editor was opened on has since disappeared from the list.
+const BLANK_CARD: HomeDestination = {
+  ref: "",
+  title: "",
+  description: "",
+  tag: "",
+  href: "/",
+  size: "secondary",
+};
+
 // Card size is purely positional now — the first card is the large "primary"
 // tile, the rest are "secondary". Order is controlled by drag & drop, so we
 // derive size from index rather than storing an independent choice.
@@ -397,8 +408,8 @@ export default function HomePageClient({ siteId, home: initial, isAdmin = false 
           mode={cardEditor.mode}
           initial={
             cardEditor.mode === "edit"
-              ? stripId(cards.find((c) => c._id === cardEditor.id) ?? cards[0])
-              : { ref: "", title: "", description: "", tag: "", href: "/", size: "secondary" }
+              ? stripId(cards.find((c) => c._id === cardEditor.id) ?? cards[0] ?? withId(BLANK_CARD))
+              : BLANK_CARD
           }
           onClose={() => setCardEditor(null)}
           onSave={saveCard}

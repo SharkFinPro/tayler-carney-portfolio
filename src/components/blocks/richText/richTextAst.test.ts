@@ -16,6 +16,7 @@ import {
   isSafeUrl,
   sanitizeRichTextAst,
 } from "./richTextAst";
+import { at } from "@/test/at";
 
 /** Round-trip an AST through the editor's HTML representation and back. */
 function roundTrip(children: unknown[]): unknown[] {
@@ -23,6 +24,21 @@ function roundTrip(children: unknown[]): unknown[] {
   host.innerHTML = astToHtml({ children });
   return htmlToAst(host).children;
 }
+
+// These suites work on untyped AST fragments, so almost every assertion starts
+// by reaching into a node's children. Naming that reach once keeps the casts in
+// one place, and `at` reports an empty list plainly rather than as a property
+// access on undefined.
+
+/** Node `i` of an AST fragment, as a plain record. */
+const nodeAt = (nodes: readonly unknown[], i = 0) => at(nodes, i) as Record<string, unknown>;
+
+/** The children of node `i`, as plain records. */
+const kidsOf = (nodes: readonly unknown[], i = 0) =>
+  nodeAt(nodes, i).children as Record<string, unknown>[];
+
+/** The `text` of the first leaf under node `i`. */
+const firstText = (nodes: readonly unknown[], i = 0) => at(kidsOf(nodes, i), 0).text;
 
 const para = (text: string, marks: Record<string, boolean> = {}) => ({
   type: "paragraph",
@@ -74,8 +90,7 @@ describe("sanitizeRichTextAst", () => {
         },
       ],
     });
-    const p = (out.children as Record<string, unknown>[])[0];
-    const kids = p.children as Record<string, unknown>[];
+    const kids = kidsOf(out.children as unknown[]);
     // The link node is gone but "this" survives as plain text.
     expect(kids.some((k) => k.type === "link")).toBe(false);
     expect(kids.map((k) => k.text)).toContain("this");
@@ -84,7 +99,7 @@ describe("sanitizeRichTextAst", () => {
   it("leaves a safe link intact", () => {
     const link = { type: "link", href: "https://example.com", children: [{ text: "site" }] };
     const out = sanitizeRichTextAst({ children: [{ type: "paragraph", children: [link] }] });
-    const kids = (out.children as Record<string, unknown>[])[0].children as Record<string, unknown>[];
+    const kids = kidsOf(out.children as unknown[]);
     expect(kids[0]).toMatchObject({ type: "link", href: "https://example.com" });
   });
 
@@ -164,7 +179,7 @@ describe("round-trip: AST → HTML → AST", () => {
     const input = [para("First"), para("Second"), para("Third")];
     const out = roundTrip(input) as Record<string, unknown>[];
     expect(out).toHaveLength(3);
-    expect(out.map((p) => (p.children as { text: string }[])[0].text)).toEqual([
+    expect(out.map((_, i) => firstText(out, i))).toEqual([
       "First",
       "Second",
       "Third",
@@ -178,13 +193,13 @@ describe("round-trip: AST → HTML → AST", () => {
     ["code", { code: true }],
   ])("preserves the %s mark", (_name, mark) => {
     const out = roundTrip([para("styled", mark)]) as Record<string, unknown>[];
-    const leaf = (out[0].children as Record<string, unknown>[])[0];
+    const leaf = at(kidsOf(out), 0);
     expect(leaf).toMatchObject({ text: "styled", ...mark });
   });
 
   it("preserves combined marks", () => {
     const out = roundTrip([para("both", { bold: true, italic: true })]) as Record<string, unknown>[];
-    const leaf = (out[0].children as Record<string, unknown>[])[0];
+    const leaf = at(kidsOf(out), 0);
     expect(leaf).toMatchObject({ text: "both", bold: true, italic: true });
   });
 
@@ -197,14 +212,14 @@ describe("round-trip: AST → HTML → AST", () => {
     "heading-six",
   ])("preserves %s", (type) => {
     const out = roundTrip([{ type, children: [{ text: "Title" }] }]) as Record<string, unknown>[];
-    expect(out[0].type).toBe(type);
+    expect(nodeAt(out).type).toBe(type);
   });
 
   it("preserves a block quote", () => {
     const out = roundTrip([
       { type: "block-quote", children: [{ text: "Quoted" }] },
     ]) as Record<string, unknown>[];
-    expect(out[0].type).toBe("block-quote");
+    expect(nodeAt(out).type).toBe("block-quote");
   });
 
   it("preserves a bulleted list and its items", () => {
@@ -218,8 +233,8 @@ describe("round-trip: AST → HTML → AST", () => {
       },
     ];
     const out = roundTrip(input) as Record<string, unknown>[];
-    expect(out[0].type).toBe("bulleted-list");
-    expect((out[0].children as unknown[])).toHaveLength(2);
+    expect(nodeAt(out).type).toBe("bulleted-list");
+    expect(kidsOf(out)).toHaveLength(2);
     expect(JSON.stringify(out)).toContain("one");
     expect(JSON.stringify(out)).toContain("two");
   });
@@ -233,7 +248,7 @@ describe("round-trip: AST → HTML → AST", () => {
         ],
       },
     ]) as Record<string, unknown>[];
-    expect(out[0].type).toBe("numbered-list");
+    expect(nodeAt(out).type).toBe("numbered-list");
   });
 
   it("preserves a safe link with its href", () => {
@@ -243,7 +258,7 @@ describe("round-trip: AST → HTML → AST", () => {
         children: [{ type: "link", href: "https://example.com", children: [{ text: "site" }] }],
       },
     ]) as Record<string, unknown>[];
-    const link = (out[0].children as Record<string, unknown>[]).find((c) => c.type === "link");
+    const link = kidsOf(out).find((c) => c.type === "link");
     expect(link).toMatchObject({ type: "link", href: "https://example.com" });
   });
 
@@ -257,12 +272,12 @@ describe("round-trip: AST → HTML → AST", () => {
 
   it("preserves text that looks like markup", () => {
     const out = roundTrip([para("5 < 6 && 7 > 3")]) as Record<string, unknown>[];
-    expect((out[0].children as { text: string }[])[0].text).toBe("5 < 6 && 7 > 3");
+    expect(firstText(out)).toBe("5 < 6 && 7 > 3");
   });
 
   it("preserves non-ASCII text", () => {
     const out = roundTrip([para("Déjà vu — naïve façade ✦")]) as Record<string, unknown>[];
-    expect((out[0].children as { text: string }[])[0].text).toBe("Déjà vu — naïve façade ✦");
+    expect(firstText(out)).toBe("Déjà vu — naïve façade ✦");
   });
 
   it("is stable across a second round-trip", () => {

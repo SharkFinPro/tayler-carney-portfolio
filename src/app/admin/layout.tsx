@@ -6,9 +6,13 @@ import styles from "./admin.module.scss";
 /** "Tayler Carney" -> "TC"; falls back to the first two characters. */
 function initials(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return "—";
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+  const [first, ...rest] = words;
+  if (!first) return "—";
+
+  const last = rest.at(-1);
+  if (!last) return first.slice(0, 2).toUpperCase();
+
+  return `${first[0] ?? ""}${last[0] ?? ""}`.toUpperCase();
 }
 
 // Shared shell for every /admin/* route. AdminNav hides itself on the login

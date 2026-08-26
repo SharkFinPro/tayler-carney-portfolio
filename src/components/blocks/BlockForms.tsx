@@ -31,8 +31,34 @@ function move<T>(arr: T[], from: number, to: number): T[] {
   if (to < 0 || to >= arr.length) return arr;
   const next = [...arr];
   const [item] = next.splice(from, 1);
+  // Splicing at an out-of-range `from` removes nothing; reinserting the
+  // resulting undefined would put a hole in the list, so leave it alone.
+  if (item === undefined) return arr;
   next.splice(to, 0, item);
   return next;
+}
+
+/**
+ * Build the `update(index, patch)` callback the row lists below share: a null
+ * patch removes that row, any other patch merges into it. Six lists carried
+ * byte-identical copies of this before.
+ *
+ * A patch aimed at a row that is no longer there is dropped rather than
+ * creating a hole -- the index comes from a render that can be one commit
+ * behind the array.
+ */
+function rowUpdater<T extends object>(value: T[], onChange: (v: T[]) => void) {
+  return (i: number, patch: Partial<T> | null) => {
+    const next = [...value];
+    if (patch === null) {
+      next.splice(i, 1);
+    } else {
+      const row = next[i];
+      if (!row) return;
+      next[i] = { ...row, ...patch };
+    }
+    onChange(next);
+  };
 }
 
 // Pointer-based "card in hand" reordering for an index-keyed list, mirroring the
@@ -326,12 +352,7 @@ function ImageRefList({ value, onChange }: { value: ImageRef[]; onChange: (v: Im
 
 function ImageItemList({ value, onChange }: { value: ImageItem[]; onChange: (v: ImageItem[]) => void }) {
   const drag = useRowDrag((from, to) => onChange(move(value, from, to)));
-  const update = (i: number, patch: Partial<ImageItem> | null) => {
-    const next = [...value];
-    if (patch === null) next.splice(i, 1);
-    else next[i] = { ...next[i], ...patch };
-    onChange(next);
-  };
+  const update = rowUpdater(value, onChange);
   return (
     <div className={styles.subGroup}>
       {value.map((item, i) => (
@@ -363,12 +384,7 @@ function ImageItemList({ value, onChange }: { value: ImageItem[]; onChange: (v: 
 
 function ViewList({ value, onChange }: { value: ComparisonView[]; onChange: (v: ComparisonView[]) => void }) {
   const drag = useRowDrag((from, to) => onChange(move(value, from, to)));
-  const update = (i: number, patch: Partial<ComparisonView> | null) => {
-    const next = [...value];
-    if (patch === null) next.splice(i, 1);
-    else next[i] = { ...next[i], ...patch };
-    onChange(next);
-  };
+  const update = rowUpdater(value, onChange);
   return (
     <div className={styles.subGroup}>
       {value.map((view, i) => (
@@ -399,12 +415,7 @@ function ViewList({ value, onChange }: { value: ComparisonView[]; onChange: (v: 
 
 function StageList({ value, onChange }: { value: TimelineStage[]; onChange: (v: TimelineStage[]) => void }) {
   const drag = useRowDrag((from, to) => onChange(move(value, from, to)));
-  const update = (i: number, patch: Partial<TimelineStage> | null) => {
-    const next = [...value];
-    if (patch === null) next.splice(i, 1);
-    else next[i] = { ...next[i], ...patch };
-    onChange(next);
-  };
+  const update = rowUpdater(value, onChange);
   return (
     <div className={styles.subGroup}>
       {value.map((stage, i) => (
@@ -447,12 +458,7 @@ function StageList({ value, onChange }: { value: TimelineStage[]; onChange: (v: 
 
 function SwatchList({ value, onChange }: { value: SwatchItem[]; onChange: (v: SwatchItem[]) => void }) {
   const drag = useRowDrag((from, to) => onChange(move(value, from, to)));
-  const update = (i: number, patch: Partial<SwatchItem> | null) => {
-    const next = [...value];
-    if (patch === null) next.splice(i, 1);
-    else next[i] = { ...next[i], ...patch };
-    onChange(next);
-  };
+  const update = rowUpdater(value, onChange);
   return (
     <div className={styles.subGroup}>
       {value.map((item, i) => (
@@ -518,12 +524,7 @@ function SwatchList({ value, onChange }: { value: SwatchItem[]; onChange: (v: Sw
 
 function RowList({ value, onChange }: { value: SpecRow[]; onChange: (v: SpecRow[]) => void }) {
   const drag = useRowDrag((from, to) => onChange(move(value, from, to)));
-  const update = (i: number, patch: Partial<SpecRow> | null) => {
-    const next = [...value];
-    if (patch === null) next.splice(i, 1);
-    else next[i] = { ...next[i], ...patch };
-    onChange(next);
-  };
+  const update = rowUpdater(value, onChange);
   return (
     <div className={styles.subGroup}>
       {value.map((row, i) => (
@@ -552,12 +553,7 @@ function RowList({ value, onChange }: { value: SpecRow[]; onChange: (v: SpecRow[
 
 function CredentialEntryList({ value, onChange }: { value: CredentialEntry[]; onChange: (v: CredentialEntry[]) => void }) {
   const drag = useRowDrag((from, to) => onChange(move(value, from, to)));
-  const update = (i: number, patch: Partial<CredentialEntry> | null) => {
-    const next = [...value];
-    if (patch === null) next.splice(i, 1);
-    else next[i] = { ...next[i], ...patch };
-    onChange(next);
-  };
+  const update = rowUpdater(value, onChange);
   return (
     <div className={styles.subGroup}>
       {value.map((entry, i) => (

@@ -8,6 +8,7 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useLightbox } from "./useLightbox";
 import type { ImageGridItem } from "@/components/blocks/ImageGrid";
+import { at } from "@/test/at";
 
 const items: ImageGridItem[] = [
   { url: "https://media.graphassets.com/a.jpg", title: "A" },
@@ -46,7 +47,7 @@ describe("useLightbox", () => {
 
   it("opens at the requested index and becomes visible", () => {
     const { result } = renderHook(() => useLightbox());
-    act(() => result.current.open(items[1].url, items[1].title, items, 1));
+    act(() => result.current.open(at(items, 1).url, at(items, 1).title, items, 1));
 
     expect(result.current.modal).toEqual({ items, index: 1 });
     expect(result.current.visible).toBe(true);
@@ -69,7 +70,7 @@ describe("useLightbox", () => {
   });
 
   it("handles a single-item gallery without dividing by zero", () => {
-    const one = [items[0]];
+    const one = [at(items, 0)];
     const { result } = renderHook(() => useLightbox());
     act(() => result.current.open("", "", one, 0));
 

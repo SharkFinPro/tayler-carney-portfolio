@@ -90,7 +90,9 @@ export function normalizeHandle(v: unknown): string {
   // "www.", a trailing slash, or a query string.
   s = s.replace(/^https?:\/\//i, "").replace(/^www\./i, "");
   if (s.includes("/")) {
-    s = s.split(/[?#]/)[0].replace(/\/+$/, "");
+    // split() always yields at least one element, but the compiler indexes
+    // conservatively; the fallback keeps the intent explicit either way.
+    s = (s.split(/[?#]/)[0] ?? s).replace(/\/+$/, "");
     s = s.split("/").pop() ?? "";
   }
 
