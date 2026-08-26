@@ -263,3 +263,31 @@
     cursor: not-allowed;
   }
 }
+
+// --- Per-page SEO ------------------------------------------------------------
+
+.textarea {
+  resize: vertical;
+  min-height: 3.2rem;
+  line-height: 1.5;
+}
+
+.pageGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0.9rem 1rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.pageLegend {
+  padding: 0 0.4rem;
+  font-family: var(--ff-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}

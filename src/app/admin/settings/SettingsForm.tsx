@@ -5,7 +5,7 @@ import { updateGlobal, updateSeo } from "@/app/admin/contentActions";
 import { useUnsavedChanges } from "@/components/useUnsavedChanges";
 import AssetPicker from "@/components/AssetPicker";
 import { MAX_NAV_ITEMS, type GlobalContent, type NavItem } from "@/lib/global";
-import type { SeoContent } from "@/lib/seo";
+import { SEO_PAGE_KEYS, type SeoContent, type SeoPage, type SeoPageKey } from "@/lib/seo";
 import styles from "./Settings.module.scss";
 
 // SEO keywords are edited as a single comma-separated line; the sanitizer also
@@ -24,7 +24,11 @@ const GLOBAL_FIELDS: { name: GlobalTextField; label: string; hint?: string; type
   { name: "instagramHandle", label: "Instagram handle", hint: "Without the @" },
 ];
 
-const SEO_FIELDS: { name: keyof SeoForm; label: string; hint?: string; multiline?: boolean }[] = [
+type SeoTextField = {
+  [K in keyof SeoForm]: SeoForm[K] extends string ? K : never;
+}[keyof SeoForm];
+
+const SEO_FIELDS: { name: SeoTextField; label: string; hint?: string; multiline?: boolean }[] = [
   { name: "title", label: "Site title", hint: "Default browser/tab title and homepage <title>." },
   { name: "titleTemplate", label: "Title template", hint: 'Per-page title pattern. Use "%s" for the page name, e.g. "%s | Tayler Carney".' },
   { name: "description", label: "Meta description", hint: "Shown in search results.", multiline: true },
@@ -34,6 +38,17 @@ const SEO_FIELDS: { name: keyof SeoForm; label: string; hint?: string; multiline
 ];
 
 const toSeoForm = (seo: SeoContent): SeoForm => ({ ...seo, keywords: seo.keywords.join(", ") });
+
+// Human labels for the per-route overrides. Project pages are absent on
+// purpose: they already derive their metadata from the project's own editable
+// title and description.
+const PAGE_LABELS: Record<SeoPageKey, string> = {
+  home: "Home",
+  portfolio: "Portfolio",
+  atelier: "Atelier",
+  about: "About",
+  contact: "Contact",
+};
 
 type Status = { ok: boolean; message: string } | null;
 
@@ -107,6 +122,11 @@ export default function SettingsForm({
     const next = [...global.navItems];
     [next[index], next[target]] = [next[target], next[index]];
     setNav(next);
+  }
+
+  function updatePage(key: SeoPageKey, patch: Partial<SeoPage>) {
+    setSeo((v) => ({ ...v, pages: { ...v.pages, [key]: { ...v.pages[key], ...patch } } }));
+    setSeoStatus(null);
   }
 
   async function saveGlobal(e: React.FormEvent) {
@@ -348,6 +368,45 @@ export default function SettingsForm({
               />
             )}
           </div>
+        ))}
+
+        <h2 className={styles.sectionTitle}>Page titles &amp; descriptions</h2>
+        <p className={styles.hint}>
+          What each page shows in search results. Leave a description blank to fall back to the
+          site description above. Project pages aren&rsquo;t listed here — they use each
+          project&rsquo;s own title and description.
+        </p>
+
+        {SEO_PAGE_KEYS.map((key) => (
+          <fieldset key={key} className={styles.pageGroup}>
+            <legend className={styles.pageLegend}>{PAGE_LABELS[key]}</legend>
+
+            <div className={styles.field}>
+              <label htmlFor={`seo-${key}-title`} className={styles.label}>
+                Title
+              </label>
+              <input
+                id={`seo-${key}-title`}
+                className={styles.input}
+                value={seo.pages[key].title}
+                onChange={(e) => updatePage(key, { title: e.target.value })}
+              />
+            </div>
+
+            <div className={styles.field}>
+              <label htmlFor={`seo-${key}-description`} className={styles.label}>
+                Description
+              </label>
+              <textarea
+                id={`seo-${key}-description`}
+                className={`${styles.input} ${styles.textarea}`}
+                rows={2}
+                placeholder="Falls back to the site description"
+                value={seo.pages[key].description}
+                onChange={(e) => updatePage(key, { description: e.target.value })}
+              />
+            </div>
+          </fieldset>
         ))}
 
         <div className={styles.actions}>

@@ -3,7 +3,7 @@
 // at once, so the defaults and the keyword coercion are worth pinning down.
 
 import { describe, expect, it } from "vitest";
-import { DEFAULT_SEO, sanitizeSeo } from "./seo";
+import { DEFAULT_SEO, SEO_PAGE_KEYS, pageMetadata, sanitizeSeo } from "./seo";
 
 describe("sanitizeSeo", () => {
   it("returns the defaults for an empty or absent value", () => {
@@ -77,5 +77,74 @@ describe("sanitizeSeo", () => {
     const once = sanitizeSeo({ title: "T", keywords: "a, b" });
     expect(sanitizeSeo(once)).toEqual(once);
     expect(once.keywords).toEqual(["a", "b"]);
+  });
+});
+
+describe("per-page metadata", () => {
+  it("seeds every route with the copy it used to hardcode", () => {
+    // Search results must be unchanged until an admin edits them.
+    expect(DEFAULT_SEO.pages.about.description).toMatch(/The designer behind the archive/);
+    expect(DEFAULT_SEO.pages.portfolio.description).toMatch(/A working archive/);
+    expect(DEFAULT_SEO.pages.atelier.description).toMatch(/Inside the studio/);
+    expect(DEFAULT_SEO.pages.contact.description).toMatch(/Get in touch/);
+  });
+
+  it("always returns an entry for every key, whatever is stored", () => {
+    for (const input of [null, {}, { pages: null }, { pages: "nope" }, { pages: { about: 5 } }]) {
+      const out = sanitizeSeo(input);
+      for (const key of SEO_PAGE_KEYS) {
+        expect(out.pages[key], `${JSON.stringify(input)} / ${key}`).toBeDefined();
+        expect(typeof out.pages[key].title).toBe("string");
+        expect(typeof out.pages[key].description).toBe("string");
+      }
+    }
+  });
+
+  it("keeps an edited override and trims it", () => {
+    const out = sanitizeSeo({ pages: { about: { title: "  Me  ", description: " Hello. " } } });
+    expect(out.pages.about).toEqual({ title: "Me", description: "Hello." });
+  });
+
+  it("leaves the other routes on their defaults when one is edited", () => {
+    const out = sanitizeSeo({ pages: { about: { title: "Me", description: "Hello." } } });
+    expect(out.pages.contact).toEqual(DEFAULT_SEO.pages.contact);
+  });
+
+  it("ignores an unrecognized key rather than carrying it forward", () => {
+    // A renamed route shouldn't leave debris in the stored JSON forever.
+    const out = sanitizeSeo({ pages: { about: { title: "Me" }, oldRoute: { title: "Gone" } } });
+    expect(Object.keys(out.pages).sort()).toEqual([...SEO_PAGE_KEYS].sort());
+  });
+
+  it("is idempotent", () => {
+    const once = sanitizeSeo({ pages: { about: { title: "Me", description: "Hi" } } });
+    expect(sanitizeSeo(once)).toEqual(once);
+  });
+});
+
+describe("pageMetadata", () => {
+  it("uses the per-page values when set", () => {
+    const seo = sanitizeSeo({ pages: { about: { title: "Me", description: "About me." } } });
+    expect(pageMetadata(seo, "about")).toEqual({ title: "Me", description: "About me." });
+  });
+
+  it("falls back to the site description rather than emitting an empty one", () => {
+    // An empty <meta name="description"> is worse for search than a generic one.
+    const seo = sanitizeSeo({ description: "Site-wide.", pages: { home: { description: "" } } });
+    expect(pageMetadata(seo, "home").description).toBe("Site-wide.");
+  });
+
+  it("falls back to the default title when cleared", () => {
+    const seo = sanitizeSeo({ pages: { contact: { title: "", description: "d" } } });
+    expect(pageMetadata(seo, "contact").title).toBe(DEFAULT_SEO.pages.contact.title);
+  });
+
+  it("returns a usable result for every route key", () => {
+    const seo = sanitizeSeo(null);
+    for (const key of SEO_PAGE_KEYS) {
+      const meta = pageMetadata(seo, key);
+      expect(meta.title, key).toBeTruthy();
+      expect(meta.description, key).toBeTruthy();
+    }
   });
 });
