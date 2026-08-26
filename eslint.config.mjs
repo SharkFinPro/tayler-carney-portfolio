@@ -6,6 +6,7 @@
 // they win the cascade.
 import next from "eslint-config-next/core-web-vitals";
 import nextTypescript from "eslint-config-next/typescript";
+import a11y from "eslint-plugin-jsx-a11y";
 
 const config = [
   {
@@ -22,6 +23,20 @@ const config = [
 
   ...next,
   ...nextTypescript,
+
+  {
+    // The full jsx-a11y recommended set (34 rules), not the six Next enables by
+    // default. The audit found the real accessibility gaps by walking the
+    // rendered DOM of every page; these rules are what keeps them from coming
+    // back, in CI, on the diff that introduces them.
+    //
+    // Only the rule map is taken, not `a11y.flatConfigs.recommended` itself:
+    // eslint-config-next has already registered the plugin, and a second
+    // registration is a hard config error. Reading the map from the package
+    // means the set tracks the plugin version rather than a copied list.
+    name: "jsx-a11y/recommended-rules",
+    rules: a11y.flatConfigs.recommended.rules,
+  },
 
   {
     rules: {

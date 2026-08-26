@@ -319,6 +319,10 @@ export default function RichTextEditor({ value, onChange }: Props) {
         className={styles.surface}
         contentEditable
         suppressContentEditableWarning
+        // A contentEditable host is focusable and in the tab order already;
+        // stating it means the declared textbox role and the actual behaviour
+        // agree, rather than one being inferred from the other.
+        tabIndex={0}
         role="textbox"
         aria-multiline="true"
         aria-label="Rich text content"

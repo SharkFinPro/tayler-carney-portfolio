@@ -121,6 +121,11 @@ export default function Modal({ onClose, labelledBy, overlayClassName, children 
   if (!mounted) return null;
 
   return createPortal(
+    // Clicking the backdrop dismisses the dialog. The rule wants a keyboard
+    // equivalent on the same element, but the keyboard equivalent for
+    // dismissing a dialog is Escape -- bound above, on the document, per the
+    // ARIA dialog pattern. A key handler here would be a second, worse one.
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <div
       ref={ref}
       className={overlayClassName}
