@@ -5,12 +5,11 @@ import styles from "./Project.module.scss";
 interface ProjectSidebarProps {
   projectTitle: string;
   activeSection: string;
-  setActiveSection: (id: string) => void;
   scrollTo: (id: string) => void;
   sections: { id: string; label: string }[];
 }
 
-export default function ProjectSidebar({ projectTitle, activeSection, setActiveSection, scrollTo, sections }: ProjectSidebarProps) {
+export default function ProjectSidebar({ projectTitle, activeSection, scrollTo, sections }: ProjectSidebarProps) {
   return (
     <aside className={styles.sidebarNav}>
       <nav className={styles.breadcrumb} aria-label="Breadcrumb">

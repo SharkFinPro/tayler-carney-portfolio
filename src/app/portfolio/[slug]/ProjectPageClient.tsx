@@ -151,7 +151,6 @@ export default function ProjectPageClient({ project, prevProject, nextProject, i
           <ProjectSidebar
             projectTitle={project.title}
             activeSection={activeSection}
-            setActiveSection={setActiveSection}
             scrollTo={scrollTo}
             sections={activeSections}
           />
