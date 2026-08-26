@@ -185,6 +185,12 @@ function MediaCard({
   }
 
   return (
+    // A pointer convenience layered over controls that already exist: in
+    // selection mode every card renders a real checkbox with an accessible
+    // name, and selection mode itself is entered from the "Select" button in
+    // the toolbar. Nothing here is reachable only by clicking the card, so
+    // there is no keyboard path to add -- only a duplicate one.
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
     <li
       className={`${styles.card} ${isDraft ? styles.cardDraft : ""} ${selected ? styles.cardSelected : ""} ${selectionMode ? styles.cardSelectable : ""}`}
       onClick={handleCardClick}
