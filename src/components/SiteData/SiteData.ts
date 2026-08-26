@@ -1,4 +1,5 @@
 import { cmsQuery } from "@/lib/cms";
+import { rethrowIfControlFlow } from "@/lib/nextErrors";
 import { sanitizeGlobal, type GlobalContent } from "@/lib/global";
 import { sanitizeSeo, type SeoContent } from "@/lib/seo";
 
@@ -38,6 +39,11 @@ export default async function getSiteData(): Promise<SiteData> {
     const data = await cmsQuery(SITEDATA_QUERY);
     entry = data?.siteDatas?.[0] ?? {};
   } catch (error) {
+    // Next signals "this route must render dynamically" by throwing out of the
+    // render pass. Swallowing that would leave the route marked static, so it
+    // has to go back up untouched.
+    rethrowIfControlFlow(error);
+
     // Logged rather than swallowed silently: the page still renders, so this
     // is the only signal that the CMS is unreachable.
     console.error("[SiteData] falling back to defaults — CMS read failed:", error);
