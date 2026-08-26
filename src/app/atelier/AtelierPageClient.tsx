@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { motion, type Variants } from "framer-motion";
 import styles from "./Atelier.module.scss";
 import BlockSection from "@/components/blocks/BlockSection";
@@ -9,6 +9,7 @@ import PublishBar from "@/components/blocks/PublishBar";
 import ProjectModal from "@/app/portfolio/[slug]/ProjectModal";
 import { sanitizeBlocks, blockHasData, type Block } from "@/components/blocks/blocks";
 import { useLightbox } from "@/components/useLightbox";
+import { useSyncedState } from "@/components/useSyncedState";
 
 interface AtelierPageClientProps {
   siteId: string;
@@ -23,13 +24,9 @@ const fadeInVariant: Variants = {
 
 export default function AtelierPageClient({ siteId, atelier, isAdmin = false }: AtelierPageClientProps) {
   const initialBlocks = useMemo(() => sanitizeBlocks(atelier), [atelier]);
-  const [blocks, setBlocks] = useState<Block[]>(initialBlocks);
+  const [blocks, setBlocks] = useSyncedState<Block[]>(initialBlocks);
   // Admins land in edit mode; the read view below is the "preview".
-  const [editing, setEditing] = useState(isAdmin);
-  useEffect(() => {
-    setBlocks(initialBlocks);
-    setEditing(isAdmin);
-  }, [initialBlocks, isAdmin]);
+  const [editing, setEditing] = useSyncedState(isAdmin);
 
   const sectionBlocks = useMemo(() => blocks.filter(blockHasData), [blocks]);
 

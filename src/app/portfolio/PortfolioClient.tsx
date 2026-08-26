@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -17,6 +17,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import styles from "./Portfolio.module.scss";
 import { useDragReorder } from "@/components/blocks/useDragReorder";
+import { useSyncedState } from "@/components/useSyncedState";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import AssetPicker from "@/components/AssetPicker";
 import CreateProjectModal from "./CreateProjectModal";
@@ -48,15 +49,11 @@ const toConfig = (rows: ProjectRow[]): PortfolioConfig => ({
 export default function PortfolioClient({ siteId, projects: initial, isAdmin = false }: PortfolioClientProps) {
   const router = useRouter();
 
-  const [projects, setProjects] = useState<ProjectRow[]>(initial);
+  const [projects, setProjects] = useSyncedState<ProjectRow[]>(initial);
   // Bumped after every save, so the publish bar re-checks rather than polls.
   const [savedAt, setSavedAt] = useState(0);
   const projectsRef = useRef(projects);
   projectsRef.current = projects;
-
-  useEffect(() => {
-    setProjects(initial);
-  }, [initial]);
 
   const [creating, setCreating] = useState(false);
   const [showArchived, setShowArchived] = useState(false);

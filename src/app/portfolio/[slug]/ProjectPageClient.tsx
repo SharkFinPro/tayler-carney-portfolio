@@ -6,6 +6,7 @@ import { motion, type Variants } from "framer-motion";
 import ProjectModal from "./ProjectModal";
 import ProjectSidebar from "./ProjectSidebar";
 import { useLightbox } from "@/components/useLightbox";
+import { useResetOnChange, useSyncedState } from "@/components/useSyncedState";
 import BlockSection from "@/components/blocks/BlockSection";
 import BlockEditor from "@/components/blocks/BlockEditor";
 import PublishBar from "@/components/blocks/PublishBar";
@@ -51,14 +52,11 @@ export default function ProjectPageClient({ project, prevProject, nextProject, i
     () => (project.projectPage != null ? sanitizeBlocks(project.projectPage) : projectToBlocks(project)),
     [project]
   );
-  const [blocks, setBlocks] = useState<Block[]>(initialBlocks);
+  const [blocks, setBlocks] = useSyncedState<Block[]>(initialBlocks);
   // Admins see the rendered page first, same as visitors, and opt into the
-  // block editor via the "Edit page layout" toggle.
-  const [editing, setEditing] = useState(false);
-  useEffect(() => {
-    setBlocks(initialBlocks);
-    setEditing(false);
-  }, [initialBlocks]);
+  // block editor via the "Edit page layout" toggle. Navigating to another
+  // project closes the editor rather than carrying it across.
+  const [editing, setEditing] = useResetOnChange(initialBlocks, false);
   const sectionBlocks = useMemo(() => blocks.filter(blockHasData), [blocks]);
   const activeSections = useMemo(
     () => sectionBlocks.map((b) => ({ id: b.id, label: b.heading || BLOCK_LABELS[b.type] })),
