@@ -1,17 +1,45 @@
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import ProjectPageClient from "./ProjectPageClient";
 import { Metadata } from "next";
-import { cmsQuery } from "@/lib/cms";
+import { CACHE_TAGS, cmsRead } from "@/lib/cachedReads";
 import { isAuthed } from "@/lib/auth";
 import { orderProjects, sanitizePortfolio } from "@/lib/portfolio";
+import type { LegacyProject } from "@/components/blocks/blocks";
 
 interface ProjectPageProps {
   params: Promise<{ slug: string }>;
 }
 
-async function getProject(slug: string) {
+// The shape the detail query returns. `LegacyProject` carries the old fixed
+// fields (sketches, techPacks, …) that `projectToBlocks` falls back to when a
+// project has no stored block layout.
+type ProjectRecord = LegacyProject & {
+  id: string;
+  title: string;
+  slug: string;
+  description: string;
+  projectPage?: unknown;
+};
+
+// Metadata needs only two fields. Previously `generateMetadata` ran the full
+// ~20-relation project query, and the page component ran it again — two
+// executions of a large query to render one page.
+const getProjectMeta = cache(async (slug: string) => {
+  const data = (await cmsRead(
+    `query ProjectMeta($slug: String!) {
+       projects(where: { slug: $slug }) { title description }
+     }`,
+    { slug: slug.toLowerCase() },
+    { tags: [CACHE_TAGS.projects, CACHE_TAGS.project(slug.toLowerCase())] }
+  )) as { projects?: { title: string; description: string }[] } | null;
+
+  return data?.projects?.[0] ?? null;
+});
+
+const getProject = cache(async function getProject(slug: string) {
   try {
-    const data = await cmsQuery(
+    const data = await cmsRead(
       `
           query Projects($slug: String!) {
             projects(where: {slug: $slug}) {
@@ -92,8 +120,9 @@ async function getProject(slug: string) {
             }
           }
         `,
-      { slug: slug.toLowerCase() }
-    );
+      { slug: slug.toLowerCase() },
+      { tags: [CACHE_TAGS.projects, CACHE_TAGS.project(slug.toLowerCase())] }
+    ) as { projects?: ProjectRecord[] } | null;
 
     return data?.projects?.[0] ?? null;
   } catch (error) {
@@ -103,35 +132,35 @@ async function getProject(slug: string) {
     console.error("Error fetching project: ", error);
     throw error;
   }
-}
+});
 
 // Sibling projects for prev/next navigation, in the same order the portfolio
 // index uses. Archived projects are kept here (including the archived flag) and
 // filtered per-viewer at the call site, so the fetch doesn't depend on admin
 // state and can run concurrently with it.
-async function getAllProjects() {
-  const data = await cmsQuery(`
-        query {
-          projects {
-            id
-            slug
-            title
-          }
-          siteDatas {
-            portfolio
-          }
-        }
-      `);
+const getAllProjects = cache(async function getAllProjects() {
+  const data = (await cmsRead(
+    `query SiblingProjects {
+       projects { id slug title }
+       siteDatas { portfolio }
+     }`,
+    {},
+    { tags: [CACHE_TAGS.projects, CACHE_TAGS.siteData] }
+  )) as {
+    projects?: { id: string; slug: string; title: string }[];
+    siteDatas?: { portfolio?: unknown }[];
+  } | null;
+
   const config = sanitizePortfolio(data?.siteDatas?.[0]?.portfolio);
-  const projects = (data?.projects ?? []) as { id: string; slug: string; title: string }[];
-  return orderProjects(projects, config);
-}
+  return orderProjects(data?.projects ?? [], config);
+});
 
 export async function generateMetadata({
   params,
 }: ProjectPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const project = await getProject(slug);
+  // The two-field query, not the full ~20-relation one the page uses.
+  const project = await getProjectMeta(slug);
 
   if (!project) {
     return {

@@ -11,6 +11,12 @@ assertEnv();
 const isDev = process.env.NODE_ENV === 'development';
 
 const nextConfig: NextConfig = {
+  // Dev-only (Next ignores this in production builds). After moving reads onto
+  // the fetch cache, the thing you most need to see while developing is which
+  // CMS requests actually went out and which were served from cache.
+  logging: {
+    fetches: { fullUrl: true },
+  },
   experimental: {
     // Server Actions default to a 1 MB request body, and every media upload
     // goes through one. A cropped phone photo or a resume PDF routinely exceeds

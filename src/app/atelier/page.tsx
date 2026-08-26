@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import AtelierPageClient from "./AtelierPageClient";
-import { cmsQuery } from "@/lib/cms";
+import { CACHE_TAGS, cmsRead } from "@/lib/cachedReads";
 import { isAuthed } from "@/lib/auth";
 
 export const metadata: Metadata = {
@@ -24,7 +24,7 @@ const ATELIER_QUERY = `
 `;
 
 async function getAtelier(): Promise<{ id: string; atelier: unknown } | null> {
-  const data = await cmsQuery(ATELIER_QUERY);
+  const data = await cmsRead(ATELIER_QUERY, {}, { tags: [CACHE_TAGS.siteData] });
   return data?.siteDatas?.[0] ?? null;
 }
 

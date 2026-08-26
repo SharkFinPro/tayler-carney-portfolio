@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { cmsQuery } from "@/lib/cms";
+import { CACHE_TAGS, cmsRead } from "@/lib/cachedReads";
 import { orderProjects, sanitizePortfolio } from "@/lib/portfolio";
 
 const SITEMAP_QUERY = `
@@ -33,7 +33,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   let projectRoutes: MetadataRoute.Sitemap = [];
   try {
-    const data = await cmsQuery(SITEMAP_QUERY);
+    const data = await cmsRead(SITEMAP_QUERY, {}, { tags: [CACHE_TAGS.siteData, CACHE_TAGS.projects] });
     const projects: SitemapProject[] = data?.projects ?? [];
     // Archived projects 404 for the public (see lib/portfolio), so exclude them
     // from the sitemap using the same order + archive merge the site renders with.
