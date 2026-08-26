@@ -1,15 +1,12 @@
 "use server";
 
 import { toActionError } from "@/lib/actionError";
-import { isAuthed } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
 import { cmsMutate, cmsQuery } from "@/lib/cms";
 import { sanitizePortfolio, slugify, type PortfolioConfig } from "@/lib/portfolio";
 
 type Result = { ok: true } | { ok: false; error: string };
 
-async function requireAuth(): Promise<{ ok: false; error: string } | null> {
-  return (await isAuthed()) ? null : { ok: false, error: "Not authorized." };
-}
 
 // Persist the portfolio ordering + archive config onto the SiteData singleton's
 // `portfolio` JSON field. The whole object is sanitized server-side with the
