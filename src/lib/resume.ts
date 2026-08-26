@@ -6,7 +6,7 @@
 // the CMS layer); returns null when the id is unset, the asset is gone, or it
 // is unpublished — callers hide the download links in that case.
 
-import { cmsQuery } from "@/lib/cms";
+import { CACHE_TAGS, cmsRead } from "@/lib/cachedReads";
 import { rethrowIfControlFlow } from "@/lib/nextErrors";
 
 export type ResumeAsset = {
@@ -28,7 +28,7 @@ const RESUME_ASSET_QUERY = `
 export async function resolveResumeAsset(assetId: string): Promise<ResumeAsset | null> {
   if (!assetId) return null;
   try {
-    const data = await cmsQuery(RESUME_ASSET_QUERY, { id: assetId });
+    const data = await cmsRead(RESUME_ASSET_QUERY, { id: assetId }, { tags: [CACHE_TAGS.siteData] });
     const asset = data?.asset as { url?: string; fileName?: string; title?: string } | null;
     if (!asset?.url) return null;
     const base = (asset.fileName ?? "").replace(/\.[^.]+$/, "");

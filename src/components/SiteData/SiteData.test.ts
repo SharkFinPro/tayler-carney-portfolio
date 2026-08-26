@@ -7,14 +7,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_GLOBAL } from "@/lib/global";
 import { DEFAULT_SEO } from "@/lib/seo";
 
-const cmsQuery = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/cms", () => ({ cmsQuery }));
+const cmsRead = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/cachedReads", () => ({
+  cmsRead,
+  CACHE_TAGS: { siteData: "site-data", projects: "projects", project: (s: string) => `project:${s}` },
+  CONTENT_TTL: 60,
+}));
 
 // Imported after the mock is registered.
 const { default: getSiteData } = await import("./SiteData");
 
 beforeEach(() => {
-  cmsQuery.mockReset();
+  cmsRead.mockReset();
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
@@ -24,7 +28,7 @@ afterEach(() => {
 
 describe("getSiteData — happy path", () => {
   it("returns the entry's sanitized content", async () => {
-    cmsQuery.mockResolvedValue({
+    cmsRead.mockResolvedValue({
       siteDatas: [
         {
           id: "site-1",
@@ -46,7 +50,7 @@ describe("getSiteData — happy path", () => {
 
 describe("getSiteData — degradation", () => {
   it("falls back to defaults when the CMS request rejects", async () => {
-    cmsQuery.mockRejectedValue(new Error("fetch failed: ECONNREFUSED"));
+    cmsRead.mockRejectedValue(new Error("fetch failed: ECONNREFUSED"));
 
     const data = await getSiteData();
     expect(data.global).toEqual(DEFAULT_GLOBAL);
@@ -63,20 +67,20 @@ describe("getSiteData — degradation", () => {
     ];
 
     for (const failure of failures) {
-      cmsQuery.mockRejectedValueOnce(failure);
+      cmsRead.mockRejectedValueOnce(failure);
       await expect(getSiteData()).resolves.toBeTruthy();
     }
   });
 
   it("logs the failure rather than swallowing it silently", async () => {
-    cmsQuery.mockRejectedValue(new Error("boom"));
+    cmsRead.mockRejectedValue(new Error("boom"));
     await getSiteData();
     // The page still renders, so this log is the only outage signal.
     expect(console.error).toHaveBeenCalled();
   });
 
   it("handles an empty CMS response (no SiteData entry exists yet)", async () => {
-    cmsQuery.mockResolvedValue({ siteDatas: [] });
+    cmsRead.mockResolvedValue({ siteDatas: [] });
     const data = await getSiteData();
     expect(data.global).toEqual(DEFAULT_GLOBAL);
     expect(data.id).toBe("");
@@ -84,14 +88,14 @@ describe("getSiteData — degradation", () => {
 
   it("handles a malformed CMS response", async () => {
     for (const response of [null, undefined, {}, { siteDatas: null }, "nonsense"]) {
-      cmsQuery.mockResolvedValueOnce(response);
+      cmsRead.mockResolvedValueOnce(response);
       const data = await getSiteData();
       expect(data.global).toEqual(DEFAULT_GLOBAL);
     }
   });
 
   it("coerces a non-string id rather than passing it through", async () => {
-    cmsQuery.mockResolvedValue({ siteDatas: [{ id: 42, global: null, seo: null }] });
+    cmsRead.mockResolvedValue({ siteDatas: [{ id: 42, global: null, seo: null }] });
     expect((await getSiteData()).id).toBe("");
   });
 });

@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import HomePageClient from "./HomePageClient";
-import { cmsQuery } from "@/lib/cms";
+import { CACHE_TAGS, cmsRead } from "@/lib/cachedReads";
 import { isAuthed } from "@/lib/auth";
 import { sanitizeHome } from "@/lib/home";
 
@@ -22,7 +22,7 @@ const HOME_QUERY = `
 `;
 
 async function getHome(): Promise<{ id: string; home: unknown } | null> {
-  const data = await cmsQuery(HOME_QUERY);
+  const data = await cmsRead(HOME_QUERY, {}, { tags: [CACHE_TAGS.siteData] });
   return data?.siteDatas?.[0] ?? null;
 }
 

@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import PortfolioClient from "./PortfolioClient";
-import { cmsQuery } from "@/lib/cms";
+import { CACHE_TAGS, cmsRead } from "@/lib/cachedReads";
 import { isAuthed } from "@/lib/auth";
 import { orderProjects, sanitizePortfolio } from "@/lib/portfolio";
 
@@ -32,7 +32,7 @@ const PORTFOLIO_QUERY = `
 type RawProject = { id: string; title: string; slug: string; description: string };
 
 async function getPortfolio() {
-  const data = await cmsQuery(PORTFOLIO_QUERY);
+  const data = await cmsRead(PORTFOLIO_QUERY, {}, { tags: [CACHE_TAGS.siteData, CACHE_TAGS.projects] });
   return {
     projects: (data?.projects ?? []) as RawProject[],
     siteId: data?.siteDatas?.[0]?.id ?? "",

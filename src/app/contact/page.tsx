@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import ContactPageClient from "./ContactPageClient";
-import { cmsQuery } from "@/lib/cms";
+import { CACHE_TAGS, cmsRead } from "@/lib/cachedReads";
 import { isAuthed } from "@/lib/auth";
 import { sanitizeGlobal } from "@/lib/global";
 import { resolveResumeAsset } from "@/lib/resume";
@@ -27,7 +27,7 @@ const CONTACT_QUERY = `
 `;
 
 async function getContact() {
-  const data = await cmsQuery(CONTACT_QUERY);
+  const data = await cmsRead(CONTACT_QUERY, {}, { tags: [CACHE_TAGS.siteData] });
   return data?.siteDatas?.[0] ?? null;
 }
 

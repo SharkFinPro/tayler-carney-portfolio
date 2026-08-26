@@ -1,4 +1,5 @@
-import { cmsQuery } from "@/lib/cms";
+import { cache } from "react";
+import { CACHE_TAGS, cmsRead } from "@/lib/cachedReads";
 import { rethrowIfControlFlow } from "@/lib/nextErrors";
 import { sanitizeGlobal, type GlobalContent } from "@/lib/global";
 import { sanitizeSeo, type SeoContent } from "@/lib/seo";
@@ -31,12 +32,19 @@ export type SiteData = {
  * `sanitizeGlobal`/`sanitizeSeo` already treat a null field as "use the
  * defaults"; a failed *request* is treated the same way, so a Hygraph outage
  * degrades the nav and metadata to seed copy instead of a 500.
+ *
+ * Wrapped in React's `cache()` because those three call sites each triggered
+ * their own network request: `no-store` opts a fetch out of Next's automatic
+ * per-request deduplication, so the identical singleton query ran three times
+ * to render one page. `cache()` collapses them to one.
  */
-export default async function getSiteData(): Promise<SiteData> {
+const getSiteData = cache(async function getSiteData(): Promise<SiteData> {
   let entry: Record<string, unknown> = {};
 
   try {
-    const data = await cmsQuery(SITEDATA_QUERY);
+    const data = (await cmsRead(SITEDATA_QUERY, {}, { tags: [CACHE_TAGS.siteData] })) as
+      | { siteDatas?: Record<string, unknown>[] }
+      | null;
     entry = data?.siteDatas?.[0] ?? {};
   } catch (error) {
     // Next signals "this route must render dynamically" by throwing out of the
@@ -54,4 +62,6 @@ export default async function getSiteData(): Promise<SiteData> {
     global: sanitizeGlobal(entry.global),
     seo: sanitizeSeo(entry.seo),
   };
-}
+});
+
+export default getSiteData;

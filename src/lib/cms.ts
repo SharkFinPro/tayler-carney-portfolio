@@ -9,9 +9,35 @@
 
 type Vars = Record<string, unknown>;
 
-async function cmsRequest(query: string, variables: Vars, token: string | undefined, useMutationEndpoint: boolean) {
+/**
+ * How a read should be cached.
+ *
+ * Omitted entirely means `no-store` — the previous behavior, and still the
+ * right default for anything on the write path or read at the DRAFT stage.
+ */
+export type CacheOptions = {
+  /** Cache tags, so a future `revalidateTag` can target this read. */
+  tags?: string[];
+  /** Seconds before the entry is considered stale. */
+  revalidate?: number;
+};
+
+async function cmsRequest(
+  query: string,
+  variables: Vars,
+  token: string | undefined,
+  useMutationEndpoint: boolean,
+  cacheOptions?: CacheOptions
+) {
   const endpoint =
     (useMutationEndpoint && process.env.CMS_MUTATION_ENDPOINT) || (process.env.CMS_ENDPOINT as string);
+
+  // A cached read still POSTs, so Next keys the entry on the body — which
+  // includes the query and its variables. That is what makes per-slug caching
+  // work without any manual key construction.
+  const caching: RequestInit & { next?: { tags?: string[]; revalidate?: number } } = cacheOptions
+    ? { next: { tags: cacheOptions.tags, revalidate: cacheOptions.revalidate } }
+    : { cache: "no-store" };
 
   const res = await fetch(endpoint, {
     method: "POST",
@@ -20,7 +46,7 @@ async function cmsRequest(query: string, variables: Vars, token: string | undefi
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify({ query, variables }),
-    cache: "no-store",
+    ...caching,
   });
 
   const json = await res.json();
@@ -31,8 +57,10 @@ async function cmsRequest(query: string, variables: Vars, token: string | undefi
 }
 
 // Public read — preserves the existing behavior of sending CMS_TOKEN.
-export const cmsQuery = (query: string, variables: Vars = {}) =>
-  cmsRequest(query, variables, process.env.CMS_TOKEN, false);
+// Pass `cacheOptions` to opt a specific read into the fetch cache; without it
+// the read stays uncached, exactly as before.
+export const cmsQuery = (query: string, variables: Vars = {}, cacheOptions?: CacheOptions) =>
+  cmsRequest(query, variables, process.env.CMS_TOKEN, false, cacheOptions);
 
 // Draft read — uses the mutation token so unpublished content is visible.
 export const cmsQueryAuthed = (query: string, variables: Vars = {}) =>

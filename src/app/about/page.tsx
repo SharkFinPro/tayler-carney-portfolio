@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import AboutPageClient from "./AboutPageClient";
-import { cmsQuery } from "@/lib/cms";
+import { CACHE_TAGS, cmsRead } from "@/lib/cachedReads";
 import { isAuthed } from "@/lib/auth";
 
 export const metadata: Metadata = {
@@ -24,7 +24,7 @@ const ABOUT_QUERY = `
 `;
 
 async function getAbout(): Promise<{ id: string; about: unknown } | null> {
-  const data = await cmsQuery(ABOUT_QUERY);
+  const data = await cmsRead(ABOUT_QUERY, {}, { tags: [CACHE_TAGS.siteData] });
   return data?.siteDatas?.[0] ?? null;
 }
 
