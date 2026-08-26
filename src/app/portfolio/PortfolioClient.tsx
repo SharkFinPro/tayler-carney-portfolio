@@ -20,6 +20,7 @@ import { useDragReorder } from "@/components/blocks/useDragReorder";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import AssetPicker from "@/components/AssetPicker";
 import CreateProjectModal from "./CreateProjectModal";
+import PublishBar from "@/components/blocks/PublishBar";
 import { deleteProject, updatePortfolio } from "@/app/admin/portfolioActions";
 import type { OrderedProject, PortfolioConfig } from "@/lib/portfolio";
 
@@ -48,6 +49,8 @@ export default function PortfolioClient({ siteId, projects: initial, isAdmin = f
   const router = useRouter();
 
   const [projects, setProjects] = useState<ProjectRow[]>(initial);
+  // Bumped after every save, so the publish bar re-checks rather than polls.
+  const [savedAt, setSavedAt] = useState(0);
   const projectsRef = useRef(projects);
   projectsRef.current = projects;
 
@@ -77,6 +80,9 @@ export default function PortfolioClient({ siteId, projects: initial, isAdmin = f
       router.refresh();
       return res.error;
     }
+    // Reordering now saves a draft rather than publishing, so the bar has to
+    // re-check: otherwise it keeps saying "Published" over work that isn't.
+    setSavedAt((n) => n + 1);
     return null;
   }
 
@@ -285,6 +291,10 @@ export default function PortfolioClient({ siteId, projects: initial, isAdmin = f
   return (
     <div className={styles.wrapper}>
       <div className={styles.container}>
+
+        {isAdmin && siteId && (
+          <PublishBar model="SiteData" entryId={siteId} refreshKey={savedAt} />
+        )}
 
         <div className={styles.header}>
           <span className={styles.headerEyebrow}>Design Archive</span>

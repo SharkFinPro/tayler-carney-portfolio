@@ -8,6 +8,7 @@ import ProjectSidebar from "./ProjectSidebar";
 import { useLightbox } from "@/components/useLightbox";
 import BlockSection from "@/components/blocks/BlockSection";
 import BlockEditor from "@/components/blocks/BlockEditor";
+import PublishBar from "@/components/blocks/PublishBar";
 import EditableText from "@/components/EditableText";
 import {
   sanitizeBlocks,
@@ -66,6 +67,10 @@ export default function ProjectPageClient({ project, prevProject, nextProject, i
 
   const lightbox = useLightbox();
   const [activeSection, setActiveSection] = useState<string>(activeSections[0]?.id ?? "");
+  // Bumped after each save so the publish bar re-checks what is pending. It
+  // sits on the page rather than inside the editor because the inline title
+  // and description edits happen with the editor closed.
+  const [savedAt, setSavedAt] = useState(0);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -115,6 +120,9 @@ export default function ProjectPageClient({ project, prevProject, nextProject, i
               } as CSSProperties
             }
           >
+            {isAdmin && (
+              <PublishBar model="Project" entryId={project.id} refreshKey={savedAt} />
+            )}
             <motion.div
               initial="hidden"
               animate="visible"
@@ -122,12 +130,12 @@ export default function ProjectPageClient({ project, prevProject, nextProject, i
               className={styles.mainHeader}
             >
               <h1>
-                <EditableText model="Project" id={project.id} field="title" value={project.title} label="Project title" editable={isAdmin} floatEdit>
+                <EditableText model="Project" id={project.id} field="title" value={project.title} editable={isAdmin} label="Project title" onSaved={() => setSavedAt((n) => n + 1)} floatEdit>
                   {project.title}
                 </EditableText>
               </h1>
               <p>
-                <EditableText model="Project" id={project.id} field="description" value={project.description} label="Project description" editable={isAdmin} multiline>
+                <EditableText model="Project" id={project.id} field="description" value={project.description} editable={isAdmin} label="Project description" onSaved={() => setSavedAt((n) => n + 1)} multiline>
                   {project.description}
                 </EditableText>
               </p>
@@ -149,6 +157,8 @@ export default function ProjectPageClient({ project, prevProject, nextProject, i
                 id={project.id}
                 initialBlocks={blocks}
                 onBlocksChange={setBlocks}
+                onSaved={() => setSavedAt((n) => n + 1)}
+                pageTitle={project.title}
               />
             ) : (
               sectionBlocks.map((block, i) => (

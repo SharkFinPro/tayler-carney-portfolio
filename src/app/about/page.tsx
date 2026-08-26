@@ -19,8 +19,8 @@ export const dynamic = "force-dynamic";
 // layout lives in the `about` JSON field, edited with the same block editor the
 // project and atelier pages use.
 const ABOUT_QUERY = `
-  query About {
-    siteDatas {
+  query About($stage: Stage!) {
+    siteDatas(stage: $stage) {
       id
       about
     }

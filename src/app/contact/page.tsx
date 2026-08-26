@@ -21,8 +21,8 @@ export const dynamic = "force-dynamic";
 // `contact` JSON field (block layout). The email + social handles come from the
 // site-wide `global` JSON field, surfaced here for the channels panel.
 const CONTACT_QUERY = `
-  query Contact {
-    siteDatas {
+  query Contact($stage: Stage!) {
+    siteDatas(stage: $stage) {
       id
       contact
       global

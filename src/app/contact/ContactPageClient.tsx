@@ -10,6 +10,7 @@ import BlockSection from "@/components/blocks/BlockSection";
 // can target the block classes; applied to the contact intro panel below.
 import blockStyles from "@/components/blocks/BlockSection.module.scss";
 import BlockEditor from "@/components/blocks/BlockEditor";
+import PublishBar from "@/components/blocks/PublishBar";
 import ProjectModal from "@/app/portfolio/[slug]/ProjectModal";
 import { sanitizeBlocks, blockHasData, type Block } from "@/components/blocks/blocks";
 import { useLightbox } from "@/components/useLightbox";
@@ -45,6 +46,8 @@ export default function ContactPageClient({
   const sectionBlocks = useMemo(() => blocks.filter(blockHasData), [blocks]);
 
   const lightbox = useLightbox();
+  // Bumped after each save so the publish bar re-checks what is pending.
+  const [savedAt, setSavedAt] = useState(0);
 
   // An unset handle would otherwise render a channel reading "@" that links to
   // a bare "instagram.com/" — drop the channel instead.
@@ -138,6 +141,9 @@ export default function ContactPageClient({
       />
       <div className={styles.pageWrapper}>
         <div className={styles.pageContainer}>
+          {isAdmin && siteId && (
+            <PublishBar model="SiteData" entryId={siteId} refreshKey={savedAt} />
+          )}
           {isAdmin && (
             <button type="button" onClick={() => setEditing((e) => !e)} className={styles.editToggle}>
               {editing ? "Preview" : "Exit preview"}
@@ -152,6 +158,7 @@ export default function ContactPageClient({
                 id={siteId}
                 initialBlocks={blocks}
                 onBlocksChange={setBlocks}
+                onSaved={() => setSavedAt((n) => n + 1)}
               />
               <div className={styles.channelsStandalone}>{channels}</div>
             </>

@@ -3,7 +3,7 @@
 import { PublishFailedError, toActionError } from "@/lib/actionError";
 import { auditEvent } from "@/lib/observability";
 import { requireAuth } from "@/lib/auth";
-import { cmsMutate } from "@/lib/cms";
+import { cmsMutate, cmsQueryAuthed } from "@/lib/cms";
 import { sanitizeBlocks, type Block } from "@/components/blocks/blocks";
 import { sanitizeHome, type HomeContent } from "@/lib/home";
 import { sanitizeGlobal, type GlobalContent } from "@/lib/global";
@@ -19,19 +19,41 @@ const EDITABLE_FIELDS: Record<string, string[]> = {
 type Result = { ok: true } | { ok: false; error: string };
 
 
-async function updateAndPublish(model: string, id: string, data: Record<string, unknown>) {
+/**
+ * Write to the DRAFT stage. Does not publish.
+ *
+ * Saving used to publish in the same breath, which meant there was nowhere to
+ * work: adding a block, committing an edit, even a drag-reorder went straight
+ * to the live site. Restructuring a page in front of visitors was the only
+ * option available.
+ *
+ * Publishing is now `publishEntry`, called explicitly. Admins read the DRAFT
+ * stage (see `cachedReads.cmsRead`), so the editor shows the work in progress
+ * while visitors keep seeing the last published version.
+ */
+async function updateDraft(model: string, id: string, data: Record<string, unknown>) {
   // Every content write funnels through here, so one audit call covers all of
   // them. Field names only — never values, which are the content itself and
   // would put whole page bodies into the log stream.
   const field = Object.keys(data).join(",");
 
-  await cmsMutate(
-    `mutation Update($id: ID!, $data: ${model}UpdateInput!) {
-       update${model}(where: { id: $id }, data: $data) { id }
-     }`,
-    { id, data }
-  );
+  try {
+    await cmsMutate(
+      `mutation Update($id: ID!, $data: ${model}UpdateInput!) {
+         update${model}(where: { id: $id }, data: $data) { id }
+       }`,
+      { id, data }
+    );
+  } catch (error) {
+    auditEvent({ action: "updateDraft", model, entryId: id, field, outcome: "failed" });
+    throw error;
+  }
 
+  auditEvent({ action: "updateDraft", model, entryId: id, field, outcome: "ok" });
+}
+
+/** Promote an entry's draft to PUBLISHED, making it visible to visitors. */
+async function publishEntry(model: string, id: string) {
   try {
     await cmsMutate(
       `mutation Publish($id: ID!) {
@@ -40,11 +62,11 @@ async function updateAndPublish(model: string, id: string, data: Record<string, 
       { id }
     );
   } catch (error) {
-    auditEvent({ action: "updateAndPublish", model, entryId: id, field, outcome: "failed" });
+    auditEvent({ action: "publish", model, entryId: id, outcome: "failed" });
     throw new PublishFailedError(error);
   }
 
-  auditEvent({ action: "updateAndPublish", model, entryId: id, field, outcome: "ok" });
+  auditEvent({ action: "publish", model, entryId: id, outcome: "ok" });
 }
 
 export async function updateContentField(
@@ -61,7 +83,7 @@ export async function updateContentField(
   }
 
   try {
-    await updateAndPublish(model, id, { [field]: value });
+    await updateDraft(model, id, { [field]: value });
   } catch (e) {
     return toActionError(e, "updateContentField", "Couldn’t save that change.");
   }
@@ -81,7 +103,7 @@ export async function updateGlobal(id: string, rawGlobal: unknown): Promise<Glob
 
   const global = sanitizeGlobal(rawGlobal);
   try {
-    await updateAndPublish("SiteData", id, { global });
+    await updateDraft("SiteData", id, { global });
   } catch (e) {
     return toActionError(e, "updateGlobal", "Couldn’t save the site details.");
   }
@@ -98,7 +120,7 @@ export async function updateSeo(id: string, rawSeo: unknown): Promise<SeoResult>
 
   const seo = sanitizeSeo(rawSeo);
   try {
-    await updateAndPublish("SiteData", id, { seo });
+    await updateDraft("SiteData", id, { seo });
   } catch (e) {
     return toActionError(e, "updateSeo", "Couldn’t save the SEO settings.");
   }
@@ -117,7 +139,7 @@ export async function updateHome(id: string, rawHome: unknown): Promise<HomeResu
 
   const home = sanitizeHome(rawHome);
   try {
-    await updateAndPublish("SiteData", id, { home });
+    await updateDraft("SiteData", id, { home });
   } catch (e) {
     return toActionError(e, "updateHome", "Couldn’t save the homepage.");
   }
@@ -151,9 +173,101 @@ export async function updateBlockLayout(
 
   const blocks = sanitizeBlocks(rawBlocks);
   try {
-    await updateAndPublish(model, id, { [field]: blocks });
+    await updateDraft(model, id, { [field]: blocks });
   } catch (e) {
     return toActionError(e, "updateBlockLayout", "Couldn’t save the page layout.");
   }
   return { ok: true, blocks };
+}
+
+// ── Publishing ───────────────────────────────────────────────────────────────
+//
+// Writes land in DRAFT; this is what makes them visible to visitors. Kept as a
+// separate, explicit step so an admin can restructure a page without doing it
+// in front of an audience.
+
+/** Models an admin may publish. Same whitelist discipline as the write paths. */
+const PUBLISHABLE_MODELS = ["Project", "SiteData"];
+
+export type PublishState = {
+  /** True when the draft has changes the published version does not. */
+  pending: boolean;
+  /** ISO timestamp of the last publish, or null if never published. */
+  publishedAt: string | null;
+};
+
+/**
+ * Whether an entry has unpublished changes.
+ *
+ * `documentInStages` reports each stage's `updatedAt`, so a draft newer than
+ * the published copy means pending work. Treating "never published" as pending
+ * is deliberate: an entry visitors cannot see yet is exactly the case the
+ * publish button exists for.
+ */
+export async function getPublishState(
+  model: string,
+  id: string
+): Promise<{ ok: true; state: PublishState } | { ok: false; error: string }> {
+  const denied = await requireAuth();
+  if (denied) return denied;
+
+  if (!PUBLISHABLE_MODELS.includes(model)) {
+    return { ok: false, error: `"${model}" is not publishable.` };
+  }
+
+  try {
+    const singular = model.charAt(0).toLowerCase() + model.slice(1);
+    const data = await cmsQueryAuthed(
+      `query PublishState($id: ID!) {
+         entry: ${singular}(where: { id: $id }, stage: DRAFT) {
+           updatedAt
+           documentInStages(stages: [PUBLISHED], includeCurrent: false) { updatedAt }
+         }
+       }`,
+      { id }
+    );
+
+    const entry = data?.entry as
+      | { updatedAt?: string; documentInStages?: { updatedAt?: string }[] }
+      | null;
+
+    if (!entry) return { ok: false, error: "That entry no longer exists." };
+
+    const publishedAt = entry.documentInStages?.[0]?.updatedAt ?? null;
+    const draftAt = entry.updatedAt ?? null;
+
+    return {
+      ok: true,
+      state: {
+        // Never published, or the draft moved on since the last publish.
+        pending: !publishedAt || (!!draftAt && draftAt > publishedAt),
+        publishedAt,
+      },
+    };
+  } catch (e) {
+    return toActionError(e, "getPublishState", "Couldn’t check the publish state.");
+  }
+}
+
+/** Publish an entry's draft, making the current content visible to visitors. */
+export async function publishContent(
+  model: string,
+  id: string
+): Promise<{ ok: true; state: PublishState } | { ok: false; error: string }> {
+  const denied = await requireAuth();
+  if (denied) return denied;
+
+  if (!PUBLISHABLE_MODELS.includes(model)) {
+    return { ok: false, error: `"${model}" is not publishable.` };
+  }
+
+  try {
+    await publishEntry(model, id);
+  } catch (e) {
+    return toActionError(e, "publishContent", "Couldn’t publish that.");
+  }
+
+  // Report the state back rather than assuming it, so the UI reflects what the
+  // CMS actually holds — including the real publish timestamp.
+  return getPublishState(model, id);
 }

@@ -19,14 +19,14 @@ export const dynamic = "force-dynamic";
 // Projects live in their own model; their order + archived status live in the
 // SiteData singleton's `portfolio` JSON field (see lib/portfolio).
 const PORTFOLIO_QUERY = `
-  query Portfolio {
-    projects {
+  query Portfolio($stage: Stage!) {
+    projects(stage: $stage) {
       id
       title
       slug
       description
     }
-    siteDatas {
+    siteDatas(stage: $stage) {
       id
       portfolio
     }

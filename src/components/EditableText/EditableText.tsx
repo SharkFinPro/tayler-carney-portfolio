@@ -30,6 +30,11 @@ interface EditableTextProps {
    * doesn't map to a single whitelisted CMS scalar (e.g. nested homepage JSON).
    */
   onSave?: (next: string | string[]) => Promise<{ error: string } | { ok: true }>;
+  /**
+   * Called after a successful save. Saves now write to the DRAFT stage, so the
+   * host page uses this to re-check whether it has unpublished changes.
+   */
+  onSaved?: () => void;
   /** What visitors (and admins not editing) see. */
   children: React.ReactNode;
 }
@@ -52,6 +57,7 @@ export default function EditableText({
   multiline = false,
   floatEdit = false,
   onSave,
+  onSaved,
   children,
 }: EditableTextProps) {
   const isList = Array.isArray(value);
@@ -103,6 +109,7 @@ export default function EditableText({
     }
     setDisplay(Array.isArray(next) ? next.join(", ") : next);
     setEditing(false);
+    onSaved?.();
   }
 
   function cancel() {

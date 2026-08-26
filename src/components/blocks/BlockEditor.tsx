@@ -30,6 +30,8 @@ interface Props {
   id: string;
   initialBlocks: Block[];
   onBlocksChange: (blocks: Block[]) => void;
+  /** Called after each successful save, so the page can re-check publish state. */
+  onSaved?: () => void;
   /** Subject of the page, used to prefill the AI drafting modal. */
   pageTitle?: string;
 }
@@ -42,7 +44,7 @@ const noop = () => {};
 // reordering); editing a row expands its form inline. Structural changes and
 // commits persist through updateBlockLayout, which returns the sanitized list we
 // adopt; onBlocksChange keeps the host's layout (sidebar, preview) in sync.
-export default function BlockEditor({ model, field, id, initialBlocks, onBlocksChange, pageTitle = "" }: Props) {
+export default function BlockEditor({ model, field, id, initialBlocks, onBlocksChange, onSaved, pageTitle = "" }: Props) {
   const [blocks, setBlocks] = useState<Block[]>(initialBlocks);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Block | null>(null);
@@ -100,7 +102,8 @@ export default function BlockEditor({ model, field, id, initialBlocks, onBlocksC
       return { ok: false, error: result.error };
     }
     setBlocks(result.blocks);
-    setStatus("Saved");
+    onSaved?.();
+    setStatus("Saved to draft");
     return { ok: true };
   }
 
