@@ -1,5 +1,6 @@
 "use server";
 
+import { checkUpload, safeFileName } from "@/lib/uploads";
 import { toActionError } from "@/lib/actionError";
 import { isAuthed } from "@/lib/auth";
 import { cmsMutate, cmsUpload, cmsQueryAuthed } from "@/lib/cms";
@@ -97,16 +98,32 @@ export async function uploadAsset(formData: FormData): Promise<Ok<{ asset: Media
   if (denied) return denied;
 
   const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) {
+  if (!(file instanceof File)) {
     return { ok: false, error: "No file provided." };
   }
+
+  // Validate server-side. The client checks file.type before uploading, but
+  // that check is trivially bypassed by calling the action directly, and the
+  // declared MIME type is forgeable regardless — so the real leading bytes
+  // decide. This matters more than usual because next.config sets
+  // dangerouslyAllowSVG, which makes an SVG upload genuinely dangerous.
+  const head = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+  const check = checkUpload(file.size, head);
+  if (!check.ok) {
+    return { ok: false, error: check.error };
+  }
+
+  // Never trust the supplied name: strip directories, restrict the character
+  // set, and force the extension to match what the bytes actually are.
+  const safeFile = new File([file], safeFileName(file.name, check.type), { type: check.type });
+
   const rawTitle = formData.get("title");
   const title = typeof rawTitle === "string" ? rawTitle.trim() : "";
   const rawAlt = formData.get("altText");
   const altText = typeof rawAlt === "string" ? rawAlt.trim() : "";
 
   try {
-    const { id } = await cmsUpload(file);
+    const { id } = await cmsUpload(safeFile);
 
     if (title || altText) {
       await cmsMutate(

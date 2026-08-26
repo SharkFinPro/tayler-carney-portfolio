@@ -11,6 +11,21 @@ assertEnv();
 const isDev = process.env.NODE_ENV === 'development';
 
 const nextConfig: NextConfig = {
+  experimental: {
+    // Server Actions default to a 1 MB request body, and every media upload
+    // goes through one. A cropped phone photo or a resume PDF routinely exceeds
+    // that, and the platform rejects the body BEFORE the action runs — so the
+    // careful error handling inside uploadAsset never got a chance to report
+    // it, and the admin saw a generic crash instead.
+    //
+    // 8 MB matches MAX_UPLOAD_BYTES in src/lib/uploads.ts, which is where the
+    // limit is actually enforced (with a readable message). Note Vercel's own
+    // request cap — 4.5 MB on most plans — is the real ceiling in production
+    // regardless of what is configured here.
+    serverActions: {
+      bodySizeLimit: "8mb",
+    },
+  },
   images: {
     dangerouslyAllowSVG: true,
     contentDispositionType: 'inline',
