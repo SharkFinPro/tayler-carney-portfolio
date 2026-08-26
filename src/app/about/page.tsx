@@ -2,12 +2,16 @@ import { Metadata } from "next";
 import AboutPageClient from "./AboutPageClient";
 import { CACHE_TAGS, cmsRead } from "@/lib/cachedReads";
 import { isAuthed } from "@/lib/auth";
+import getSiteData from "@/components/SiteData";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "About",
-  description:
-    "The designer behind the archive — Tayler Carney's background, practice, and approach to structural fashion design.",
-};
+// Title and description come from SiteData.seo.pages, editable on the admin
+// Settings page. The values there are seeded with exactly what this route used
+// to hardcode, so search results are unchanged until someone edits them.
+export async function generateMetadata(): Promise<Metadata> {
+  const { seo } = await getSiteData();
+  return pageMetadata(seo, "about");
+}
 
 export const dynamic = "force-dynamic";
 

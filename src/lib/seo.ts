@@ -6,6 +6,19 @@
 // from the admin settings page instead of being hardcoded. Pure module (no
 // server-only imports) so the validator runs on both render and save.
 
+/**
+ * The routes that carry their own search/social copy.
+ *
+ * Project detail pages are absent on purpose: they already derive their title
+ * and description from the project's own editable fields, so giving them a
+ * fixed override would be a second source of truth for the same thing.
+ */
+export const SEO_PAGE_KEYS = ["home", "portfolio", "atelier", "about", "contact"] as const;
+export type SeoPageKey = (typeof SEO_PAGE_KEYS)[number];
+
+/** Per-route overrides. `title` feeds the title template; both may be blank. */
+export type SeoPage = { title: string; description: string };
+
 export type SeoContent = {
   // Default document title and the template used for child pages ("%s" is the
   // page-level title, e.g. "Contact | Tayler Carney").
@@ -15,6 +28,14 @@ export type SeoContent = {
   keywords: string[];
   ogTitle: string;
   ogDescription: string;
+  /**
+   * Per-route title and description.
+   *
+   * These were previously hardcoded in each route's `export const metadata`,
+   * so the Settings page could rename the site everywhere except in the search
+   * results for four of its five pages.
+   */
+  pages: Record<SeoPageKey, SeoPage>;
 };
 
 // Seed metadata — mirrors the original hardcoded layout metadata exactly, so SEO
@@ -34,6 +55,31 @@ export const DEFAULT_SEO: SeoContent = {
   ],
   ogTitle: "Tayler Carney | Structural Fashion Design",
   ogDescription: "Explore a portfolio of garments engineered with the precision of architecture.",
+  // Verbatim from the `export const metadata` each route used to declare, so
+  // search results are unchanged until an admin edits them.
+  pages: {
+    home: { title: "Home", description: "" },
+    portfolio: {
+      title: "Portfolio",
+      description:
+        "A working archive of structural fashion projects by Tayler Carney — garment engineering, pattern-making, and material studies documented in full.",
+    },
+    atelier: {
+      title: "Atelier",
+      description:
+        "Inside the studio — the process, tooling, and material research behind Tayler Carney's structural garments.",
+    },
+    about: {
+      title: "About",
+      description:
+        "The designer behind the archive — Tayler Carney's background, practice, and approach to structural fashion design.",
+    },
+    contact: {
+      title: "Contact",
+      description:
+        "Get in touch with Tayler Carney for collaborations, commissions, and studio inquiries.",
+    },
+  },
 };
 
 const str = (v: unknown, fallback = ""): string => (typeof v === "string" ? v : fallback);
@@ -64,5 +110,45 @@ export function sanitizeSeo(raw: unknown): SeoContent {
     keywords,
     ogTitle: str(data.ogTitle, d.ogTitle).trim(),
     ogDescription: str(data.ogDescription, d.ogDescription).trim(),
+    pages: sanitizePages(data.pages),
+  };
+}
+
+/**
+ * Coerce the per-route overrides, always returning an entry for every key so
+ * callers never have to guard. An unrecognized key in stored JSON is ignored
+ * rather than carried forward, which keeps a renamed route from leaving debris
+ * behind forever.
+ */
+function sanitizePages(raw: unknown): Record<SeoPageKey, SeoPage> {
+  const data = (raw ?? {}) as Record<string, unknown>;
+  const out = {} as Record<SeoPageKey, SeoPage>;
+
+  for (const key of SEO_PAGE_KEYS) {
+    const entry = (data[key] ?? {}) as Record<string, unknown>;
+    const fallback = DEFAULT_SEO.pages[key];
+    out[key] = {
+      title: str(entry.title, fallback.title).trim(),
+      description: str(entry.description, fallback.description).trim(),
+    };
+  }
+  return out;
+}
+
+/**
+ * Metadata for one route, resolved against the site-wide values.
+ *
+ * A blank per-page description falls through to the site description rather
+ * than emitting an empty tag — an empty `<meta name="description">` is worse
+ * for search than a generic one.
+ */
+export function pageMetadata(seo: SeoContent, key: SeoPageKey): {
+  title: string;
+  description: string;
+} {
+  const page = seo.pages[key] ?? DEFAULT_SEO.pages[key];
+  return {
+    title: page.title || DEFAULT_SEO.pages[key].title,
+    description: page.description || seo.description,
   };
 }

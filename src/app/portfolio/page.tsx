@@ -2,13 +2,17 @@ import { Metadata } from "next";
 import PortfolioClient from "./PortfolioClient";
 import { CACHE_TAGS, cmsRead } from "@/lib/cachedReads";
 import { isAuthed } from "@/lib/auth";
+import getSiteData from "@/components/SiteData";
+import { pageMetadata } from "@/lib/seo";
 import { orderProjects, sanitizePortfolio } from "@/lib/portfolio";
 
-export const metadata: Metadata = {
-  title: "Portfolio",
-  description:
-    "A working archive of structural fashion projects by Tayler Carney — garment engineering, pattern-making, and material studies documented in full.",
-};
+// Title and description come from SiteData.seo.pages, editable on the admin
+// Settings page. The values there are seeded with exactly what this route used
+// to hardcode, so search results are unchanged until someone edits them.
+export async function generateMetadata(): Promise<Metadata> {
+  const { seo } = await getSiteData();
+  return pageMetadata(seo, "portfolio");
+}
 
 export const dynamic = "force-dynamic";
 
