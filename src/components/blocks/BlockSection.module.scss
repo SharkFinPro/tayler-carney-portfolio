@@ -1512,3 +1512,162 @@
   letter-spacing: 0.06em;
   color: var(--ink-muted);
 }
+
+// ── Annotated image ─────────────────────────────────────────────────────────
+//
+// An image with numbered markers pinned to it. The markers are positioned in
+// percentages of the figure, which is why the figure is the positioning
+// context and the <img> fills it exactly — any padding or border here and every
+// marker drifts off its seam.
+
+.annotated {
+  display: grid;
+  gap: 1.6rem;
+  grid-template-columns: 1fr;
+
+  @media (min-width: 900px) {
+    grid-template-columns: minmax(0, 3fr) minmax(16rem, 2fr);
+    align-items: start;
+    gap: 2.4rem;
+  }
+}
+
+.annotatedFigure {
+  position: relative;
+  margin: 0;
+  line-height: 0;
+}
+
+.annotatedImg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.annotatedMarker {
+  position: absolute;
+  // The stored coordinate is the centre of the mark, not its corner.
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 1px solid var(--ink-inverse, #fff);
+  border-radius: 50%;
+  background: var(--ink, #1a1a1a);
+  color: var(--ink-inverse, #fff);
+  font-family: var(--ff-mono);
+  font-size: 0.7rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 1px 6px rgb(0 0 0 / 35%);
+  transition: transform 0.15s ease, background 0.15s ease;
+
+  &:hover,
+  &:focus-visible {
+    transform: translate(-50%, -50%) scale(1.15);
+  }
+}
+
+.annotatedMarkerActive {
+  background: var(--accent, #9a5a12);
+  transform: translate(-50%, -50%) scale(1.15);
+}
+
+.annotatedLegend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  counter-reset: none;
+}
+
+.annotatedNote {
+  display: flex;
+  gap: 0.7rem;
+  padding-left: 0.1rem;
+  border-left: 2px solid transparent;
+  transition: border-color 0.15s ease;
+}
+
+.annotatedNoteActive {
+  border-left-color: var(--accent, #9a5a12);
+  padding-left: 0.6rem;
+}
+
+.annotatedNumber {
+  flex: 0 0 auto;
+  width: 1.4rem;
+  font-family: var(--ff-mono);
+  font-size: 0.7rem;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+.annotatedText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.annotatedLabel {
+  font-family: var(--ff-sans);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+}
+
+.annotatedDetail {
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--ink-soft, var(--ink-muted));
+}
+
+// ── Figures ─────────────────────────────────────────────────────────────────
+
+.statsRow {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  // auto-fit rather than a fixed column count: three figures should fill the
+  // row, and seven should wrap into a grid without being told to.
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 1.6rem 2rem;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--line, #d9d4cc);
+}
+
+.statValue {
+  font-family: var(--ff-serif);
+  font-size: clamp(1.9rem, 4vw, 2.9rem);
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.statLabel {
+  font-family: var(--ff-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.statDetail {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--ink-soft, var(--ink-muted));
+}

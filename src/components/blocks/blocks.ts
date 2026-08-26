@@ -32,6 +32,18 @@ export type TimelineStage = { marker: string; title: string; description: string
  * information than its average colour.
  */
 export type SwatchItem = { name: string; detail: string; color: string; image: ImageRef | null };
+
+/**
+ * One marker on an `annotatedImage`.
+ *
+ * `x` and `y` are percentages of the image's own width and height, not pixels,
+ * so a marker stays on the seam it was placed on at every rendered size — which
+ * is the whole point, since the same image is served at a dozen widths.
+ */
+export type ImageAnnotation = { x: number; y: number; label: string; detail: string };
+
+/** One figure in a `stats` block: a large number and what it counts. */
+export type StatItem = { value: string; label: string; detail: string };
 // A single entry in a `credentials` block. Flexible enough to cover both the
 // Education list (title = degree, meta = institution · years, description = notes)
 // and the Exhibitions list (term = year, title, description).
@@ -52,6 +64,8 @@ export type BlockType =
   | "beforeAfter"
   | "timeline"
   | "swatches"
+  | "annotatedImage"
+  | "stats"
   | "specs"
   | "documentViewer"
   | "callout"
@@ -84,6 +98,12 @@ export type Block =
   | (BaseBlock & { type: "timeline"; stages: TimelineStage[] })
   // Material or colourway swatches, each a flat colour or a fabric photo.
   | (BaseBlock & { type: "swatches"; items: SwatchItem[] })
+  // One image with numbered markers pinned to it, each explained in a legend
+  // below. For construction details that only make sense pointed at — which
+  // seam, which dart, which of four identical-looking panels.
+  | (BaseBlock & { type: "annotatedImage"; image: ImageRef | null; points: ImageAnnotation[] })
+  // A row of figures: durations, counts, measurements.
+  | (BaseBlock & { type: "stats"; items: StatItem[] })
   // A set of large documents/sheets browsed one at a time via a dropdown.
   | (BaseBlock & { type: "documentViewer"; items: ImageItem[] })
   | (BaseBlock & { type: "callout"; variant: CalloutVariant; text: string; attribution?: string })
@@ -121,6 +141,8 @@ export const BLOCK_TYPES: BlockType[] = [
   "specs",
   "timeline",
   "swatches",
+  "annotatedImage",
+  "stats",
   "documentViewer",
   "callout",
   "split",
@@ -157,6 +179,8 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   specs: "Specs table",
   timeline: "Process timeline",
   swatches: "Material swatches",
+  annotatedImage: "Annotated image",
+  stats: "Figures",
   documentViewer: "Document viewer",
   callout: "Callout",
   split: "Split layout",
@@ -180,6 +204,8 @@ export const BLOCK_DESCRIPTIONS: Record<BlockType, string> = {
   specs: "A table of label / value rows.",
   timeline: "An ordered process rail — stages, fittings, production weeks.",
   swatches: "Material or colourway swatches, as flat colours or fabric photos.",
+  annotatedImage: "One image with numbered markers, each explained below it.",
+  stats: "A row of figures — durations, counts, measurements.",
   documentViewer: "Large documents/sheets browsed one at a time via a dropdown.",
   callout: "A highlighted note or pull quote.",
   split: "Two blocks side-by-side (e.g. a specs table beside a document viewer).",
@@ -216,6 +242,8 @@ export const BLOCK_SHOW_COUNT: Record<BlockType, boolean> = {
   specs: false,
   timeline: true,
   swatches: true,
+  annotatedImage: true,
+  stats: true,
   documentViewer: true,
   callout: false,
   split: false,
@@ -238,6 +266,8 @@ const DEFAULT_HEADINGS: Record<BlockType, string> = {
   specs: "Specifications",
   timeline: "Process",
   swatches: "Materials",
+  annotatedImage: "Construction detail",
+  stats: "By the numbers",
   documentViewer: "Documents",
   callout: "",
   split: "",
@@ -315,6 +345,10 @@ export function createEmptyBlock(type: BlockType): Block {
       return { id, type, heading, stages: [] };
     case "swatches":
       return { id, type, heading, items: [] };
+    case "annotatedImage":
+      return { id, type, heading, image: null, points: [] };
+    case "stats":
+      return { id, type, heading, items: [] };
     case "documentViewer":
       return { id, type, heading, items: [] };
     case "callout":
@@ -367,6 +401,11 @@ export function blockSummary(b: Block): string {
       return `${b.stages.length} stage${b.stages.length === 1 ? "" : "s"}`;
     case "swatches":
       return `${b.items.length} swatch${b.items.length === 1 ? "" : "es"}`;
+    case "annotatedImage":
+      if (!b.image) return "needs an image";
+      return `${b.points.length} marker${b.points.length === 1 ? "" : "s"}`;
+    case "stats":
+      return `${b.items.length} figure${b.items.length === 1 ? "" : "s"}`;
     case "documentViewer":
       return `${b.items.length} document${b.items.length === 1 ? "" : "s"}`;
     case "callout":
@@ -470,6 +509,66 @@ function cleanSwatches(raw: unknown): SwatchItem[] {
       };
     })
     .filter((item) => item.image || item.color || item.name);
+}
+
+/**
+ * Upper bound on markers. Past this the image is a diagram, and the legend is
+ * longer than the prose around it.
+ *
+ * Exported so the editor can stop at the same number. The sanitizer truncates
+ * silently, which on its own means an admin places a 21st marker, saves, and
+ * finds it gone with nothing said about why.
+ */
+export const MAX_ANNOTATIONS = 20;
+
+/**
+ * Coerce a coordinate to a percentage inside the image.
+ *
+ * Clamped rather than dropped: a marker at 140% is a bug in whatever wrote it,
+ * and pinning it to the edge keeps the annotation visible and fixable instead
+ * of silently losing what the admin typed. Rounded to one decimal, which is
+ * finer than any screen can distinguish and keeps the stored JSON small.
+ */
+function cleanPercent(v: unknown): number {
+  // Deliberately not a bare `Number(v)`: `Number(null)`, `Number("")` and
+  // `Number([])` are all 0, which would pin a marker to the top-left corner
+  // where it reads as a deliberate placement rather than as missing data.
+  // Only a number, or a string that actually holds one, counts.
+  const n =
+    typeof v === "number" ? v : typeof v === "string" && v.trim() !== "" ? Number(v) : NaN;
+  if (!Number.isFinite(n)) return 50;
+  return Math.round(Math.min(100, Math.max(0, n)) * 10) / 10;
+}
+
+function cleanAnnotations(raw: unknown): ImageAnnotation[] {
+  if (!Array.isArray(raw)) return [];
+  const points: ImageAnnotation[] = [];
+  for (const v of raw) {
+    const r = (v ?? {}) as Record<string, unknown>;
+    const label = (str(r.label) ?? "").trim();
+    const detail = (str(r.detail) ?? "").trim();
+    // A marker with nothing to say is a dot on a photograph.
+    if (!label && !detail) continue;
+    points.push({ x: cleanPercent(r.x), y: cleanPercent(r.y), label, detail });
+    if (points.length >= MAX_ANNOTATIONS) break;
+  }
+  return points;
+}
+
+function cleanStats(raw: unknown): StatItem[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((v): StatItem => {
+      const r = (v ?? {}) as Record<string, unknown>;
+      return {
+        value: (str(r.value) ?? "").trim(),
+        label: (str(r.label) ?? "").trim(),
+        detail: (str(r.detail) ?? "").trim(),
+      };
+    })
+    // A figure needs a number or a name; the detail alone is a caption for
+    // nothing.
+    .filter((item) => item.value || item.label);
 }
 
 function cleanViews(raw: unknown): ComparisonView[] {
@@ -586,6 +685,10 @@ function cleanBlock(raw: unknown): Block | null {
       return { id, type, heading, stages: cleanStages(r.stages) };
     case "swatches":
       return { id, type, heading, items: cleanSwatches(r.items) };
+    case "annotatedImage":
+      return { id, type, heading, image: cleanImageRef(r.image), points: cleanAnnotations(r.points) };
+    case "stats":
+      return { id, type, heading, items: cleanStats(r.items) };
     case "documentViewer":
       return { id, type, heading, items: cleanItems(r.items) };
     case "callout": {
@@ -686,6 +789,12 @@ export function blockHasData(b: Block): boolean {
     case "timeline":
       return b.stages.length > 0;
     case "swatches":
+      return b.items.length > 0;
+    case "annotatedImage":
+      // The markers are meaningless without the thing they point at, but an
+      // image on its own still renders as an image.
+      return !!b.image;
+    case "stats":
       return b.items.length > 0;
     case "documentViewer":
       return b.items.length > 0;
