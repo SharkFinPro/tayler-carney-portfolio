@@ -1,4 +1,4 @@
-// Provider-agnostic contract for AI-assisted page drafting.
+// Provider-agnostic contracts for the AI-assisted features.
 //
 // The interface exists so the Anthropic implementation is a detail rather than
 // a dependency of the rest of the app: the Server Action, the mapping layer,
@@ -60,6 +60,37 @@ export interface PageGenerator {
  * extras and the admin gets a draft that ignored images they chose.
  */
 export const MAX_IMAGES = 12;
+
+/**
+ * Where an image to be described lives.
+ *
+ * Two cases, because alt text is wanted at two different moments: for an asset
+ * already in the Media Library (which has a URL the provider can fetch), and
+ * for a crop that has not been uploaded yet (which exists only in the browser).
+ * Filling it in at upload time is the one that actually keeps the library from
+ * accumulating undescribed images.
+ */
+export type ImageSource =
+  | { kind: "url"; url: string }
+  | { kind: "inline"; mediaType: string; base64: string };
+
+export type ImageDescriptionInput = {
+  source: ImageSource;
+  /** File name or Media Library title. Context for the model, never quoted back. */
+  name?: string;
+};
+
+/**
+ * Separate from `PageGenerator` rather than folded into it: the two features
+ * are independently useful, and a provider that can do one but not the other is
+ * an ordinary thing to want to plug in.
+ */
+export interface ImageDescriber {
+  /** Identifies the backing provider in logs and in the admin UI. */
+  readonly name: string;
+  /** Returns raw model output — the caller is responsible for cleaning it. */
+  describeImage(input: ImageDescriptionInput): Promise<string>;
+}
 
 /** The questions the admin is asked. Short, and answerable in a sentence. */
 export const DRAFT_QUESTIONS: string[] = [

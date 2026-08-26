@@ -140,14 +140,23 @@ build without blocking it. Set `SKIP_ENV_VALIDATION=1` to skip the check
 entirely; CI does this, since it builds to prove the app compiles and holds no
 production secrets.
 
-### AI page drafting (optional)
+### AI assistance (optional)
 
-With an `ANTHROPIC_API_KEY` set, the block editor offers **Draft with AI**:
-pick images from the Media Library, answer a few short questions, and get draft
-content blocks back for review. Nothing is saved until you insert it.
+One `ANTHROPIC_API_KEY` enables two things:
 
-Without a key the feature hides itself and everything else works unchanged —
-no one needs a key to run the site.
+- **Draft with AI**, in the block editor: pick images from the Media Library,
+  answer a few short questions, and get draft content blocks back for review.
+- **Suggest**, beside any Alt text field: one sentence describing the image,
+  written from the image itself.
+
+Neither ever saves. Drafted blocks wait until you insert them; a suggested
+description lands in the field for you to read and edit, because alt text
+nobody checked is worse for a screen-reader user than an empty attribute — a
+confident wrong description gets believed, a missing one is at least obviously
+missing.
+
+Without a key both features hide themselves and everything else works
+unchanged — no one needs a key to run the site.
 
 ## License
 

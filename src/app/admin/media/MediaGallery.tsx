@@ -18,6 +18,7 @@ import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import type { MediaAsset } from "@/lib/getAssets";
 import { updateAsset, publishAsset, unpublishAsset, deleteAsset, findAssetUsage } from "@/app/admin/mediaActions";
 import MediaUploader from "./MediaUploader";
+import SuggestAltButton from "./SuggestAltButton";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import styles from "./Media.module.scss";
 
@@ -230,6 +231,14 @@ function MediaCard({
                 <span className={styles.altWarning} title="Screen readers will fall back to a generated description">
                   missing
                 </span>
+              )}
+              {isImage && (
+                <SuggestAltButton
+                  getSource={() => ({ kind: "url", url: asset.url })}
+                  name={displayName}
+                  onSuggested={setAltText}
+                  disabled={busy}
+                />
               )}
             </span>
             <input
