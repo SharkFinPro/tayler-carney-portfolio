@@ -5,6 +5,7 @@ import { Cropper, type CropperRef } from "react-advanced-cropper";
 import "react-advanced-cropper/dist/style.css";
 import type { MediaAsset } from "@/lib/getAssets";
 import { uploadAsset } from "@/app/admin/mediaActions";
+import { MAX_UPLOAD_BYTES } from "@/lib/uploads";
 import Modal from "@/components/Modal";
 import styles from "./Media.module.scss";
 
@@ -28,6 +29,35 @@ function outputType(sourceType: string): { mime: string; ext: string } {
 function baseName(fileName: string): string {
   const dot = fileName.lastIndexOf(".");
   return dot > 0 ? fileName.slice(0, dot) : fileName;
+}
+
+// Longest edge of an exported crop. A modern phone camera produces 4000px+
+// images, and exporting one at full resolution yields a multi-megabyte JPEG
+// that used to blow the Server Action body limit. 2400px is well beyond what
+// any layout on the site renders, so this costs nothing visible.
+const MAX_EXPORT_EDGE = 2400;
+
+/**
+ * Scale a canvas down so its longest edge is at most MAX_EXPORT_EDGE,
+ * returning the original when it is already small enough.
+ */
+function downscale(canvas: HTMLCanvasElement): HTMLCanvasElement {
+  const longest = Math.max(canvas.width, canvas.height);
+  if (longest <= MAX_EXPORT_EDGE) return canvas;
+
+  const scale = MAX_EXPORT_EDGE / longest;
+  const target = document.createElement("canvas");
+  target.width = Math.round(canvas.width * scale);
+  target.height = Math.round(canvas.height * scale);
+
+  const ctx = target.getContext("2d");
+  if (!ctx) return canvas;
+  // Browsers default to reasonable smoothing, but say so explicitly — this is
+  // a large downscale and nearest-neighbour would be visibly rough.
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(canvas, 0, 0, target.width, target.height);
+  return target;
 }
 
 export default function MediaUploader({
@@ -90,6 +120,17 @@ export default function MediaUploader({
   }
 
   async function uploadDocument(file: File) {
+    // PDFs skip the crop flow entirely, so nothing shrinks them on the way
+    // through — and a resume PDF over the limit is entirely ordinary.
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setError(
+        `That PDF is ${(file.size / (1024 * 1024)).toFixed(1)} MB. The limit is ${
+          MAX_UPLOAD_BYTES / (1024 * 1024)
+        } MB — try compressing it first.`
+      );
+      return;
+    }
+
     const formData = new FormData();
     formData.append("file", file);
     formData.append("title", baseName(file.name));
@@ -114,12 +155,24 @@ export default function MediaUploader({
       return;
     }
     const { mime, ext } = outputType(source.file.type);
-    const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, mime, 0.92));
+    const exportCanvas = downscale(canvas);
+    const blob: Blob | null = await new Promise((resolve) =>
+      exportCanvas.toBlob(resolve, mime, 0.92)
+    );
     if (!blob) {
       setError("Couldn't export the cropped image.");
       return;
     }
     const cropped = new File([blob], `${baseName(source.file.name)}.${ext}`, { type: mime });
+
+    // Caught here as well as server-side so the admin gets a clear message
+    // instead of the platform rejecting the request body.
+    if (cropped.size > MAX_UPLOAD_BYTES) {
+      setError(
+        "That image is still too large after cropping. Try a tighter crop, or resize it before uploading."
+      );
+      return;
+    }
 
     const formData = new FormData();
     formData.append("file", cropped);
