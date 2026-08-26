@@ -4,9 +4,16 @@ import { headers } from "next/headers";
 import { requireAuth } from "@/lib/auth";
 import { toActionError } from "@/lib/actionError";
 import { clientKeyFromHeaders, createRateLimiter, formatRetryAfter } from "@/lib/rateLimit";
-import { getPageGenerator, isPageGenerationConfigured } from "@/lib/ai";
+import {
+  getImageDescriber,
+  getPageGenerator,
+  isImageDescriptionConfigured,
+  isPageGenerationConfigured,
+} from "@/lib/ai";
 import { toBlocks } from "@/lib/ai/toBlocks";
-import { MAX_IMAGES, type SourceImage } from "@/lib/ai/types";
+import { cleanAltText, isDescribableImageUrl } from "@/lib/ai/altText";
+import { MAX_IMAGES, type ImageSource, type SourceImage } from "@/lib/ai/types";
+import { auditEvent } from "@/lib/observability";
 import type { Block } from "@/components/blocks/blocks";
 
 // Drafting is the only action here that costs money per call, so it gets its
@@ -14,6 +21,11 @@ import type { Block } from "@/components/blocks/blocks";
 // iteration never hits it, tight enough that a stuck retry loop or a stolen
 // session can't run up a bill.
 const draftLimiter = createRateLimiter({ limit: 20, windowMs: 60 * 60 * 1000 });
+
+// Alt text is a much smaller call, and describing a library that has gone
+// undescribed is a legitimately bulk activity — so a separate, larger budget.
+// Still bounded: this is the endpoint a stuck retry loop would hammer.
+const describeLimiter = createRateLimiter({ limit: 120, windowMs: 60 * 60 * 1000 });
 
 /** Bounds on what one request may carry, checked before anything is billed. */
 const MAX_ANSWER_LENGTH = 2000;
@@ -43,6 +55,108 @@ export async function pageGenerationAvailable(): Promise<boolean> {
  * edit, and explicitly accept — generated content should never appear on the
  * live site without someone having looked at it.
  */
+/** Whether the admin UI should offer alt-text suggestions. */
+export async function altTextSuggestionAvailable(): Promise<boolean> {
+  const denied = await requireAuth();
+  if (denied) return false;
+  return isImageDescriptionConfigured();
+}
+
+/** Image formats the API accepts, and the only ones the uploader produces. */
+const INLINE_MEDIA_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+
+/**
+ * Cap on an inline (not-yet-uploaded) image.
+ *
+ * Base64 inflates by a third, so this sits comfortably under both the API's
+ * per-image limit and the 8 MB Server Action body limit. The uploader exports
+ * at most 2400px, which is far below this in practice.
+ */
+const MAX_INLINE_IMAGE_BYTES = 3.5 * 1024 * 1024;
+
+export type AltTextInput = {
+  source: ImageSource;
+  name?: string;
+};
+
+type AltTextResult = { ok: true; altText: string } | { ok: false; error: string };
+
+/**
+ * Suggest alt text for one image.
+ *
+ * Like drafting, this deliberately does NOT save. The suggestion lands in the
+ * field for the admin to read, edit, and save — alt text that nobody checked is
+ * how a library ends up full of confidently wrong descriptions, which is worse
+ * for a screen-reader user than an empty attribute.
+ */
+export async function suggestAltText(input: AltTextInput): Promise<AltTextResult> {
+  const denied = await requireAuth();
+  if (denied) return denied;
+
+  const describer = getImageDescriber();
+  if (!describer) {
+    return {
+      ok: false,
+      error: "AI suggestions aren't configured. Set ANTHROPIC_API_KEY to enable them.",
+    };
+  }
+
+  const client = clientKeyFromHeaders(await headers());
+  const limit = describeLimiter.check(client);
+  if (!limit.allowed) {
+    return {
+      ok: false,
+      error: `That's a lot of suggestions. Try again in ${formatRetryAfter(limit.retryAfterMs)}.`,
+    };
+  }
+
+  const source = input?.source;
+  if (source?.kind === "url") {
+    if (!isDescribableImageUrl(source.url)) {
+      return { ok: false, error: "That image isn't a Media Library asset." };
+    }
+  } else if (source?.kind === "inline") {
+    if (!INLINE_MEDIA_TYPES.includes(source.mediaType)) {
+      return { ok: false, error: "That image format isn't supported for suggestions." };
+    }
+    // base64 length maps back to byte count at 3/4, near enough for a bound.
+    if ((source.base64?.length ?? 0) * 0.75 > MAX_INLINE_IMAGE_BYTES) {
+      return { ok: false, error: "That image is too large to describe. Upload it first." };
+    }
+    if (!source.base64) {
+      return { ok: false, error: "There's no image to describe yet." };
+    }
+  } else {
+    return { ok: false, error: "There's no image to describe yet." };
+  }
+
+  try {
+    const raw = await describer.describeImage({
+      source,
+      name: input.name?.trim().slice(0, 200),
+    });
+
+    // The trust boundary: model output never reaches the field unsanitized.
+    const altText = cleanAltText(raw);
+    if (!altText) {
+      return { ok: false, error: "The suggestion came back empty. Try again, or write it yourself." };
+    }
+
+    auditEvent({
+      action: "suggestAltText",
+      model: "Asset",
+      field: "altText",
+      client,
+      outcome: "ok",
+      extra: { provider: describer.name, length: altText.length },
+    });
+
+    return { ok: true, altText };
+  } catch (e) {
+    return toActionError(e, "suggestAltText", "Couldn’t suggest alt text for that image.");
+  }
+}
+
 export async function draftProjectPage(input: DraftInput): Promise<DraftResult> {
   const denied = await requireAuth();
   if (denied) return denied;
@@ -71,7 +185,10 @@ export async function draftProjectPage(input: DraftInput): Promise<DraftResult> 
   }
 
   const images = (Array.isArray(input?.images) ? input.images : [])
-    .filter((img) => typeof img?.url === "string" && img.url.startsWith("https://"))
+    // Same allowlist the alt-text path uses. These URLs are handed to the
+    // provider to fetch, and "starts with https://" is not a host check —
+    // https://evil.test/x.jpg passed it.
+    .filter((img) => isDescribableImageUrl(img?.url))
     .slice(0, MAX_IMAGES)
     .map((img) => ({
       url: img.url,

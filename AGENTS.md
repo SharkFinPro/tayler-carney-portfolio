@@ -33,7 +33,7 @@ The site has a lightweight, **database-free admin editor**: log in with an env-v
   - `rateLimit.ts` — in-memory sliding-window limiter. Per-instance, with the trade-off documented in the module.
   - `uploads.ts` — server-side upload validation by magic bytes, not the client-declared MIME type.
   - `assetRef.ts` — resolves an Asset stored as an id (resume, OG image), so renames and replacements propagate.
-  - `ai/` — optional AI page drafting behind a provider-agnostic `PageGenerator` interface. `toBlocks.ts` is the trust boundary: model output maps onto a fixed six-kind vocabulary, image URLs are allowlisted against what the admin supplied, and the result still passes through `sanitizeBlocks`.
+  - `ai/` — the optional AI features, behind two provider-agnostic interfaces in `types.ts`: `PageGenerator` (draft a page) and `ImageDescriber` (write alt text). `anthropic.ts` is the only file in the app that imports an AI SDK. Each feature has a trust boundary module that assumes the model got it wrong: `toBlocks.ts` maps drafted output onto a fixed six-kind vocabulary, allowlists image URLs against what the admin supplied, and still runs the result through `sanitizeBlocks`; `altText.ts` strips the wrappers and redundant openers models put around alt text, caps its length, and holds the host allowlist for which images may be sent out at all. **Neither feature writes anything** — both hand their output to the admin to accept.
 - `src/components/` — shared UI: `NavBar/`, `Footer/`, `AdminBar/` (admin-only bottom overlay), `EditableText/` (generic inline scalar/list editor), `AssetPicker/` (image picker reusing Media Library data), `Modal/`, `SiteData/` (the `SiteData` singleton query), `MotionProvider`/`AnimatedSection`, and the **block system** in `blocks/` (see below).
 
 ## Content model (Hygraph)
@@ -125,7 +125,9 @@ What is tested, and why those things:
 - **`richTextAst.ts`** — round-trip fidelity. A lossy conversion corrupts published prose invisibly.
 - **`ai/toBlocks.ts`** — the model-output trust boundary.
 
-Untested by design: `cms.ts`, `getAssets.ts`, and the React components, which need network or DOM mocking heavy enough to test the mocks rather than the code. Prefer an end-to-end test for those.
+Untested by design: `cms.ts`, `getAssets.ts`, and most React components, which need network or DOM mocking heavy enough to test the mocks rather than the code. Prefer an end-to-end test for those.
+
+The exception is `SuggestAltButton`, whose entire surface is two Server Action calls — one `vi.mock` of that module, and the properties under test are ones review cannot see: that an unconfigured install renders no button at all, that availability is asked for once rather than once per gallery card, and that a failed suggestion never reaches the field. Note that `cleanup()` has to be called in `afterEach` by hand: Testing Library only registers auto-cleanup when Vitest globals are on, and they are not.
 
 Because `noUncheckedIndexedAccess` applies to test files too, `src/test/at.ts` provides `at(list, i)`, `only(list)`, and `prop(record, key)`. Use those rather than `list[0]?.field`: optional chaining turns "the list was empty" into "expected undefined to be 'Flats'", while these throw naming the real problem, and they hand back a definite value that narrowing sticks to.
 

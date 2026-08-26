@@ -7,6 +7,8 @@ import type { MediaAsset } from "@/lib/getAssets";
 import { uploadAsset } from "@/app/admin/mediaActions";
 import { MAX_UPLOAD_BYTES } from "@/lib/uploads";
 import Modal from "@/components/Modal";
+import SuggestAltButton from "./SuggestAltButton";
+import type { ImageSource } from "@/lib/ai/types";
 import styles from "./Media.module.scss";
 
 // Common crop aspect ratios; `value` is width/height, undefined = free-form.
@@ -39,15 +41,20 @@ function baseName(fileName: string): string {
 // any layout on the site renders, so this costs nothing visible.
 const MAX_EXPORT_EDGE = 2400;
 
-/**
- * Scale a canvas down so its longest edge is at most MAX_EXPORT_EDGE,
- * returning the original when it is already small enough.
- */
-function downscale(canvas: HTMLCanvasElement): HTMLCanvasElement {
-  const longest = Math.max(canvas.width, canvas.height);
-  if (longest <= MAX_EXPORT_EDGE) return canvas;
+// Longest edge of the copy sent for an alt-text suggestion. The model is being
+// asked what the image is, not to inspect stitching — a 1024px JPEG answers
+// that as well as a 2400px one, encodes faster, and costs less to send.
+const MAX_DESCRIBE_EDGE = 1024;
 
-  const scale = MAX_EXPORT_EDGE / longest;
+/**
+ * Scale a canvas down so its longest edge is at most `maxEdge`, returning the
+ * original when it is already small enough.
+ */
+function downscale(canvas: HTMLCanvasElement, maxEdge = MAX_EXPORT_EDGE): HTMLCanvasElement {
+  const longest = Math.max(canvas.width, canvas.height);
+  if (longest <= maxEdge) return canvas;
+
+  const scale = maxEdge / longest;
   const target = document.createElement("canvas");
   target.width = Math.round(canvas.width * scale);
   target.height = Math.round(canvas.height * scale);
@@ -146,6 +153,22 @@ export default function MediaUploader({
       return;
     }
     onUploaded(result.asset);
+  }
+
+  /**
+   * The current crop, small and JPEG-encoded, for an alt-text suggestion.
+   *
+   * Built from the same canvas the upload will use, so the suggestion
+   * describes what is actually about to be saved — including the crop, which
+   * is often the whole point (a detail shot cropped out of a full-length one
+   * is a different image).
+   */
+  function cropForDescription(): ImageSource | null {
+    const canvas = cropperRef.current?.getCanvas();
+    if (!canvas) return null;
+    const dataUrl = downscale(canvas, MAX_DESCRIBE_EDGE).toDataURL("image/jpeg", 0.85);
+    const base64 = dataUrl.split(",")[1];
+    return base64 ? { kind: "inline", mediaType: "image/jpeg", base64 } : null;
   }
 
   async function handleSave() {
@@ -259,7 +282,15 @@ export default function MediaUploader({
             </label>
 
             <label className={styles.titleField}>
-              <span>Alt text</span>
+              <span className={styles.altLabelRow}>
+                Alt text
+                <SuggestAltButton
+                  getSource={cropForDescription}
+                  name={title.trim() || source.file.name}
+                  onSuggested={setAltText}
+                  disabled={busy}
+                />
+              </span>
               <input type="text" value={altText} onChange={(e) => setAltText(e.target.value)} placeholder="Describe the image for accessibility" />
             </label>
 

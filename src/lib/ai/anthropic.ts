@@ -6,7 +6,13 @@
 
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
-import type { GenerationInput, GeneratedPage, PageGenerator } from "./types";
+import type {
+  GenerationInput,
+  GeneratedPage,
+  ImageDescriber,
+  ImageDescriptionInput,
+  PageGenerator,
+} from "./types";
 
 /**
  * JSON Schema for the response.
@@ -189,6 +195,89 @@ export function createAnthropicGenerator(apiKey: string, model = DEFAULT_MODEL):
       // text — a throw here is caught by the caller and reported as a failed
       // draft rather than crashing the action.
       return JSON.parse(text) as GeneratedPage;
+    },
+  };
+}
+
+// ── Image description ────────────────────────────────────────────────────────
+
+const ALT_SYSTEM_PROMPT = `You write alt text for images in a structural fashion design portfolio.
+
+Alt text is a label read aloud in place of the image. Write the one sentence a
+sighted reader would get from a glance — not a caption, not a critique, not a
+list of everything present.
+
+Rules:
+- Start with the subject. Never begin with "Image of", "A photo of", "This image
+  shows" or similar: a screen reader has already said it is an image.
+- Aim for under 125 characters. One sentence.
+- Describe what is visible. Never guess at materials, techniques, sizes, brands,
+  places, or the identity of anyone shown.
+- If people appear, describe them by what is visible and relevant to the garment
+  (pose, how the piece is worn), not by inferred age, ethnicity, or gender.
+- Be concrete: "a boxy blazer with exposed shoulder seams on a dress form" beats
+  "a beautiful tailored garment".
+- If the image is a flat, a technical drawing, or a document, say so — that is
+  the most useful thing about it.
+- Reply with the alt text and nothing else. No quotes, no preamble, no label.`;
+
+/** Default model for descriptions — a smaller one is plenty for one sentence. */
+const DEFAULT_ALT_MODEL = "claude-sonnet-5";
+
+/** One sentence needs very little room; this also caps the per-call cost. */
+const ALT_MAX_TOKENS = 300;
+
+function altUserContent(input: ImageDescriptionInput): Anthropic.ContentBlockParam[] {
+  const image: Anthropic.ContentBlockParam =
+    input.source.kind === "url"
+      ? { type: "image", source: { type: "url", url: input.source.url } }
+      : {
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: input.source.mediaType as "image/jpeg" | "image/png" | "image/webp" | "image/gif",
+            data: input.source.base64,
+          },
+        };
+
+  const name = input.name?.trim();
+  return [
+    image,
+    {
+      type: "text",
+      // The file name is context, not content: it is often the camera's
+      // "IMG_4821", and when it is meaningful the model should still be
+      // describing the image rather than restating the name.
+      text: name
+        ? `Write the alt text for this image. Its file is named "${name}", which may or may not be meaningful — describe what you can see, not the name.`
+        : "Write the alt text for this image.",
+    },
+  ];
+}
+
+export function createAnthropicDescriber(apiKey: string, model = DEFAULT_ALT_MODEL): ImageDescriber {
+  const client = new Anthropic({ apiKey });
+
+  return {
+    name: `anthropic:${model}`,
+
+    async describeImage(input: ImageDescriptionInput): Promise<string> {
+      const message = await client.messages.create({
+        model,
+        max_tokens: ALT_MAX_TOKENS,
+        system: ALT_SYSTEM_PROMPT,
+        messages: [{ role: "user", content: altUserContent(input) }],
+      });
+
+      // A decline is an ordinary outcome for an image the model won't describe.
+      if (message.stop_reason === "refusal") {
+        throw new Error("The model declined to describe this image.");
+      }
+
+      return message.content
+        .filter((block): block is Anthropic.TextBlock => block.type === "text")
+        .map((block) => block.text)
+        .join("");
     },
   };
 }

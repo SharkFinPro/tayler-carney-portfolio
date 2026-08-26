@@ -309,7 +309,17 @@ $draft-soft: rgba(187, 125, 44, 0.12);
 .meta { padding: 0.7rem; display: flex; flex-direction: column; gap: 0.5rem; }
 
 .field { display: flex; flex-direction: column; gap: 0.2rem; }
-.fieldLabel { font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-muted); }
+// Flex so the alt-text field's Suggest button can sit at the far end of the
+// label row. Single-text-node labels render identically either way.
+.fieldLabel {
+  display: flex;
+  align-items: center;
+  min-height: 1.1rem;
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+}
 
 .input {
   font: inherit;
@@ -526,4 +536,50 @@ $draft-soft: rgba(187, 125, 44, 0.12);
   background: color-mix(in srgb, var(--accent, #9a5a12) 88%, transparent);
   color: #fff;
   pointer-events: none;
+}
+
+// The alt-text suggestion control. Sits inside the field's label row, so it
+// reads as part of the field rather than as another card action — the point is
+// that it fills this input, not that it does something to the asset.
+.suggestBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: auto;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--rule, #d9d4cc);
+  border-radius: 3px;
+  background: transparent;
+  font-family: var(--ff-mono);
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+
+  &:hover:not(:disabled) {
+    color: var(--ink, #1a1a1a);
+    border-color: var(--ink, #1a1a1a);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+}
+
+.suggestError {
+  margin-top: 0.2rem;
+  font-size: 0.68rem;
+  color: var(--danger, #a12b2b);
+}
+
+// The uploader's alt-text label needs the same row treatment as the gallery
+// card's, but `.titleField > span` is styled independently of `.fieldLabel`.
+.altLabelRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
 }
