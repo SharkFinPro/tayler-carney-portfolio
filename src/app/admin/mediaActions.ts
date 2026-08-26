@@ -2,16 +2,13 @@
 
 import { checkUpload, safeFileName } from "@/lib/uploads";
 import { toActionError } from "@/lib/actionError";
-import { isAuthed } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
 import { cmsMutate, cmsUpload, cmsQueryAuthed } from "@/lib/cms";
 import { getAssets, getAssetById, type MediaAsset } from "@/lib/getAssets";
 
 type Ok<T> = { ok: true } & T;
 type Err = { ok: false; error: string };
 
-async function requireAuth(): Promise<Err | null> {
-  return (await isAuthed()) ? null : { ok: false, error: "Not authorized." };
-}
 
 // Admin-gated read for client components (e.g. AssetPicker).
 export async function fetchAssets(): Promise<Ok<{ assets: MediaAsset[] }> | Err> {

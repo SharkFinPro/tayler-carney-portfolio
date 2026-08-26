@@ -1,7 +1,7 @@
 "use server";
 
-import { toActionError } from "@/lib/actionError";
-import { isAuthed } from "@/lib/auth";
+import { PublishFailedError, toActionError } from "@/lib/actionError";
+import { requireAuth } from "@/lib/auth";
 import { cmsMutate } from "@/lib/cms";
 import { sanitizeBlocks, type Block } from "@/components/blocks/blocks";
 import { sanitizeHome, type HomeContent } from "@/lib/home";
@@ -17,9 +17,6 @@ const EDITABLE_FIELDS: Record<string, string[]> = {
 
 type Result = { ok: true } | { ok: false; error: string };
 
-async function requireAuth(): Promise<{ ok: false; error: string } | null> {
-  return (await isAuthed()) ? null : { ok: false, error: "Not authorized." };
-}
 
 async function updateAndPublish(model: string, id: string, data: Record<string, unknown>) {
   await cmsMutate(
@@ -28,12 +25,17 @@ async function updateAndPublish(model: string, id: string, data: Record<string, 
      }`,
     { id, data }
   );
-  await cmsMutate(
-    `mutation Publish($id: ID!) {
-       publish${model}(where: { id: $id }, to: PUBLISHED) { id }
-     }`,
-    { id }
-  );
+
+  try {
+    await cmsMutate(
+      `mutation Publish($id: ID!) {
+         publish${model}(where: { id: $id }, to: PUBLISHED) { id }
+       }`,
+      { id }
+    );
+  } catch (error) {
+    throw new PublishFailedError(error);
+  }
 }
 
 export async function updateContentField(

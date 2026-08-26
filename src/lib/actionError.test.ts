@@ -125,3 +125,38 @@ describe("toActionError — robustness", () => {
     );
   });
 });
+
+describe("toActionError — partial writes", () => {
+  /** Mirrors PublishFailedError from contentActions without importing a "use server" module. */
+  function publishFailed() {
+    const e = new Error(
+      "Your change was saved as a draft, but publishing it failed, so visitors still see the previous version. Try saving again."
+    );
+    e.name = "PublishFailedError";
+    return e;
+  }
+
+  it("passes the partial-write message through verbatim", () => {
+    // update+publish are two mutations with no transaction available, so a
+    // half-applied write is real. Reporting it as a flat failure would have the
+    // admin believe nothing saved — and the next publish would then ship an
+    // edit they thought was discarded.
+    const message = messageFor(publishFailed());
+    expect(message).toMatch(/saved as a draft/);
+    expect(message).toMatch(/publishing it failed/);
+  });
+
+  it("does not append a correlation id to it", () => {
+    expect(messageFor(publishFailed())).not.toMatch(/\(ref/);
+  });
+
+  it("does not let a generic translation swallow it", () => {
+    // The word "failed" appears in the message; it must not be reinterpreted.
+    expect(messageFor(publishFailed())).not.toMatch(/Couldn’t save that\.$/);
+  });
+
+  it("still logs it server-side", () => {
+    toActionError(publishFailed(), "updateBlockLayout", "Couldn't save that.");
+    expect(console.error).toHaveBeenCalledOnce();
+  });
+});

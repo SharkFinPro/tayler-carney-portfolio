@@ -14,6 +14,30 @@
 
 export type SafeError = { ok: false; error: string };
 
+/**
+ * Thrown when a draft write succeeded but publishing it did not.
+ *
+ * `updateAndPublish` issues two sequential mutations with no transaction
+ * available through the Hygraph API, so a partial application is genuinely
+ * possible: the draft holds the new content while the published entry still
+ * holds the old. Reporting that as a flat failure is actively misleading — the
+ * admin believes nothing was saved, and the next successful publish of that
+ * entry then ships an edit they thought had been discarded.
+ *
+ * Defined here rather than beside `updateAndPublish` because a `"use server"`
+ * module may only export async functions; exporting a class from one fails the
+ * build.
+ */
+export class PublishFailedError extends Error {
+  constructor(cause: unknown) {
+    super(
+      "Your change was saved as a draft, but publishing it failed, so visitors still see the previous version. Try saving again."
+    );
+    this.name = "PublishFailedError";
+    this.cause = cause;
+  }
+}
+
 /** Short, roughly-unique token linking a UI message to a server log line. */
 function correlationId(): string {
   return Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -70,6 +94,13 @@ export function toActionError(error: unknown, context: string, fallback: string)
 
   // The full error, including the raw CMS text, stays on the server.
   console.error(`[action:${context}] ${id}:`, error);
+
+  // A partial write already carries an accurate, actionable message of its own
+  // — it says the draft saved but publishing didn't, which none of the generic
+  // translations below could convey.
+  if (error instanceof Error && error.name === "PublishFailedError") {
+    return { ok: false, error: error.message };
+  }
 
   const translation = TRANSLATIONS.find((t) => t.match.test(raw));
   if (translation) {

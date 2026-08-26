@@ -58,6 +58,12 @@ export default function BlockEditor({ model, field, id, initialBlocks, onBlocksC
   }, [blocks, onBlocksChange]);
 
   async function persist(next: Block[]): Promise<{ ok: true } | { ok: false; error: string }> {
+    // Snapshot before the optimistic update. Previously a failed save left the
+    // new arrangement on screen while Hygraph still held the old one, so an
+    // admin who missed the small status message believed their work was saved
+    // — and reloading silently discarded it.
+    const previous = blocksRef.current;
+
     setBlocks(next);
     setSaving(true);
     setError("");
@@ -65,6 +71,8 @@ export default function BlockEditor({ model, field, id, initialBlocks, onBlocksC
     const result = await updateBlockLayout(model, id, field, next);
     setSaving(false);
     if ("error" in result) {
+      // Roll back so what is on screen always matches what persisted.
+      setBlocks(previous);
       setError(result.error);
       return { ok: false, error: result.error };
     }
