@@ -7,6 +7,7 @@ import { motion, type Variants } from "framer-motion";
 import styles from "./BlockSection.module.scss";
 import ImageGrid, { ImageGridItem } from "./ImageGrid";
 import SheetViewer from "./SheetViewer";
+import BeforeAfter from "./BeforeAfter";
 import RichTextWidget from "./richText/RichTextWidget";
 import { BLUR_DATA_URL } from "@/components/AnimatedSection";
 import { resolveAlt } from "@/lib/images";
@@ -123,6 +124,66 @@ function BlockContent({ block, onOpen, priority = false }: { block: Block; onOpe
     case "mediaShowcase": {
       const items = itemsToGrid(block.items, block.heading || "Item");
       return <ImageGrid items={items} variant={block.layout === "grid" ? "grid" : "cards"} onOpen={onOpen} priority={priority} />;
+    }
+
+    case "beforeAfter": {
+      // blockHasData already requires both images; this guard keeps the
+      // renderer independently safe if it is ever called directly.
+      if (!block.before.image.url || !block.after.image.url) return null;
+      return <BeforeAfter before={block.before} after={block.after} />;
+    }
+
+    case "timeline": {
+      if (!block.stages.length) return null;
+      return (
+        <ol className={styles.timeline}>
+          {block.stages.map((stage, i) => (
+            <li key={i} className={styles.timelineStage}>
+              {stage.marker && <span className={styles.timelineMarker}>{stage.marker}</span>}
+              <div className={styles.timelineBody}>
+                {stage.title && <h3 className={styles.timelineTitle}>{stage.title}</h3>}
+                {stage.description && (
+                  <p className={styles.timelineDesc}>{stage.description}</p>
+                )}
+              </div>
+            </li>
+          ))}
+        </ol>
+      );
+    }
+
+    case "swatches": {
+      if (!block.items.length) return null;
+      return (
+        <ul className={styles.swatchGrid}>
+          {block.items.map((item, i) => (
+            <li key={i} className={styles.swatch}>
+              <span
+                className={styles.swatchChip}
+                // A fabric photo carries more information than its average
+                // colour, so an image wins when both are set.
+                style={!item.image && item.color ? { backgroundColor: item.color } : undefined}
+              >
+                {item.image && (
+                  <Image
+                    src={item.image.url}
+                    alt={resolveAlt(item.image.altText, item.name || "Material swatch")}
+                    fill
+                    sizes="(max-width: 600px) 40vw, 160px"
+                    className={styles.swatchImg}
+                  />
+                )}
+              </span>
+              {(item.name || item.detail) && (
+                <span className={styles.swatchMeta}>
+                  {item.name && <span className={styles.swatchName}>{item.name}</span>}
+                  {item.detail && <span className={styles.swatchDetail}>{item.detail}</span>}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      );
     }
 
     case "comparison": {

@@ -1259,3 +1259,256 @@
     }
   }
 }
+
+// ── Before / after ───────────────────────────────────────────────────────────
+// Two images stacked in the same box; the top one is clipped to a divider
+// position published as --ba-position by the component.
+
+.beforeAfter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.baFrame {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--plate);
+  cursor: ew-resize;
+  touch-action: pan-y; // let vertical scrolling through; we own horizontal
+  user-select: none;
+  line-height: 0; // kill the inline-image descender gap
+}
+
+.baImage {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.baClip {
+  position: absolute;
+  inset: 0;
+  // The clip is what produces the wipe. Width would rescale the image; insetting
+  // from the right keeps both layers in identical geometry so features line up.
+  clip-path: inset(0 calc(100% - var(--ba-position)) 0 0);
+
+  .baImage {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.baDivider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--ba-position);
+  width: 2px;
+  margin-left: -1px;
+  background: var(--canvas);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.18);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.baHandle {
+  font-family: var(--ff-mono);
+  font-size: 0.7rem;
+  line-height: 1;
+  color: var(--ink);
+  background: var(--canvas);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  padding: 0.4rem 0.5rem;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.15);
+}
+
+.baLabel {
+  position: absolute;
+  bottom: 0.6rem;
+  font-family: var(--ff-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--canvas);
+  background: rgb(0 0 0 / 0.55);
+  padding: 0.3rem 0.55rem;
+  pointer-events: none;
+}
+
+.baLabelBefore { left: 0.6rem; }
+.baLabelAfter { right: 0.6rem; }
+
+// Visually hidden but still focusable and operable — the native range is what
+// makes this keyboard-accessible, so it must never be display:none.
+.baRange {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+
+  &:focus-visible {
+    position: static;
+    width: 100%;
+    height: auto;
+    margin: 0;
+    clip: auto;
+    clip-path: none;
+    accent-color: var(--ink);
+  }
+}
+
+// ── Process timeline ─────────────────────────────────────────────────────────
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+
+  // The rail. Drawn behind the markers, inset to their centre line.
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0.55rem;
+    bottom: 0.55rem;
+    left: 6.25rem;
+    width: 1px;
+    background: var(--line);
+  }
+
+  @media (max-width: 700px) {
+    &::before { left: 0.3rem; }
+  }
+}
+
+.timelineStage {
+  position: relative;
+  display: grid;
+  grid-template-columns: 6.25rem 1fr;
+  gap: 0 1.75rem;
+  padding-bottom: 1.75rem;
+
+  &:last-child { padding-bottom: 0; }
+
+  // The node on the rail.
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0.45rem;
+    left: 6.25rem;
+    width: 7px;
+    height: 7px;
+    margin-left: -3px;
+    border-radius: 999px;
+    background: var(--canvas);
+    box-shadow: 0 0 0 1px var(--ink-muted);
+  }
+
+  @media (max-width: 700px) {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+    padding-left: 1.5rem;
+
+    &::before { left: 0.3rem; }
+  }
+}
+
+.timelineMarker {
+  font-family: var(--ff-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  text-align: right;
+  padding-top: 0.2rem;
+
+  @media (max-width: 700px) {
+    text-align: left;
+    padding-top: 0;
+  }
+}
+
+.timelineBody {
+  min-width: 0;
+}
+
+.timelineTitle {
+  font-family: var(--ff-serif);
+  font-size: 1.05rem;
+  font-weight: 400;
+  margin: 0 0 0.3rem;
+  color: var(--ink);
+}
+
+.timelineDesc {
+  font-family: var(--ff-sans);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  margin: 0;
+  max-width: 60ch;
+}
+
+// ── Material swatches ────────────────────────────────────────────────────────
+
+.swatchGrid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 1.25rem;
+}
+
+.swatch {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.swatchChip {
+  position: relative;
+  display: block;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  // Visible even when a swatch has neither colour nor image, so an
+  // in-progress entry reads as a placeholder rather than as nothing.
+  background: var(--plate);
+}
+
+.swatchImg {
+  object-fit: cover;
+}
+
+.swatchMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.swatchName {
+  font-family: var(--ff-sans);
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+
+.swatchDetail {
+  font-family: var(--ff-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+}

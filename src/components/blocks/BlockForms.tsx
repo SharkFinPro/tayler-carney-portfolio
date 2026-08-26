@@ -17,6 +17,8 @@ import {
   type ImageRef,
   type ComparisonView,
   type SpecRow,
+  type SwatchItem,
+  type TimelineStage,
   type CalloutVariant,
   type CredentialEntry,
 } from "./blocks";
@@ -392,6 +394,125 @@ function ViewList({ value, onChange }: { value: ComparisonView[]; onChange: (v: 
   );
 }
 
+function StageList({ value, onChange }: { value: TimelineStage[]; onChange: (v: TimelineStage[]) => void }) {
+  const drag = useRowDrag((from, to) => onChange(move(value, from, to)));
+  const update = (i: number, patch: Partial<TimelineStage> | null) => {
+    const next = [...value];
+    if (patch === null) next.splice(i, 1);
+    else next[i] = { ...next[i], ...patch };
+    onChange(next);
+  };
+  return (
+    <div className={styles.subGroup}>
+      {value.map((stage, i) => (
+        <Fragment key={i}>
+          {drag.showBoxBefore(i) && <div className={styles.rowPlaceholder} style={{ height: drag.size.h }} />}
+          <div
+            ref={drag.registerRow(i)}
+            className={`${styles.subGroup} ${drag.dragIndex === i ? styles.rowDragging : ""}`}
+          >
+            <div className={styles.row}>
+              <DragHandle {...drag.handleProps(i)} />
+              <Field label="Marker" value={stage.marker} onChange={(v) => update(i, { marker: v })} />
+              <Field label="Title" value={stage.title} onChange={(v) => update(i, { title: v })} />
+              <ReorderControls index={i} count={value.length} onMove={(to) => onChange(move(value, i, to))} />
+              <button type="button" className={styles.iconBtn} onClick={() => update(i, null)} aria-label="Remove stage">Remove</button>
+            </div>
+            <Field
+              label="Description"
+              value={stage.description}
+              onChange={(v) => update(i, { description: v })}
+              multiline
+            />
+          </div>
+        </Fragment>
+      ))}
+      {drag.showBoxBefore(value.length) && <div className={styles.rowPlaceholder} style={{ height: drag.size.h }} />}
+      <RowDragLayer drag={drag} />
+      <div className={styles.addRow}>
+        <button
+          type="button"
+          className={styles.iconBtn}
+          onClick={() => onChange([...value, { marker: "", title: "", description: "" }])}
+        >
+          + Add stage
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SwatchList({ value, onChange }: { value: SwatchItem[]; onChange: (v: SwatchItem[]) => void }) {
+  const drag = useRowDrag((from, to) => onChange(move(value, from, to)));
+  const update = (i: number, patch: Partial<SwatchItem> | null) => {
+    const next = [...value];
+    if (patch === null) next.splice(i, 1);
+    else next[i] = { ...next[i], ...patch };
+    onChange(next);
+  };
+  return (
+    <div className={styles.subGroup}>
+      {value.map((item, i) => (
+        <Fragment key={i}>
+          {drag.showBoxBefore(i) && <div className={styles.rowPlaceholder} style={{ height: drag.size.h }} />}
+          <div
+            ref={drag.registerRow(i)}
+            className={`${styles.subGroup} ${drag.dragIndex === i ? styles.rowDragging : ""}`}
+          >
+            <div className={styles.row}>
+              <DragHandle {...drag.handleProps(i)} />
+              <Field label="Name" value={item.name} onChange={(v) => update(i, { name: v })} />
+              <Field label="Detail" value={item.detail} onChange={(v) => update(i, { detail: v })} />
+              <ReorderControls index={i} count={value.length} onMove={(to) => onChange(move(value, i, to))} />
+              <button type="button" className={styles.iconBtn} onClick={() => update(i, null)} aria-label="Remove swatch">Remove</button>
+            </div>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>Colour</span>
+              {/* A native colour input plus the hex, since a colour picker
+                  alone cannot express "unset" and an admin may want to clear
+                  it back to using the photo. */}
+              <span className={styles.row}>
+                <input
+                  type="color"
+                  value={item.color || "#cccccc"}
+                  onChange={(e) => update(i, { color: e.target.value })}
+                  aria-label={`Colour for swatch ${i + 1}`}
+                />
+                <input
+                  type="text"
+                  className={styles.input}
+                  placeholder="#a0522d"
+                  value={item.color}
+                  onChange={(e) => update(i, { color: e.target.value })}
+                  aria-label={`Hex colour for swatch ${i + 1}`}
+                />
+                {item.color && (
+                  <button type="button" className={styles.iconBtn} onClick={() => update(i, { color: "" })}>
+                    Clear
+                  </button>
+                )}
+              </span>
+            </label>
+            <span className={styles.fieldLabel}>Photo (used instead of the colour)</span>
+            <ImageRefFields value={item.image ?? { url: "" }} onChange={(r) => update(i, { image: r })} />
+          </div>
+        </Fragment>
+      ))}
+      {drag.showBoxBefore(value.length) && <div className={styles.rowPlaceholder} style={{ height: drag.size.h }} />}
+      <RowDragLayer drag={drag} />
+      <div className={styles.addRow}>
+        <button
+          type="button"
+          className={styles.iconBtn}
+          onClick={() => onChange([...value, { name: "", detail: "", color: "", image: null }])}
+        >
+          + Add swatch
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function RowList({ value, onChange }: { value: SpecRow[]; onChange: (v: SpecRow[]) => void }) {
   const drag = useRowDrag((from, to) => onChange(move(value, from, to)));
   const update = (i: number, patch: Partial<SpecRow> | null) => {
@@ -649,6 +770,55 @@ export default function BlockForm({ block, onChange }: { block: Block; onChange:
           {heading}
           <span className={styles.fieldLabel}>Views</span>
           <ViewList value={block.views} onChange={(views) => onChange({ ...block, views })} />
+        </>
+      );
+
+    case "beforeAfter":
+      return (
+        <>
+          {heading}
+          <div className={styles.subGroup}>
+            <span className={styles.fieldLabel}>Before</span>
+            <Field
+              label="Label"
+              value={block.before.label}
+              onChange={(v) => onChange({ ...block, before: { ...block.before, label: v } })}
+            />
+            <ImageRefFields
+              value={block.before.image}
+              onChange={(r) => onChange({ ...block, before: { ...block.before, image: r ?? { url: "" } } })}
+            />
+          </div>
+          <div className={styles.subGroup}>
+            <span className={styles.fieldLabel}>After</span>
+            <Field
+              label="Label"
+              value={block.after.label}
+              onChange={(v) => onChange({ ...block, after: { ...block.after, label: v } })}
+            />
+            <ImageRefFields
+              value={block.after.image}
+              onChange={(r) => onChange({ ...block, after: { ...block.after, image: r ?? { url: "" } } })}
+            />
+          </div>
+        </>
+      );
+
+    case "timeline":
+      return (
+        <>
+          {heading}
+          <span className={styles.fieldLabel}>Stages</span>
+          <StageList value={block.stages} onChange={(stages) => onChange({ ...block, stages })} />
+        </>
+      );
+
+    case "swatches":
+      return (
+        <>
+          {heading}
+          <span className={styles.fieldLabel}>Swatches</span>
+          <SwatchList value={block.items} onChange={(items) => onChange({ ...block, items })} />
         </>
       );
 

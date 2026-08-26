@@ -346,3 +346,146 @@ describe("duplicateBlock", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 });
+
+describe("new layouts — timeline", () => {
+  it("keeps a stage with any one of its three fields", () => {
+    const block = one({
+      type: "timeline",
+      id: "t",
+      heading: "",
+      stages: [
+        { marker: "Week 1", title: "Draping", description: "Toile on the stand." },
+        { marker: "Week 2" },
+        { title: "Fitting" },
+        { description: "Notes only" },
+      ],
+    });
+    if (block?.type !== "timeline") throw new Error("expected timeline");
+    expect(block.stages).toHaveLength(4);
+  });
+
+  it("drops entirely blank stages", () => {
+    const block = one({
+      type: "timeline",
+      id: "t",
+      heading: "",
+      stages: [{ marker: "W1", title: "", description: "" }, {}, null, { marker: "   " }],
+    });
+    if (block?.type !== "timeline") throw new Error("expected timeline");
+    expect(block.stages).toHaveLength(1);
+  });
+
+  it("preserves stage order", () => {
+    const block = one({
+      type: "timeline",
+      id: "t",
+      heading: "",
+      stages: [{ title: "A" }, { title: "B" }, { title: "C" }],
+    });
+    if (block?.type !== "timeline") throw new Error("expected timeline");
+    expect(block.stages.map((s) => s.title)).toEqual(["A", "B", "C"]);
+  });
+});
+
+describe("new layouts — beforeAfter", () => {
+  const withImages = {
+    type: "beforeAfter",
+    id: "ba",
+    heading: "",
+    before: { label: "Sketch", image: { url: IMG } },
+    after: { label: "Garment", image: { url: `${IMG}2` } },
+  };
+
+  it("keeps both labelled sides", () => {
+    const block = one(withImages);
+    if (block?.type !== "beforeAfter") throw new Error("expected beforeAfter");
+    expect(block.before.label).toBe("Sketch");
+    expect(block.after.image.url).toBe(`${IMG}2`);
+  });
+
+  it("renders only when BOTH images are present", () => {
+    // A wipe with one image is not a comparison.
+    expect(blockHasData(one(withImages)!)).toBe(true);
+    expect(
+      blockHasData(one({ ...withImages, after: { label: "After", image: { url: "" } } })!)
+    ).toBe(false);
+    expect(
+      blockHasData(one({ ...withImages, before: { label: "Before", image: null } })!)
+    ).toBe(false);
+  });
+
+  it("always keeps two structural sides, even when empty", () => {
+    // cleanSide must not drop a side — the block is a fixed pair.
+    const block = one({ type: "beforeAfter", id: "ba", heading: "" });
+    if (block?.type !== "beforeAfter") throw new Error("expected beforeAfter");
+    expect(block.before).toBeTruthy();
+    expect(block.after).toBeTruthy();
+    expect(block.before.label).toBe("Before");
+    expect(block.after.label).toBe("After");
+  });
+
+  it("strips an unsafe image url to empty rather than dropping the side", () => {
+    const block = one({
+      ...withImages,
+      before: { label: "Sketch", image: { url: "javascript:alert(1)" } },
+    });
+    if (block?.type !== "beforeAfter") throw new Error("expected beforeAfter");
+    expect(block.before.image.url).toBe("");
+    expect(blockHasData(block)).toBe(false);
+  });
+});
+
+describe("new layouts — swatches", () => {
+  it("accepts a flat colour", () => {
+    const block = one({
+      type: "swatches",
+      id: "s",
+      heading: "",
+      items: [{ name: "Oxblood", detail: "Wool melton", color: "#7B1E22" }],
+    });
+    if (block?.type !== "swatches") throw new Error("expected swatches");
+    expect(block.items[0].color).toBe("#7b1e22");
+  });
+
+  it.each(["#fff", "#FFFFFF", "#a0522d"])("accepts the hex form %s", (color) => {
+    const block = one({ type: "swatches", id: "s", heading: "", items: [{ name: "x", color }] });
+    if (block?.type !== "swatches") throw new Error("expected swatches");
+    expect(block.items[0].color).toBe(color.toLowerCase());
+  });
+
+  it.each([
+    "red",
+    "rgb(1,2,3)",
+    "#12345",
+    "#gggggg",
+    "expression(alert(1))",
+    "; background: url(x)",
+  ])("rejects %j, since the value goes into an inline style", (color) => {
+    const block = one({ type: "swatches", id: "s", heading: "", items: [{ name: "x", color }] });
+    if (block?.type !== "swatches") throw new Error("expected swatches");
+    expect(block.items[0].color).toBe("");
+  });
+
+  it("keeps an entry that has a photo but no colour", () => {
+    const block = one({
+      type: "swatches",
+      id: "s",
+      heading: "",
+      items: [{ image: { url: IMG } }],
+    });
+    if (block?.type !== "swatches") throw new Error("expected swatches");
+    expect(block.items).toHaveLength(1);
+    expect(block.items[0].image?.url).toBe(IMG);
+  });
+
+  it("drops an entry with nothing to show at all", () => {
+    const block = one({
+      type: "swatches",
+      id: "s",
+      heading: "",
+      items: [{ name: "Keep" }, { detail: "no name, no colour, no photo" }, {}, null],
+    });
+    if (block?.type !== "swatches") throw new Error("expected swatches");
+    expect(block.items.map((i) => i.name)).toEqual(["Keep"]);
+  });
+});
