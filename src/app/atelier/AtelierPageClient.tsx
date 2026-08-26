@@ -5,6 +5,7 @@ import { motion, type Variants } from "framer-motion";
 import styles from "./Atelier.module.scss";
 import BlockSection from "@/components/blocks/BlockSection";
 import BlockEditor from "@/components/blocks/BlockEditor";
+import PublishBar from "@/components/blocks/PublishBar";
 import ProjectModal from "@/app/portfolio/[slug]/ProjectModal";
 import { sanitizeBlocks, blockHasData, type Block } from "@/components/blocks/blocks";
 import { useLightbox } from "@/components/useLightbox";
@@ -33,6 +34,8 @@ export default function AtelierPageClient({ siteId, atelier, isAdmin = false }: 
   const sectionBlocks = useMemo(() => blocks.filter(blockHasData), [blocks]);
 
   const lightbox = useLightbox();
+  // Bumped after each save so the publish bar re-checks what is pending.
+  const [savedAt, setSavedAt] = useState(0);
 
   return (
     <>
@@ -49,6 +52,10 @@ export default function AtelierPageClient({ siteId, atelier, isAdmin = false }: 
             <span className={styles.headerEyebrow}>Studio Process</span>
             <h1 className={styles.headerTitle}>Atelier</h1>
           </motion.div>
+
+          {isAdmin && siteId && (
+            <PublishBar model="SiteData" entryId={siteId} refreshKey={savedAt} />
+          )}
 
           {isAdmin && (
             <button
@@ -67,6 +74,7 @@ export default function AtelierPageClient({ siteId, atelier, isAdmin = false }: 
               id={siteId}
               initialBlocks={blocks}
               onBlocksChange={setBlocks}
+                onSaved={() => setSavedAt((n) => n + 1)}
             />
           ) : sectionBlocks.length === 0 ? (
             <p className={styles.empty}>No entries found</p>

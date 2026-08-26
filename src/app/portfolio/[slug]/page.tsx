@@ -27,8 +27,8 @@ type ProjectRecord = LegacyProject & {
 // executions of a large query to render one page.
 const getProjectMeta = cache(async (slug: string) => {
   const data = (await cmsRead(
-    `query ProjectMeta($slug: String!) {
-       projects(where: { slug: $slug }) { title description }
+    `query ProjectMeta($slug: String!, $stage: Stage!) {
+       projects(stage: $stage, where: { slug: $slug }) { title description }
      }`,
     { slug: slug.toLowerCase() },
     { tags: [CACHE_TAGS.projects, CACHE_TAGS.project(slug.toLowerCase())] }
@@ -41,8 +41,8 @@ const getProject = cache(async function getProject(slug: string) {
   try {
     const data = await cmsRead(
       `
-          query Projects($slug: String!) {
-            projects(where: {slug: $slug}) {
+          query Projects($slug: String!, $stage: Stage!) {
+            projects(stage: $stage, where: {slug: $slug}) {
               id
               title
               slug
@@ -140,9 +140,9 @@ const getProject = cache(async function getProject(slug: string) {
 // state and can run concurrently with it.
 const getAllProjects = cache(async function getAllProjects() {
   const data = (await cmsRead(
-    `query SiblingProjects {
-       projects { id slug title }
-       siteDatas { portfolio }
+    `query SiblingProjects($stage: Stage!) {
+       projects(stage: $stage) { id slug title }
+       siteDatas(stage: $stage) { portfolio }
      }`,
     {},
     { tags: [CACHE_TAGS.projects, CACHE_TAGS.siteData] }

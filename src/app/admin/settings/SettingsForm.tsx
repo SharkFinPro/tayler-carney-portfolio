@@ -4,6 +4,7 @@ import { useState } from "react";
 import { updateGlobal, updateSeo } from "@/app/admin/contentActions";
 import { useUnsavedChanges } from "@/components/useUnsavedChanges";
 import AssetPicker from "@/components/AssetPicker";
+import PublishBar from "@/components/blocks/PublishBar";
 import { MAX_NAV_ITEMS, type GlobalContent, type NavItem } from "@/lib/global";
 import { SEO_PAGE_KEYS, type SeoContent, type SeoPage, type SeoPageKey } from "@/lib/seo";
 import styles from "./Settings.module.scss";
@@ -108,6 +109,8 @@ export default function SettingsForm({
   // asset id (public pages re-resolve it on render, so renames propagate).
   const [resume, setResume] = useState<ResumeDisplay | null>(initialResume);
   const [ogImage, setOgImage] = useState<ResumeDisplay | null>(initialOgImage);
+  // Bumped after each save so the publish bar re-checks what is pending.
+  const [savedAt, setSavedAt] = useState(0);
 
   const globalDirty = (Object.keys(savedGlobal) as (keyof GlobalContent)[]).some(
     (k) => global[k] !== savedGlobal[k]
@@ -166,7 +169,8 @@ export default function SettingsForm({
     }
     setGlobal(res.global);
     setSavedGlobal(res.global);
-    setGlobalStatus({ ok: true, message: "Saved." });
+    setSavedAt((n) => n + 1);
+    setGlobalStatus({ ok: true, message: "Saved to draft." });
   }
 
   async function saveSeo(e: React.FormEvent) {
@@ -182,11 +186,14 @@ export default function SettingsForm({
     const savedForm = toSeoForm(res.seo);
     setSeo(savedForm);
     setSavedSeo(savedForm);
-    setSeoStatus({ ok: true, message: "Saved." });
+    setSavedAt((n) => n + 1);
+    setSeoStatus({ ok: true, message: "Saved to draft." });
   }
 
   return (
     <>
+      {id && <PublishBar model="SiteData" entryId={id} refreshKey={savedAt} />}
+
       <form className={styles.form} onSubmit={saveGlobal}>
         <h2 className={styles.sectionTitle}>Identity</h2>
 

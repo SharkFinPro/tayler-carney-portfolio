@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import styles from "./About.module.scss";
 import BlockSection from "@/components/blocks/BlockSection";
 import BlockEditor from "@/components/blocks/BlockEditor";
+import PublishBar from "@/components/blocks/PublishBar";
 import ProjectModal from "@/app/portfolio/[slug]/ProjectModal";
 import { sanitizeBlocks, blockHasData, type Block } from "@/components/blocks/blocks";
 import { useLightbox } from "@/components/useLightbox";
@@ -27,6 +28,8 @@ export default function AboutPageClient({ siteId, about, isAdmin = false }: Abou
   const sectionBlocks = useMemo(() => blocks.filter(blockHasData), [blocks]);
 
   const lightbox = useLightbox();
+  // Bumped after each save so the publish bar re-checks what is pending.
+  const [savedAt, setSavedAt] = useState(0);
 
   return (
     <>
@@ -39,6 +42,9 @@ export default function AboutPageClient({ siteId, about, isAdmin = false }: Abou
       />
       <div className={styles.pageWrapper}>
         <div className={styles.pageContainer}>
+          {isAdmin && siteId && (
+            <PublishBar model="SiteData" entryId={siteId} refreshKey={savedAt} />
+          )}
           {isAdmin && (
             <button type="button" onClick={() => setEditing((e) => !e)} className={styles.editToggle}>
               {editing ? "Preview" : "Exit preview"}
@@ -52,6 +58,7 @@ export default function AboutPageClient({ siteId, about, isAdmin = false }: Abou
               id={siteId}
               initialBlocks={blocks}
               onBlocksChange={setBlocks}
+                onSaved={() => setSavedAt((n) => n + 1)}
             />
           ) : sectionBlocks.length === 0 ? (
             <p className={styles.empty}>No content yet</p>

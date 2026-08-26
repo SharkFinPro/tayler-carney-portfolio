@@ -2,6 +2,9 @@ import type { MetadataRoute } from "next";
 import { CACHE_TAGS, cmsRead } from "@/lib/cachedReads";
 import { orderProjects, sanitizePortfolio } from "@/lib/portfolio";
 
+// Deliberately has no $stage variable: a sitemap must only ever list
+// published pages, and cmsRead only substitutes a stage into queries that ask
+// for one. An admin browsing does not change what search engines are told.
 const SITEMAP_QUERY = `
   query SitemapProjects {
     projects {

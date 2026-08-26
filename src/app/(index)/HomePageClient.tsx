@@ -9,6 +9,7 @@ import { faGripVertical, faPen, faPlus, faTrash } from "@fortawesome/free-solid-
 import styles from "./Home.module.scss";
 import { AnimatedSection } from "@/components/AnimatedSection";
 import { useDragReorder } from "@/components/blocks/useDragReorder";
+import PublishBar from "@/components/blocks/PublishBar";
 import HeroEditor from "./HeroEditor";
 import ArchiveEditor from "./ArchiveEditor";
 import CardEditor from "./CardEditor";
@@ -36,6 +37,8 @@ const normalize = (dests: HomeDestination[]): HomeDestination[] =>
   dests.map((d, i) => ({ ...d, size: i === 0 ? "primary" : "secondary" }));
 
 export default function HomePageClient({ siteId, home: initial, isAdmin = false }: HomePageClientProps) {
+  // Bumped after each save so the publish bar re-checks what is pending.
+  const [savedAt, setSavedAt] = useState(0);
   const router = useRouter();
 
   // Section state is split so the card list can carry stable ids for dragging,
@@ -85,6 +88,7 @@ export default function HomePageClient({ siteId, home: initial, isAdmin = false 
     setArchive(res.home.archive);
     setExploreTitle(res.home.exploreTitle);
     setCards(res.home.destinations.map(withId));
+    setSavedAt((n) => n + 1);
     return null;
   }
 
@@ -205,6 +209,11 @@ export default function HomePageClient({ siteId, home: initial, isAdmin = false 
 
   return (
     <div className={styles.pageWrapper}>
+      {isAdmin && siteId && (
+        <div className={styles.publishBarWrap}>
+          <PublishBar model="SiteData" entryId={siteId} refreshKey={savedAt} />
+        </div>
+      )}
       <AnimatedSection>
         <section className={styles.hero}>
           <div className={styles.heroInner}>

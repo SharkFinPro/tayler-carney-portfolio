@@ -1,0 +1,90 @@
+// The publish state is the one thing an admin must never misread, so the two
+// states differ in colour, in the dot, and in wording — not by one subtle cue.
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--plate);
+}
+
+.barPending {
+  border-color: var(--accent, #9a5a12);
+  // A tint rather than a solid fill: this is a state, not an error.
+  background: color-mix(in srgb, var(--accent, #9a5a12) 7%, var(--plate));
+}
+
+.barLive {
+  border-color: var(--line);
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex: 1 1 20rem;
+  min-width: 0;
+}
+
+.dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--ink-muted);
+
+  .barPending & {
+    background: var(--accent, #9a5a12);
+  }
+}
+
+.text {
+  font-family: var(--ff-sans);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--ink-soft);
+
+  strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+}
+
+.publish {
+  flex: none;
+  font-family: var(--ff-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.6rem 1.1rem;
+  border-radius: 7px;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--canvas);
+  cursor: pointer;
+  transition: opacity 0.16s ease;
+
+  &:hover:not(:disabled) {
+    opacity: 0.86;
+  }
+
+  &:disabled {
+    // Reads as "nothing to do" rather than "broken".
+    background: transparent;
+    color: var(--ink-muted);
+    border-color: var(--line);
+    cursor: default;
+  }
+}
+
+.error {
+  font-family: var(--ff-sans);
+  font-size: 0.8rem;
+  color: var(--danger, #a32c3c);
+  flex: 1 1 100%;
+}

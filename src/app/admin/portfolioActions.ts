@@ -27,12 +27,13 @@ export async function updatePortfolio(siteId: string, rawConfig: unknown): Promi
        }`,
       { id: siteId, data: { portfolio: config } }
     );
-    await cmsMutate(
-      `mutation Publish($id: ID!) {
-         publishSiteData(where: { id: $id }, to: PUBLISHED) { id }
-       }`,
-      { id: siteId }
-    );
+    // Deliberately does NOT publish. `portfolio` lives on the same SiteData
+    // singleton as home, about, atelier, contact, global and seo, and Hygraph
+    // publishes an entry, not a field — so publishing here would ship every
+    // other pending draft on the site along with a drag-reorder. That is the
+    // exact failure this stack set out to remove, arriving through the one
+    // door left open. The Portfolio page's own publish control ships it.
+    auditEvent({ action: "updateDraft", model: "SiteData", entryId: siteId, field: "portfolio", outcome: "ok" });
   } catch (e) {
     return toActionError(e, "updatePortfolio", "Couldn’t save the portfolio order.");
   }

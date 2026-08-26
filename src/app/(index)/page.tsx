@@ -19,8 +19,8 @@ export const dynamic = "force-dynamic";
 // The homepage is a singleton stored on the one SiteData entry: its content
 // lives in the `home` JSON field, edited inline / via card modals on the page.
 const HOME_QUERY = `
-  query Home {
-    siteDatas {
+  query Home($stage: Stage!) {
+    siteDatas(stage: $stage) {
       id
       home
     }

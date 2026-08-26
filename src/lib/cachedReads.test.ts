@@ -8,9 +8,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const isAuthed = vi.hoisted(() => vi.fn());
 const cmsQuery = vi.hoisted(() => vi.fn());
+const cmsQueryAuthed = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/auth", () => ({ isAuthed }));
-vi.mock("@/lib/cms", () => ({ cmsQuery }));
+vi.mock("@/lib/cms", () => ({ cmsQuery, cmsQueryAuthed }));
 
 const { CACHE_TAGS, CONTENT_TTL, cmsRead } = await import("./cachedReads");
 
@@ -19,6 +20,8 @@ const QUERY = "query Test { siteDatas { id } }";
 beforeEach(() => {
   isAuthed.mockReset();
   cmsQuery.mockReset();
+  cmsQueryAuthed.mockReset();
+  cmsQueryAuthed.mockResolvedValue({ siteDatas: [] });
   cmsQuery.mockResolvedValue({ siteDatas: [] });
 });
 
@@ -91,5 +94,56 @@ describe("TTL", () => {
   it("is short enough that a visitor sees an edit promptly", () => {
     expect(CONTENT_TTL).toBeLessThanOrEqual(300);
     expect(CONTENT_TTL).toBeGreaterThan(0);
+  });
+});
+
+describe("cmsRead — stage selection", () => {
+  const STAGED = "query Test($stage: Stage!) { siteDatas(stage: $stage) { id } }";
+
+  it("sends PUBLISHED for a visitor", async () => {
+    isAuthed.mockResolvedValue(false);
+    await cmsRead(STAGED);
+    expect(cmsQuery.mock.calls[0][1]).toMatchObject({ stage: "PUBLISHED" });
+  });
+
+  it("never sends DRAFT to a visitor, whatever else is passed", async () => {
+    // The property that matters most: unpublished work must not be reachable
+    // by anyone who isn't signed in.
+    isAuthed.mockResolvedValue(false);
+    await cmsRead(STAGED, { stage: "DRAFT" });
+    expect(cmsQuery.mock.calls[0][1]).toMatchObject({ stage: "PUBLISHED" });
+  });
+
+  it("routes an admin read through the mutation token, at DRAFT", async () => {
+    // Draft content is only visible to the mutation token, so this must not go
+    // through cmsQuery.
+    isAuthed.mockResolvedValue(true);
+    await cmsRead(STAGED);
+
+    expect(cmsQuery).not.toHaveBeenCalled();
+    expect(cmsQueryAuthed).toHaveBeenCalledWith(STAGED, { stage: "DRAFT" });
+  });
+
+  it("leaves a query alone when it does not ask for a stage", async () => {
+    // The sitemap deliberately has no $stage — it must only ever list published
+    // pages, regardless of who is browsing.
+    const UNSTAGED = "query Sitemap { projects { slug } }";
+    isAuthed.mockResolvedValue(false);
+    await cmsRead(UNSTAGED);
+    expect(cmsQuery.mock.calls[0][1]).toEqual({});
+  });
+
+  it("keeps an unstaged admin read on the public token", async () => {
+    const UNSTAGED = "query Sitemap { projects { slug } }";
+    isAuthed.mockResolvedValue(true);
+    await cmsRead(UNSTAGED);
+    expect(cmsQueryAuthed).not.toHaveBeenCalled();
+    expect(cmsQuery).toHaveBeenCalled();
+  });
+
+  it("preserves the caller's other variables", async () => {
+    isAuthed.mockResolvedValue(false);
+    await cmsRead("query P($slug: String!, $stage: Stage!) { x }", { slug: "coat" });
+    expect(cmsQuery.mock.calls[0][1]).toEqual({ slug: "coat", stage: "PUBLISHED" });
   });
 });

@@ -6,8 +6,8 @@ import { sanitizeGlobal, type GlobalContent } from "@/lib/global";
 import { sanitizeSeo, type SeoContent } from "@/lib/seo";
 
 const SITEDATA_QUERY = `
-  query SiteData {
-    siteDatas {
+  query SiteData($stage: Stage!) {
+    siteDatas(stage: $stage) {
       id
       global
       seo

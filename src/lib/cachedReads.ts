@@ -26,7 +26,7 @@
 
 import "server-only";
 import { isAuthed } from "@/lib/auth";
-import { cmsQuery, type CacheOptions } from "@/lib/cms";
+import { cmsQuery, cmsQueryAuthed, type CacheOptions } from "@/lib/cms";
 
 /**
  * How long a visitor may see stale content. Sixty seconds is far shorter than
@@ -44,7 +44,32 @@ export const CACHE_TAGS = {
 type Vars = Record<string, unknown>;
 
 /**
- * Read published content, cached for visitors and fresh for admins.
+ * Hygraph content stages.
+ *
+ * Writes land in DRAFT and are promoted to PUBLISHED by an explicit publish.
+ * Visitors read PUBLISHED; admins read DRAFT, so the editor shows the work in
+ * progress rather than the last published version of it.
+ */
+export type Stage = "DRAFT" | "PUBLISHED";
+
+/**
+ * A query that takes a `$stage` variable. Queries opt in by declaring
+ * `query X($stage: Stage!)` and passing `(stage: $stage)` to their root
+ * fields; `cmsRead` supplies the value.
+ *
+ * The stage is a *variable* rather than the `gcms-stage` header on purpose.
+ * The header is accepted by the API but there is no way to observe whether it
+ * was applied, so a silent regression would look identical to working code.
+ * A query argument fails loudly if the schema stops supporting it.
+ */
+const STAGE_VAR = "stage";
+
+/**
+ * Read content — PUBLISHED and cached for visitors, DRAFT and fresh for admins.
+ *
+ * The admin branch matters twice over. It is why an editor sees unpublished
+ * work, and it is why a stale cached copy can never be loaded and then saved
+ * back over a newer version.
  *
  * Note this calls `isAuthed()`, which reads cookies — but every page here
  * already does that to decide whether to render edit affordances, so it adds
@@ -59,12 +84,21 @@ export async function cmsRead<T = any>(
   variables: Vars = {},
   options: CacheOptions = {}
 ): Promise<T> {
-  if (await isAuthed()) {
-    // No cache options at all → `no-store`, the pre-existing behavior.
-    return cmsQuery(query, variables);
+  const wantsStage = query.includes(`$${STAGE_VAR}`);
+  const admin = await isAuthed();
+
+  if (admin) {
+    // Draft content is only visible to the mutation token, so an admin read
+    // goes through cmsQueryAuthed. No cache options at all → `no-store`.
+    const vars = wantsStage ? { ...variables, [STAGE_VAR]: "DRAFT" } : variables;
+    return wantsStage ? cmsQueryAuthed(query, vars) : cmsQuery(query, vars);
   }
 
-  return cmsQuery(query, variables, {
+  // Visitors never see anything but PUBLISHED. The stage travels in the request
+  // body, so DRAFT and PUBLISHED reads cache under different keys by
+  // construction — there is no way for a draft response to be served to a
+  // visitor from cache.
+  return cmsQuery(query, wantsStage ? { ...variables, [STAGE_VAR]: "PUBLISHED" } : variables, {
     tags: options.tags,
     revalidate: options.revalidate ?? CONTENT_TTL,
   });
