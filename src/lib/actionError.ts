@@ -1,0 +1,85 @@
+// Error boundary for Server Actions.
+//
+// Every admin action used to end with `e instanceof Error ? e.message : "…"`,
+// and cms.ts builds that message by joining Hygraph's GraphQL errors verbatim.
+// Those strings routinely name internal field paths, model names, and token
+// permission scopes — none of which should reach a browser.
+//
+// The fix is not just redaction. A raw GraphQL error is also useless to the
+// person reading it: "field 'projectPage' is not defined by type
+// ProjectUpdateInput" tells a non-technical editor nothing they can act on.
+// So known failure shapes are translated into a sentence that says what to do,
+// and everything else falls back to a generic message plus a correlation id
+// that ties the UI back to the server log.
+
+export type SafeError = { ok: false; error: string };
+
+/** Short, roughly-unique token linking a UI message to a server log line. */
+function correlationId(): string {
+  return Math.random().toString(36).slice(2, 8).toUpperCase();
+}
+
+type Translation = { match: RegExp; message: string };
+
+// Ordered: the first match wins, so put the specific patterns first.
+const TRANSLATIONS: Translation[] = [
+  {
+    // Hygraph's permission failures. By far the most common real-world cause,
+    // and the one AGENTS.md warns is "not a code bug".
+    // `authori[sz]ed` unprefixed so it catches "unauthorized", "not
+    // authorized", and "unauthorised" alike.
+    match: /permission|authori[sz]ed|forbidden|access denied|\b401\b|\b403\b/i,
+    message:
+      "The CMS token doesn't have permission for that. Its scope may have changed — check the token still allows update and publish on this model.",
+  },
+  {
+    match: /rate limit|too many requests|429/i,
+    message: "The CMS is rate-limiting requests right now. Wait a moment and try again.",
+  },
+  {
+    // Network-shaped failures: the CMS is unreachable rather than refusing.
+    match: /fetch failed|ECONNREFUSED|ENOTFOUND|ETIMEDOUT|network|socket hang up/i,
+    message: "Couldn't reach the CMS. Check your connection and try again.",
+  },
+  {
+    match: /timeout|timed out/i,
+    message: "The CMS took too long to respond. Try again in a moment.",
+  },
+  {
+    // A document that vanished between load and save.
+    match: /not found|does not exist|no such/i,
+    message: "That item no longer exists in the CMS — it may have been deleted in another tab.",
+  },
+  {
+    match: /payload too large|413|body exceeded/i,
+    message: "That file is too large to upload. Try a smaller image.",
+  },
+];
+
+/**
+ * Convert a thrown value into a message that is safe to show and useful to act
+ * on, logging the full detail server-side under a correlation id.
+ *
+ * @param error    the caught value
+ * @param context  what was being attempted, e.g. "updateBlockLayout" — server log only
+ * @param fallback verb-appropriate generic message, e.g. "Couldn't save that."
+ */
+export function toActionError(error: unknown, context: string, fallback: string): SafeError {
+  const id = correlationId();
+  const raw = error instanceof Error ? error.message : String(error);
+
+  // The full error, including the raw CMS text, stays on the server.
+  console.error(`[action:${context}] ${id}:`, error);
+
+  const translation = TRANSLATIONS.find((t) => t.match.test(raw));
+  if (translation) {
+    return { ok: false, error: translation.message };
+  }
+
+  // Nothing recognized: say so plainly and give the operator the log key
+  // rather than leaking whatever the CMS happened to say.
+  return { ok: false, error: `${fallback} (ref ${id})` };
+}
+
+/** Exposed for tests — the translation table should stay in sync with reality. */
+export const __TRANSLATIONS_FOR_TEST = TRANSLATIONS;

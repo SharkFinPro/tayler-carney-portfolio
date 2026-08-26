@@ -1,5 +1,6 @@
 "use server";
 
+import { toActionError } from "@/lib/actionError";
 import { isAuthed } from "@/lib/auth";
 import { cmsMutate, cmsUpload, cmsQueryAuthed } from "@/lib/cms";
 import { getAssets, getAssetById, type MediaAsset } from "@/lib/getAssets";
@@ -18,7 +19,7 @@ export async function fetchAssets(): Promise<Ok<{ assets: MediaAsset[] }> | Err>
   try {
     return { ok: true, assets: await getAssets() };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Failed to load assets." };
+    return toActionError(e, "fetchAssets", "Couldn’t load the media library.");
   }
 }
 
@@ -44,7 +45,7 @@ export async function updateAsset(
     }
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Update failed." };
+    return toActionError(e, "updateAsset", "Couldn’t save those asset details.");
   }
 }
 
@@ -55,7 +56,7 @@ export async function publishAsset(id: string): Promise<Ok<object> | Err> {
     await cmsMutate(`mutation Pub($id: ID!) { publishAsset(where: { id: $id }, to: PUBLISHED) { id } }`, { id });
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Publish failed." };
+    return toActionError(e, "publishAsset", "Couldn’t publish that asset.");
   }
 }
 
@@ -66,7 +67,7 @@ export async function unpublishAsset(id: string): Promise<Ok<object> | Err> {
     await cmsMutate(`mutation Unpub($id: ID!) { unpublishAsset(where: { id: $id }, from: PUBLISHED) { id } }`, { id });
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Unpublish failed." };
+    return toActionError(e, "unpublishAsset", "Couldn’t unpublish that asset.");
   }
 }
 
@@ -83,7 +84,7 @@ export async function deleteAsset(id: string): Promise<Ok<object> | Err> {
     await cmsMutate(`mutation Del($id: ID!) { deleteAsset(where: { id: $id }) { id } }`, { id });
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Delete failed." };
+    return toActionError(e, "deleteAsset", "Couldn’t delete that asset.");
   }
 }
 
@@ -133,7 +134,7 @@ export async function uploadAsset(formData: FormData): Promise<Ok<{ asset: Media
 
     return { ok: true, asset };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Failed to upload asset." };
+    return toActionError(e, "uploadAsset", "Couldn’t upload that file.");
   }
 }
 
@@ -186,7 +187,7 @@ export async function findAssetUsage(urls: string[]): Promise<Ok<{ used: string[
 
     return { ok: true, used };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Usage check failed." };
+    return toActionError(e, "findAssetUsage", "Couldn’t check where that asset is used.");
   }
 }
 

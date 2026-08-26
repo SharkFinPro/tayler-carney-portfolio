@@ -1,5 +1,6 @@
 "use server";
 
+import { toActionError } from "@/lib/actionError";
 import { isAuthed } from "@/lib/auth";
 import { cmsMutate, cmsQuery } from "@/lib/cms";
 import { sanitizePortfolio, slugify, type PortfolioConfig } from "@/lib/portfolio";
@@ -35,7 +36,7 @@ export async function updatePortfolio(siteId: string, rawConfig: unknown): Promi
       { id: siteId }
     );
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Save failed." };
+    return toActionError(e, "updatePortfolio", "Couldn’t save the portfolio order.");
   }
   return { ok: true, config };
 }
@@ -68,7 +69,7 @@ export async function deleteProject(id: string): Promise<Result> {
       { id }
     );
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Delete failed." };
+    return toActionError(e, "deleteProject", "Couldn’t delete that project.");
   }
   return { ok: true };
 }
@@ -125,6 +126,6 @@ export async function createProject(input: CreateInput): Promise<CreateResult> {
     // would usually miss it.
     return { ok: true, project: { id: created.id, title, slug: created.slug, description, archived: false } };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Create failed." };
+    return toActionError(e, "createProject", "Couldn’t create the project.");
   }
 }
