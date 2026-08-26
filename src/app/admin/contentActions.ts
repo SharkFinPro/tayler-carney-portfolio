@@ -1,5 +1,6 @@
 "use server";
 
+import { toActionError } from "@/lib/actionError";
 import { isAuthed } from "@/lib/auth";
 import { cmsMutate } from "@/lib/cms";
 import { sanitizeBlocks, type Block } from "@/components/blocks/blocks";
@@ -51,7 +52,7 @@ export async function updateContentField(
   try {
     await updateAndPublish(model, id, { [field]: value });
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Update failed." };
+    return toActionError(e, "updateContentField", "Couldn’t save that change.");
   }
   return { ok: true };
 }
@@ -71,7 +72,7 @@ export async function updateGlobal(id: string, rawGlobal: unknown): Promise<Glob
   try {
     await updateAndPublish("SiteData", id, { global });
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Save failed." };
+    return toActionError(e, "updateGlobal", "Couldn’t save the site details.");
   }
   return { ok: true, global };
 }
@@ -88,7 +89,7 @@ export async function updateSeo(id: string, rawSeo: unknown): Promise<SeoResult>
   try {
     await updateAndPublish("SiteData", id, { seo });
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Save failed." };
+    return toActionError(e, "updateSeo", "Couldn’t save the SEO settings.");
   }
   return { ok: true, seo };
 }
@@ -107,7 +108,7 @@ export async function updateHome(id: string, rawHome: unknown): Promise<HomeResu
   try {
     await updateAndPublish("SiteData", id, { home });
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Save failed." };
+    return toActionError(e, "updateHome", "Couldn’t save the homepage.");
   }
   return { ok: true, home };
 }
@@ -141,7 +142,7 @@ export async function updateBlockLayout(
   try {
     await updateAndPublish(model, id, { [field]: blocks });
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Save failed." };
+    return toActionError(e, "updateBlockLayout", "Couldn’t save the page layout.");
   }
   return { ok: true, blocks };
 }
