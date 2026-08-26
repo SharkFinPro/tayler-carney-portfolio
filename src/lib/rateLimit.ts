@@ -102,14 +102,6 @@ export function createRateLimiter({
 }
 
 /**
- * Best-effort client address from proxy headers.
- *
- * `x-forwarded-for` is client-controlled in general, but on Vercel the platform
- * overwrites it at the edge, so the leftmost entry is trustworthy there. Falls
- * back to a single shared bucket when no address is available — which degrades
- * to a global limit rather than to no limit at all.
- */
-/**
  * Check a per-client limiter, then a shared backstop — in that order, and only
  * if the first one passed.
  *
@@ -138,6 +130,14 @@ export function checkTiered(
   return backstop.check(backstopKey);
 }
 
+/**
+ * Best-effort client address from proxy headers.
+ *
+ * `x-forwarded-for` is client-controlled in general, but on Vercel the platform
+ * overwrites it at the edge, so the leftmost entry is trustworthy there. Falls
+ * back to a single shared bucket when no address is available — which degrades
+ * to a global limit rather than to no limit at all.
+ */
 export function clientKeyFromHeaders(headers: {
   get: (name: string) => string | null;
 }): string {
