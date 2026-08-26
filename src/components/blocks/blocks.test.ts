@@ -1,0 +1,269 @@
+// `sanitizeBlocks` is the single validator run on BOTH render and save, so a
+// malformed layout can never break a page. The contract it must hold:
+//
+//   1. It never throws, for any input at all.
+//   2. Unknown or malformed blocks are dropped, not repaired into something
+//      that renders wrong.
+//   3. Unsafe URLs never survive.
+//   4. Containers never nest illegally (a split inside a split, a container
+//      inside columns), because the renderers assume that.
+
+import { describe, expect, it } from "vitest";
+import {
+  BLOCK_TYPES,
+  blockHasData,
+  createEmptyBlock,
+  sanitizeBlocks,
+  type Block,
+} from "./blocks";
+
+const IMG = "https://media.graphassets.com/abc123";
+
+/** Sanitize a single block and return it (or null when it was dropped). */
+function one(raw: unknown): Block | null {
+  return sanitizeBlocks([raw])[0] ?? null;
+}
+
+describe("sanitizeBlocks — never throws", () => {
+  const hostile: unknown[] = [
+    null,
+    undefined,
+    0,
+    1,
+    -1,
+    NaN,
+    Infinity,
+    "",
+    "a string",
+    true,
+    false,
+    {},
+    [],
+    [[[[]]]],
+    [null, undefined, 0, ""],
+    [{ type: "richText" }],
+    // Written as an escape, not a literal NUL: a raw control byte makes git
+    // classify this whole file as binary, which hides every test in it from a
+    // diff. The value the test sees is identical.
+    [{ type: "\u0000" }],
+    [{ type: "constructor" }],
+    [{ type: "__proto__" }],
+    [{ type: "toString" }],
+    { entries: [] },
+    Symbol,
+    () => {},
+    new Date(),
+    new Map(),
+  ];
+
+  for (const [i, input] of hostile.entries()) {
+    it(`survives hostile input #${i}`, () => {
+      expect(() => sanitizeBlocks(input)).not.toThrow();
+      expect(Array.isArray(sanitizeBlocks(input))).toBe(true);
+    });
+  }
+
+  it("returns [] for anything that is not an array", () => {
+    expect(sanitizeBlocks(null)).toEqual([]);
+    expect(sanitizeBlocks({ type: "richText" })).toEqual([]);
+    expect(sanitizeBlocks("[]")).toEqual([]);
+  });
+
+  it("survives a deeply nested split chain without blowing the stack", () => {
+    // A linear chain of splits 2000 deep — nesting only through `left`, which
+    // is the deepest structure that can actually arrive as JSON (a chain that
+    // branched on both sides would be exponentially large on the wire).
+    // ~200 KB of payload; the sanitizer handles it in single-digit ms.
+    let node: Record<string, unknown> = { type: "richText", id: "leaf", heading: "" };
+    for (let i = 0; i < 2000; i++) {
+      node = {
+        type: "split",
+        id: `s${i}`,
+        heading: "",
+        left: node,
+        right: { type: "richText", id: `r${i}`, heading: "" },
+      };
+    }
+    expect(() => sanitizeBlocks([node])).not.toThrow();
+    // Only the outermost split survives as a top-level block; every nested
+    // split collapses to an empty richText via cleanChild.
+    const out = sanitizeBlocks([node]);
+    expect(out).toHaveLength(1);
+    expect(out[0].type).toBe("split");
+  });
+});
+
+describe("sanitizeBlocks — drops what it cannot validate", () => {
+  it("drops a block with an unrecognized type", () => {
+    expect(one({ type: "definitelyNotABlock", id: "x", heading: "" })).toBeNull();
+  });
+
+  it("drops a block with no type at all", () => {
+    expect(one({ id: "x", heading: "hello" })).toBeNull();
+  });
+
+  it("does not treat inherited Object properties as block types", () => {
+    // `type in BLOCK_LABELS` would be true for "toString" if the guard used a
+    // bare `in` against a prototype-bearing object.
+    expect(one({ type: "toString", id: "x", heading: "" })).toBeNull();
+    expect(one({ type: "hasOwnProperty", id: "x", heading: "" })).toBeNull();
+  });
+
+  it("keeps the valid blocks either side of an invalid one", () => {
+    const out = sanitizeBlocks([
+      { type: "specs", id: "a", heading: "A", rows: [{ label: "L", value: "V" }] },
+      { type: "garbage" },
+      { type: "specs", id: "b", heading: "B", rows: [{ label: "L", value: "V" }] },
+    ]);
+    expect(out.map((b) => b.id)).toEqual(["a", "b"]);
+  });
+});
+
+describe("sanitizeBlocks — URL safety", () => {
+  const unsafe = [
+    "javascript:alert(1)",
+    "JavaScript:alert(1)",
+    "  javascript:alert(1)",
+    "data:text/html;base64,PHNjcmlwdD4=",
+    "vbscript:msgbox",
+    "file:///etc/passwd",
+  ];
+
+  for (const url of unsafe) {
+    it(`strips a gallery image with an unsafe url: ${JSON.stringify(url)}`, () => {
+      const block = one({ type: "gallery", id: "g", heading: "", images: [{ url }] });
+      expect(block).not.toBeNull();
+      expect(block).toMatchObject({ type: "gallery", images: [] });
+    });
+  }
+
+  it("keeps a safe https image url", () => {
+    const block = one({ type: "gallery", id: "g", heading: "", images: [{ url: IMG }] });
+    expect(block).toMatchObject({ type: "gallery", images: [{ url: IMG }] });
+  });
+
+  it("nulls a singleImage whose url is unsafe", () => {
+    const block = one({
+      type: "singleImage",
+      id: "s",
+      heading: "",
+      image: { url: "javascript:alert(1)" },
+    });
+    expect(block).toMatchObject({ type: "singleImage", image: null });
+  });
+
+  it("falls back to '/' for an unsafe cta href rather than dropping the block", () => {
+    const block = one({
+      type: "cta",
+      id: "c",
+      heading: "Get in touch",
+      buttonLabel: "Email",
+      buttonHref: "javascript:alert(1)",
+    });
+    expect(block).toMatchObject({ type: "cta", buttonHref: "/" });
+  });
+});
+
+describe("sanitizeBlocks — container nesting rules", () => {
+  it("collapses a split nested inside a split to an empty richText", () => {
+    const block = one({
+      type: "split",
+      id: "outer",
+      heading: "",
+      left: { type: "split", id: "inner", heading: "", left: null, right: null },
+      right: { type: "specs", id: "sp", heading: "", rows: [] },
+    });
+    expect(block).not.toBeNull();
+    if (block?.type !== "split") throw new Error("expected a split");
+    expect(block.left.type).toBe("richText");
+    expect(block.right.type).toBe("specs");
+  });
+
+  it("always gives a split two well-formed children", () => {
+    const block = one({ type: "split", id: "s", heading: "", left: null, right: "nonsense" });
+    if (block?.type !== "split") throw new Error("expected a split");
+    expect(block.left).toBeTruthy();
+    expect(block.right).toBeTruthy();
+    expect(block.left.type).toBe("richText");
+    expect(block.right.type).toBe("richText");
+  });
+
+  it("drops container children from a columns block", () => {
+    const block = one({
+      type: "columns",
+      id: "c",
+      heading: "",
+      items: [
+        { type: "specs", id: "ok", heading: "", rows: [] },
+        { type: "columns", id: "nested", heading: "", items: [] },
+        { type: "split", id: "sp", heading: "", left: null, right: null },
+      ],
+    });
+    if (block?.type !== "columns") throw new Error("expected columns");
+    expect(block.items.map((i) => i.type)).toEqual(["specs"]);
+  });
+
+  it("caps columns children at 4", () => {
+    const block = one({
+      type: "columns",
+      id: "c",
+      heading: "",
+      items: Array.from({ length: 12 }, (_, i) => ({
+        type: "specs",
+        id: `s${i}`,
+        heading: "",
+        rows: [],
+      })),
+    });
+    if (block?.type !== "columns") throw new Error("expected columns");
+    expect(block.items).toHaveLength(4);
+  });
+});
+
+describe("createEmptyBlock", () => {
+  it("produces a sanitizer-stable block for every type in the palette", () => {
+    for (const type of BLOCK_TYPES) {
+      const empty = createEmptyBlock(type);
+      expect(empty.type, `createEmptyBlock(${type})`).toBe(type);
+
+      // The editor writes these straight to the CMS, so a freshly created
+      // block must survive the same validator that runs on save.
+      const round = one(structuredClone(empty));
+      expect(round, `sanitizeBlocks dropped a fresh ${type}`).not.toBeNull();
+      expect(round?.type).toBe(type);
+    }
+  });
+
+  it("gives every block a distinct id", () => {
+    const ids = BLOCK_TYPES.map(() => createEmptyBlock("richText").id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("starts every block empty, so the editor's 'add content' guard fires", () => {
+    // `cta` and `entry` count their heading as data and `split` inherits from
+    // its children, so they are legitimately exempt from this.
+    const alwaysEmpty = BLOCK_TYPES.filter((t) => !["cta", "entry", "split"].includes(t));
+    for (const type of alwaysEmpty) {
+      expect(blockHasData(createEmptyBlock(type)), `${type} should start empty`).toBe(false);
+    }
+  });
+});
+
+describe("sanitizeBlocks — idempotence", () => {
+  it("is stable when run twice (render and save must agree)", () => {
+    const raw = [
+      { type: "gallery", id: "g", heading: "Looks", images: [{ url: IMG, altText: "  " }] },
+      { type: "specs", id: "s", heading: "Spec", rows: [{ label: "Fabric", value: "Wool" }] },
+      {
+        type: "split",
+        id: "sp",
+        heading: "",
+        left: { type: "callout", id: "c", heading: "", variant: "quote", text: "Hi" },
+        right: { type: "tagList", id: "t", heading: "", tone: "dark", tags: ["a", "b"] },
+      },
+    ];
+    const once = sanitizeBlocks(raw);
+    const twice = sanitizeBlocks(structuredClone(once));
+    expect(twice).toEqual(once);
+  });
+});
