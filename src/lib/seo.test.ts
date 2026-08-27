@@ -4,6 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SEO, SEO_PAGE_KEYS, pageMetadata, sanitizeSeo } from "./seo";
+import { splitLeaves, stringLeaves } from "@/test/leaves";
 
 describe("sanitizeSeo", () => {
   it("returns the defaults for an empty or absent value", () => {
@@ -181,31 +182,25 @@ describe("sanitizeSeo — keywords", () => {
 // These describe what a fresh install actually serves to a crawler.
 
 describe("DEFAULT_SEO — what a fresh install tells search engines", () => {
-  const stringLeaves = (value: unknown, path = ""): [string, string][] => {
-    if (typeof value === "string") return [[path, value]];
-    if (Array.isArray(value)) return value.flatMap((v, i) => stringLeaves(v, `${path}[${i}]`));
-    if (value && typeof value === "object") {
-      return Object.entries(value).flatMap(([k, v]) => stringLeaves(v, path ? `${path}.${k}` : k));
-    }
-    return [];
-  };
-
   // The home page's description is deliberately blank: the site-wide
   // description already covers it, and repeating it would duplicate the meta
   // description across two URLs.
   const INTENTIONALLY_EMPTY = new Set(["pages.home.description"]);
-  const LEAVES = stringLeaves(DEFAULT_SEO);
+  const { required: REQUIRED, empty: EMPTY } = splitLeaves(
+  DEFAULT_SEO,
+  INTENTIONALLY_EMPTY
+);
 
-  it("has leaves to check, so the walk below is not vacuous", () => {
-    expect(LEAVES.length).toBeGreaterThan(15);
+  it("has leaves left to check after the exclusions, so it.each is not empty", () => {
+    expect(REQUIRED.length).toBeGreaterThan(15);
   });
 
-  it.each(LEAVES.filter(([p]) => !INTENTIONALLY_EMPTY.has(p)))("%s is not blank", (_p, value) => {
+  it.each(REQUIRED)("%s is not blank", (_p, value) => {
     expect(value.trim()).not.toBe("");
   });
 
-  it.each([...INTENTIONALLY_EMPTY])("%s stays empty on purpose", (path) => {
-    expect(LEAVES.find(([p]) => p === path)?.[1]).toBe("");
+  it.each(EMPTY)("%s stays empty on purpose", (path) => {
+    expect(stringLeaves(DEFAULT_SEO).find(([p]) => p === path)?.[1]).toBe("");
   });
 
   it("ships keywords rather than an empty list", () => {

@@ -258,9 +258,21 @@ describe("orderProjects — the comparator's three cases", () => {
 
   // Two unconfigured projects compare equal, so they keep the order the CMS
   // returned rather than being shuffled against each other.
-  it("leaves two unconfigured projects in the order they arrived", () => {
-    const out = orderProjects([project("x"), project("y")], { entries: [] });
-    expect(out.map((p) => p.id)).toEqual(["x", "y"]);
+  //
+  // Two of them is not enough to pin this: with a two-element array, several
+  // wrong comparators — including ones that never reach the equal branch at
+  // all — still leave [x, y] untouched. Interleaving a configured project is
+  // what makes a wrong return value visibly reorder the result.
+  it("leaves unconfigured projects in the order they arrived", () => {
+    const out = orderProjects([project("x"), project("y"), project("z")], { entries: [] });
+    expect(out.map((p) => p.id)).toEqual(["x", "y", "z"]);
+  });
+
+  it("sorts a configured project ahead of the unconfigured ones around it", () => {
+    const out = orderProjects([project("u1"), project("c"), project("u2")], {
+      entries: [{ id: "c", archived: false }],
+    });
+    expect(out.map((p) => p.id)).toEqual(["c", "u1", "u2"]);
   });
 });
 

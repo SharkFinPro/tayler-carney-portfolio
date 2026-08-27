@@ -5,6 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_HOME, sanitizeHome } from "./home";
 import { at } from "@/test/at";
+import { splitLeaves, stringLeaves } from "@/test/leaves";
 
 const UNSAFE = ["javascript:alert(1)", "JAVASCRIPT:alert(1)", "data:text/html,<script>", "vbscript:x"];
 
@@ -176,42 +177,32 @@ describe("archive.imageUrl", () => {
 // because a test asserting the copy would fail every time someone edited it,
 // which is a different way of testing nothing.
 
-/** Every string leaf in an object, as `[dotted.path, value]`. */
-function stringLeaves(value: unknown, path = ""): [string, string][] {
-  if (typeof value === "string") return [[path, value]];
-  if (Array.isArray(value)) {
-    return value.flatMap((v, i) => stringLeaves(v, `${path}[${i}]`));
-  }
-  if (value && typeof value === "object") {
-    return Object.entries(value).flatMap(([k, v]) =>
-      stringLeaves(v, path ? `${path}.${k}` : k)
-    );
-  }
-  return [];
-}
-
 // The only two defaults that are deliberately empty: an unset hero image, and
 // its alt text. `archive.imageUrl` is asserted separately below to stay that
 // way, since a non-empty default there would put a broken image on every fresh
 // install.
 const INTENTIONALLY_EMPTY = new Set(["archive.imageUrl", "archive.imageAlt"]);
 
-const LEAVES = stringLeaves(DEFAULT_HOME);
+const { required: REQUIRED, empty: EMPTY } = splitLeaves(
+  DEFAULT_HOME,
+  INTENTIONALLY_EMPTY
+);
 
 describe("DEFAULT_HOME — what a fresh install renders", () => {
-  it("has leaves to check at all, so the walk below is not vacuous", () => {
-    expect(LEAVES.length).toBeGreaterThan(30);
+  it("has leaves left to check after the exclusions, so it.each is not empty", () => {
+    expect(REQUIRED.length).toBeGreaterThan(30);
   });
 
-  it.each(LEAVES.filter(([p]) => !INTENTIONALLY_EMPTY.has(p)))(
+  it.each(REQUIRED)(
     "%s is not blank",
     (_path, value) => {
       expect(value.trim()).not.toBe("");
     }
   );
 
-  it.each([...INTENTIONALLY_EMPTY])("%s stays empty, so nothing broken renders", (path) => {
-    const leaf = LEAVES.find(([p]) => p === path);
+  it.each(EMPTY)("%s stays empty, so nothing broken renders", (path) => {
+    const leaf = stringLeaves(DEFAULT_HOME).find(([p]) => p === path);
+    expect(leaf, `${path} is not a leaf of DEFAULT_HOME at all`).toBeDefined();
     expect(leaf?.[1]).toBe("");
   });
 });
@@ -228,7 +219,7 @@ describe("DEFAULT_HOME — the links", () => {
     ["hero.secondaryCta.href", "/about"],
     ["archive.buttonHref", "/about"],
   ])("%s points at %s", (path, expected) => {
-    expect(LEAVES.find(([p]) => p === path)?.[1]).toBe(expected);
+    expect(stringLeaves(DEFAULT_HOME).find(([p]) => p === path)?.[1]).toBe(expected);
   });
 
   // Matched by title rather than by position: the order of the cards on the

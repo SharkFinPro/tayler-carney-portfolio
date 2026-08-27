@@ -11,6 +11,7 @@ import {
   sanitizeGlobal,
   sanitizeNav,
 } from "./global";
+import { splitLeaves, stringLeaves } from "@/test/leaves";
 
 describe("sanitizeGlobal", () => {
   it("returns the defaults for an empty or absent value", () => {
@@ -260,9 +261,22 @@ describe("normalizeHandle — each stripping rule on its own", () => {
   });
 
   // Anchored: a scheme in the middle of a value is not a scheme to strip.
-  it("leaves a mid-string scheme alone rather than reaching into the value", () => {
-    expect(normalizeHandle("name/https://x")).toBe("x");
-  });
+  //
+  // The input matters more than it looks. "name/https://x" does NOT test this
+  // — it contains a slash, so the last-path-segment step throws away
+  // everything before the final "/" and both the anchored and unanchored forms
+  // land on "x". The scheme-like text has to sit where no slash follows it, so
+  // the two forms diverge before that step can hide the difference.
+  // Both still reduce to "name" via the path step — but only because the
+  // scheme text was left in place for that step to cut at. Strip it
+  // unanchored and "abchttps://name" becomes "abcname", which has no slash
+  // left and survives as itself.
+  it.each(["abchttps://name", "xhttp://name"])(
+    "leaves the mid-string scheme in %j alone",
+    (input) => {
+      expect(normalizeHandle(input)).toBe("name");
+    }
+  );
 
   it.each(["www.instagram.com/taylercarney", "WWW.instagram.com/taylercarney"])(
     "strips a leading www from %j",
@@ -312,6 +326,20 @@ describe("normalizeHandle — each stripping rule on its own", () => {
     expect(normalizeHandle(input)).toBe("taylercarney");
   });
 
+  // The query/fragment strip lives inside the `includes("/")` branch, so a
+  // value with a query and NO slash never reaches it — and the leftover "?"
+  // then fails the final character check. Every other query case here has a
+  // slash, which is what let that guard go unexercised.
+  it.each(["name?foo", "name#foo"])("refuses %j, which never enters the path branch", (input) => {
+    expect(normalizeHandle(input)).toBe("");
+  });
+
+  // Whitespace can survive into the last path segment, so the trim after the
+  // at-strip is doing real work rather than repeating the one at the top.
+  it("trims whitespace that survived into the final segment", () => {
+    expect(normalizeHandle("site.com/@handle  ?x")).toBe("handle");
+  });
+
   it.each([undefined, null, 42, {}, [], "", "   "])("returns empty for %j", (input) => {
     expect(normalizeHandle(input)).toBe("");
   });
@@ -347,15 +375,6 @@ describe("normalizeHandle — each stripping rule on its own", () => {
 // and nothing notices. These assert properties instead.
 
 describe("DEFAULT_GLOBAL — what a fresh install renders", () => {
-  const stringLeaves = (value: unknown, path = ""): [string, string][] => {
-    if (typeof value === "string") return [[path, value]];
-    if (Array.isArray(value)) return value.flatMap((v, i) => stringLeaves(v, `${path}[${i}]`));
-    if (value && typeof value === "object") {
-      return Object.entries(value).flatMap(([k, v]) => stringLeaves(v, path ? `${path}.${k}` : k));
-    }
-    return [];
-  };
-
   // The asset ids are deliberately empty: nothing is uploaded on a fresh
   // install, and a non-empty default would point at an asset that does not
   // exist.
@@ -369,18 +388,21 @@ describe("DEFAULT_GLOBAL — what a fresh install renders", () => {
     "resumeAssetId",
     "ogImageAssetId",
   ]);
-  const LEAVES = stringLeaves(DEFAULT_GLOBAL);
+  const { required: REQUIRED, empty: EMPTY } = splitLeaves(
+  DEFAULT_GLOBAL,
+  INTENTIONALLY_EMPTY
+);
 
-  it("has leaves to check, so the walk below is not vacuous", () => {
-    expect(LEAVES.length).toBeGreaterThan(5);
+  it("has leaves left to check after the exclusions, so it.each is not empty", () => {
+    expect(REQUIRED.length).toBeGreaterThan(5);
   });
 
-  it.each(LEAVES.filter(([p]) => !INTENTIONALLY_EMPTY.has(p)))("%s is not blank", (_p, value) => {
+  it.each(REQUIRED)("%s is not blank", (_p, value) => {
     expect(value.trim()).not.toBe("");
   });
 
-  it.each([...INTENTIONALLY_EMPTY])("%s stays empty, so nothing broken renders", (path) => {
-    expect(LEAVES.find(([p]) => p === path)?.[1]).toBe("");
+  it.each(EMPTY)("%s stays empty, so nothing broken renders", (path) => {
+    expect(stringLeaves(DEFAULT_GLOBAL).find(([p]) => p === path)?.[1]).toBe("");
   });
 
   it("ships nav items rather than an empty bar", () => {
