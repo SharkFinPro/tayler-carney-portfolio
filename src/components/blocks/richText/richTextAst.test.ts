@@ -353,3 +353,240 @@ describe("isSafeUrl — protocol-relative URLs", () => {
     expect(JSON.stringify(out)).toContain("click");
   });
 });
+
+// ── HTML the editor did not write ────────────────────────────────────────────
+//
+// Everything above round-trips AST → HTML → AST, so it only ever feeds
+// `htmlToAst` markup that `astToHtml` produced moments earlier. That is the
+// easy half. The hard half is a paste: Word, Google Docs and every CMS export
+// drop styled `<span>`s, `<div>` wrappers, nested lists and whitespace between
+// tags into the contentEditable surface, and `htmlToAst` has to turn all of it
+// into the same small AST vocabulary or the content is silently mangled on the
+// next save.
+//
+// These cases feed `htmlToAst` markup no `astToHtml` call would ever emit.
+
+/** Parse foreign HTML the way a paste into the editor surface would. */
+function fromHtml(html: string): Record<string, unknown>[] {
+  const host = document.createElement("div");
+  host.innerHTML = html;
+  return htmlToAst(host).children as Record<string, unknown>[];
+}
+
+describe("an AST node the renderer does not recognize", () => {
+  // Stored content outlives the code that wrote it: a node type that was
+  // removed, or one written by a newer deploy and read by an older one, must
+  // not take the page down or swallow the words inside it.
+  it("renders the children of an unknown node rather than dropping them", () => {
+    const html = astToHtml({
+      children: [{ type: "some-future-block", children: [{ text: "Still readable" }] }],
+    });
+
+    expect(html).toContain("Still readable");
+  });
+
+  it("still escapes the text inside an unknown node", () => {
+    const html = astToHtml({
+      children: [{ type: "some-future-block", children: [{ text: "<script>alert(1)</script>" }] }],
+    });
+
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("&lt;script&gt;");
+  });
+});
+
+describe("pasted marks carried as inline styles", () => {
+  // A paste does not bring <strong>/<em> — it brings spans with CSS. Dropping
+  // these loses every bold word in a pasted document, with no error anywhere.
+  it.each([
+    ["font-weight: bold", "bold"],
+    ["font-weight: 700", "bold"],
+    ["font-weight: 600", "bold"],
+    ["font-style: italic", "italic"],
+    ["text-decoration: underline", "underline"],
+  ])("reads %j as %s", (style, mark) => {
+    const out = fromHtml(`<p><span style="${style}">Styled</span></p>`);
+
+    expect(at(kidsOf(out), 0)).toMatchObject({ text: "Styled", [mark]: true });
+  });
+
+  it.each(["font-weight: 500", "font-weight: normal", "font-style: normal"])(
+    "does not invent a mark for %j",
+    (style) => {
+      const out = fromHtml(`<p><span style="${style}">Plain</span></p>`);
+
+      const leaf = at(kidsOf(out), 0);
+      expect(leaf).toMatchObject({ text: "Plain" });
+      expect(leaf.bold).toBeUndefined();
+      expect(leaf.italic).toBeUndefined();
+    }
+  );
+
+  it("combines styles from nested spans", () => {
+    const out = fromHtml(
+      `<p><span style="font-weight: bold"><span style="font-style: italic">Both</span></span></p>`
+    );
+
+    expect(at(kidsOf(out), 0)).toMatchObject({ text: "Both", bold: true, italic: true });
+  });
+
+  // Current behaviour, pinned rather than endorsed: `serializeInline` resets
+  // marks to {} when it builds a link node, so a mark applied *around* a link
+  // does not reach the link's text. In the editor's own output that never
+  // arises — bolding inside a link produces <a><strong>…</strong></a>, which
+  // survives — so this only costs fidelity on a paste where the emphasis wraps
+  // the anchor. Asserted so the reset reads as a decision someone made rather
+  // than one nobody noticed; changing it is a renderer question, not a test one.
+  it("drops a mark applied outside a link, keeping the link itself", () => {
+    const out = fromHtml(
+      `<p><span style="font-weight: bold"><a href="/x">Linked</a></span></p>`
+    );
+
+    const link = at(kidsOf(out), 0);
+    expect(link.type).toBe("link");
+    expect(link.href).toBe("/x");
+    expect(at(link.children as Record<string, unknown>[], 0)).toEqual({ text: "Linked" });
+  });
+
+  it("keeps a mark applied inside a link, which is what the editor emits", () => {
+    const out = fromHtml(`<p><a href="/x"><strong>Linked</strong></a></p>`);
+
+    const link = at(kidsOf(out), 0);
+    expect(at(link.children as Record<string, unknown>[], 0)).toMatchObject({
+      text: "Linked",
+      bold: true,
+    });
+  });
+});
+
+describe("pasted structure", () => {
+  it("keeps a code block through the round trip", () => {
+    const out = fromHtml("<pre>const x = 1;</pre>");
+
+    expect(nodeAt(out).type).toBe("code-block");
+    expect(firstText(out)).toBe("const x = 1;");
+    // And back out again, so the editor can render what it just parsed.
+    expect(astToHtml({ children: out })).toContain("<pre>");
+  });
+
+  it("flattens a div that wraps block content", () => {
+    const out = fromHtml("<div><h2>Heading</h2><p>Body</p></div>");
+
+    expect(out.map((n) => n.type)).toEqual(["heading-two", "paragraph"]);
+  });
+
+  // A div holding only inline content is a paragraph in everything but name.
+  it("treats a div of inline content as a paragraph", () => {
+    const out = fromHtml("<div>Just words</div>");
+
+    expect(nodeAt(out).type).toBe("paragraph");
+    expect(firstText(out)).toBe("Just words");
+  });
+
+  // This is why the branch exists at all, and the only case that distinguishes
+  // it. contentEditable wraps each line in a <div>, so an *empty* div is a
+  // blank line the author pressed Enter to make. The block-children path drops
+  // whitespace-only runs — correct for indentation between pasted tags, wrong
+  // for a line someone typed — so an inline-only div becomes a paragraph
+  // unconditionally, blank or not, and the blank line survives the save.
+  it.each(["<div></div>", "<div>   </div>", "<div><br></div>"])(
+    "keeps the deliberate blank line %j",
+    (html) => {
+      const out = fromHtml(html);
+
+      expect(out).toHaveLength(1);
+      expect(nodeAt(out).type).toBe("paragraph");
+    }
+  );
+
+  it("keeps a blank line between two paragraphs of prose", () => {
+    const out = fromHtml("<div>One</div><div></div><div>Two</div>");
+
+    expect(out.map((n) => n.type)).toEqual(["paragraph", "paragraph", "paragraph"]);
+    expect(firstText(out, 0)).toBe("One");
+    expect(firstText(out, 2)).toBe("Two");
+  });
+
+  it("keeps a nested list under its parent item", () => {
+    const out = fromHtml("<ul><li>Outer<ul><li>Inner</li></ul></li></ul>");
+
+    expect(nodeAt(out).type).toBe("bulleted-list");
+    const item = at(kidsOf(out), 0);
+    const nested = (item.children as Record<string, unknown>[]).find(
+      (c) => c.type === "bulleted-list"
+    );
+    expect(nested).toBeDefined();
+  });
+
+  it("keeps a numbered list nested inside a bulleted one", () => {
+    const out = fromHtml("<ul><li>Outer<ol><li>Inner</li></ol></li></ul>");
+
+    const item = at(kidsOf(out), 0);
+    const nested = (item.children as Record<string, unknown>[]).find(
+      (c) => c.type === "numbered-list"
+    );
+    expect(nested).toBeDefined();
+  });
+
+  it("ignores stray non-li children of a list", () => {
+    const out = fromHtml("<ul><li>Kept</li><div>Stray</div></ul>");
+
+    expect(kidsOf(out)).toHaveLength(1);
+  });
+
+  // Unknown tags are unwrapped to their text rather than dropped: losing the
+  // words is worse than losing the tag they came in.
+  it.each(["<section>Words</section>", "<article>Words</article>", "<main>Words</main>"])(
+    "turns the unknown block %j into a paragraph",
+    (html) => {
+      const out = fromHtml(html);
+
+      expect(nodeAt(out).type).toBe("paragraph");
+      expect(firstText(out)).toBe("Words");
+    }
+  );
+
+  it("unwraps an unknown inline element, keeping its text", () => {
+    const out = fromHtml("<p>before <cite>cited</cite> after</p>");
+
+    const text = kidsOf(out)
+      .map((n) => n.text ?? "")
+      .join("");
+    expect(text).toContain("cited");
+  });
+});
+
+describe("whitespace between pasted tags", () => {
+  // Markup is usually indented, and every newline between block tags arrives
+  // as a text node. Turning those into paragraphs would double the spacing of
+  // a pasted document.
+  it("does not turn indentation into empty paragraphs", () => {
+    const out = fromHtml("<p>One</p>\n  \n<p>Two</p>");
+
+    expect(out.map((n) => n.type)).toEqual(["paragraph", "paragraph"]);
+    expect(out.map((n) => firstText([n]))).toEqual(["One", "Two"]);
+  });
+
+  it.each(["   ", "\n", "\t\n  "])("drops the whitespace-only run %j", (ws) => {
+    expect(fromHtml(`<p>Kept</p>${ws}`)).toHaveLength(1);
+  });
+
+  // A bare link between blocks is meaningful even with no surrounding text, so
+  // the "is this run worth keeping" check has to look past whitespace.
+  it("keeps an inline run that is only a link", () => {
+    const out = fromHtml("<p>Above</p>\n<a href='/x'>Link</a>\n");
+
+    expect(out.map((n) => n.type)).toEqual(["paragraph", "paragraph"]);
+    // The surrounding newlines are text nodes in their own right, so the link
+    // sits among them rather than first.
+    const link = kidsOf(out, 1).find((n) => n.type === "link");
+    expect(link).toMatchObject({ href: "/x" });
+  });
+
+  it("keeps loose text that is not only whitespace", () => {
+    const out = fromHtml("<p>Above</p>loose words");
+
+    expect(out).toHaveLength(2);
+    expect(firstText(out, 1)).toBe("loose words");
+  });
+});

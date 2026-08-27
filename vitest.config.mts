@@ -78,10 +78,22 @@ export default defineConfig({
       // set from every file, "even if they are included by glob patterns".
       // So the headline number still covers the whole codebase.
       thresholds: {
-        statements: 88,
-        branches: 82,
+        statements: 89,
+        branches: 84,
         functions: 88,
-        lines: 90,
+        lines: 91,
+
+        // Round-trip fidelity for published prose. AGENTS.md puts it plainly:
+        // a lossy conversion corrupts a page invisibly — nothing errors, the
+        // words are just quietly different the next time someone reads them.
+        // Pinned at full line and function coverage; the branch remainder is
+        // defensive arms for malformed nodes that no reachable input produces.
+        "src/components/blocks/richText/richTextAst.ts": {
+          statements: 97,
+          functions: 100,
+          lines: 100,
+          branches: 83,
+        },
 
         // The largest sanitizer, and the one AGENTS.md puts first: it runs on
         // both render and save, so a gap here is a gap in two places. Pinned
