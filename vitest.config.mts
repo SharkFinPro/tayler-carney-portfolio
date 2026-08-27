@@ -78,10 +78,10 @@ export default defineConfig({
       // set from every file, "even if they are included by glob patterns".
       // So the headline number still covers the whole codebase.
       thresholds: {
-        statements: 68,
-        branches: 61,
-        functions: 71,
-        lines: 69,
+        statements: 73,
+        branches: 66,
+        functions: 74,
+        lines: 75,
 
         // The Content Security Policy, end to end. csp.ts says it plainly in
         // its own header: this is the one security control here whose failure
@@ -130,9 +130,12 @@ export default defineConfig({
         // that a reorder must never publish (SiteData is one entry, so
         // publishing a field publishes every other pending draft on the site),
         // and that the app's only permanent delete unpublishes first and
-        // tolerates that failing. A branch uncovered here is a branch nothing
-        // proves the shape of.
-        "src/app/admin/{contentActions,portfolioActions}.ts": {
+        // tolerates that failing. In mediaActions it is the upload gate: the
+        // declared MIME type is forgeable, so the real leading bytes decide,
+        // and next.config.ts sets dangerouslyAllowSVG — which makes a stored
+        // SVG dangerous rather than merely unsupported. A branch uncovered
+        // here is a branch nothing proves the shape of.
+        "src/app/admin/{contentActions,portfolioActions,mediaActions}.ts": {
           statements: 100,
           functions: 100,
           lines: 100,
