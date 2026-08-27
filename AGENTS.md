@@ -141,7 +141,7 @@ What is tested, and why those things:
 
 Untested by design: `cms.ts`, `getAssets.ts`, and most React components, which need network or DOM mocking heavy enough to test the mocks rather than the code. Prefer an end-to-end test for those.
 
-Untested, but *not* by design — these are gaps rather than policy, and adding a suite to one is welcome work rather than a change of direction: `projectToBlocks` in `blocks.ts` (which is live — it is the fallback that renders any project whose `projectPage` has never been authored). The distinction matters when reading the coverage number: the first list is code we have decided not to unit-test, the second is simply work not done yet.
+Untested, but *not* by design — these are gaps rather than policy, and adding a suite to one is welcome work rather than a change of direction: `projectToBlocks` in `blocks.ts` (which is live — it is the fallback that renders any project whose `projectPage` has never been authored), and `sitemap.ts` / `robots.ts`, both of which read `WEBSITE_URL` and silently emit a malformed document when it is unset. The distinction matters when reading the coverage number: the first list is code we have decided not to unit-test, the second is simply work not done yet.
 
 The exception is `SuggestAltButton`, whose entire surface is two Server Action calls — one `vi.mock` of that module, and the properties under test are ones review cannot see: that an unconfigured install renders no button at all, that availability is asked for once rather than once per gallery card, and that a failed suggestion never reaches the field. Note that `cleanup()` has to be called in `afterEach` by hand: Testing Library only registers auto-cleanup when Vitest globals are on, and they are not.
 

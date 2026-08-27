@@ -103,12 +103,24 @@ describe("setSession — the cookie attributes", () => {
     expect(cookieOptions().secure).toBe(false);
   });
 
-  it("signs an expiry in the future", async () => {
-    const before = Date.now();
-    await setSession();
+  // The signed expiry is the real boundary: verifySession compares it against
+  // the clock, so it — not the cookie's maxAge, which is a separate line and a
+  // browser-side hint — is what decides how long a stolen token stays usable.
+  //
+  // Frozen clock rather than `expiry > before`, which would pass for any
+  // positive offset at all: real milliseconds elapse across the awaits, so
+  // `Date.now() + 1`, or dropping the TTL term entirely, would satisfy it while
+  // turning a seven-day session into a one-millisecond one.
+  it("signs an expiry exactly one TTL ahead", async () => {
+    vi.useFakeTimers();
+    try {
+      const now = Date.now();
+      await setSession();
 
-    const expiry = at(signSession.mock.calls, 0)[0] as number;
-    expect(expiry).toBeGreaterThan(before);
+      expect(at(signSession.mock.calls, 0)[0]).toBe(now + SESSION_TTL_MS);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
