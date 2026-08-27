@@ -120,12 +120,21 @@ describe("signSession / verifySession", () => {
 
 // ── The token's shape, and the length guard in front of the comparison ───────
 //
-// `verifySession` is the only path that hands `timingSafeEqual` two strings
-// that can differ in length: `checkAdminKey` compares two HMACs of the same
-// module, so its lengths always match. A forged cookie is where a short or
-// long signature actually arrives.
+// Two different blocks below, and it is worth being exact about which does
+// what — traced rather than assumed.
+//
+// The malformed-token cases never reach the comparison at all: a token with no
+// "." is refused by the separator check, and one whose expiry parses to a past
+// or non-finite number is refused by the expiry check. They pin the FORMAT
+// rules, not the comparison.
+//
+// The short and long signature cases are the ones that reach `timingSafeEqual`
+// with mismatched lengths, and so are the only ones exercising its length
+// guard. `verifySession` is the only path that can: `checkAdminKey` compares
+// two HMACs produced by the same function, so its lengths always match. A
+// forged cookie is where a wrong-length signature actually arrives.
 
-describe("verifySession — a malformed token is refused, not compared", () => {
+describe("verifySession — a malformed token is refused on its shape", () => {
   it.each([
     ["no separator at all", "1234567890"],
     ["an empty signature", "1234567890."],
@@ -136,13 +145,14 @@ describe("verifySession — a malformed token is refused, not compared", () => {
     await expect(verifySession(token)).resolves.toBe(false);
   });
 
-  // A signature that is not the right length can never be right, and the
-  // length check in front of the comparison is what says so without walking
-  // the shorter of the two.
+  // These two DO reach the comparison — the expiry is in the future and parses
+  // fine, so the only thing left to reject them is the length guard. A
+  // signature of the wrong length can never be right, and comparing it would
+  // mean indexing past the end of the shorter string.
   it.each([
     ["short", "abc"],
     ["long", "a".repeat(200)],
-  ])("refuses a %s signature", async (_name, signature) => {
+  ])("refuses a %s signature on length, having got past the format checks", async (_name, signature) => {
     const expiry = Date.now() + 60_000;
     await expect(verifySession(`${expiry}.${signature}`)).resolves.toBe(false);
   });
