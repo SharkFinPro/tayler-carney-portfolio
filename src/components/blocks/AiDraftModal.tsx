@@ -5,7 +5,7 @@ import Modal from "@/components/Modal";
 import AssetPicker from "@/components/AssetPicker";
 import { BLOCK_LABELS, blockSummary, type Block } from "./blocks";
 import { draftProjectPage, pageGenerationAvailable } from "@/app/admin/aiActions";
-import { DRAFT_QUESTIONS, MAX_IMAGES, type SourceImage } from "@/lib/ai/types";
+import { DRAFT_QUESTIONS, type SourceImage } from "@/lib/ai/types";
 import styles from "./AiDraftModal.module.scss";
 
 type Stage = "compose" | "working" | "review";
@@ -37,6 +37,10 @@ export default function AiDraftModal({
   const [stage, setStage] = useState<Stage>("compose");
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<Block[]>([]);
+  // Images that went on the page without the model having seen them: the
+  // request had no room. Reported because their placement is unconsidered —
+  // they land in a trailing gallery rather than wherever they belong.
+  const [unseen, setUnseen] = useState(0);
 
   // Availability is a server fact (is a key configured?), so it is asked for
   // rather than assumed. Until it answers, the form stays disabled.
@@ -71,6 +75,7 @@ export default function AiDraftModal({
     }
 
     setDraft(result.blocks);
+    setUnseen(result.unseenImages);
     setStage("review");
   }
 
@@ -101,6 +106,13 @@ export default function AiDraftModal({
                 {draft.length} block{draft.length === 1 ? "" : "s"} drafted. Have a read before
                 inserting.
               </p>
+              {unseen > 0 && (
+                <p className={styles.notice} role="status">
+                  Every image you picked is on the page. {unseen} of them didn&rsquo;t fit in one
+                  request, so {unseen === 1 ? "it was" : "they were"} placed at the end without
+                  being looked at — worth a check before you insert.
+                </p>
+              )}
               <ol className={styles.reviewList}>
                 {draft.map((block) => (
                   <li key={block.id} className={styles.reviewItem}>
@@ -147,7 +159,8 @@ export default function AiDraftModal({
                 <span className={styles.label}>Images</span>
                 <span className={styles.hint}>
                   Only these are used. Nothing else from the Media Library is referenced.
-                  Up to {MAX_IMAGES}.
+                  {images.length > 0 &&
+                    ` ${images.length} added — they are sent in the order below.`}
                 </span>
 
                 {images.length > 0 && (
@@ -179,7 +192,7 @@ export default function AiDraftModal({
                   onClick={() => setPickerOpen(true)}
                   disabled={stage === "working"}
                 >
-                  + Add image
+                  {images.length === 0 ? "+ Add images" : "+ Add more images"}
                 </button>
               </div>
 
@@ -235,18 +248,26 @@ export default function AiDraftModal({
 
       {pickerOpen && (
         <AssetPicker
+          multiple
+          // Drafting a page means handing over a set of images, so the picker
+          // is opened once and closed once. There is no count to ration
+          // against: how many fit in one request is worked out server-side
+          // from the images themselves.
+          selectedUrls={images.map((i) => i.url)}
           onClose={() => setPickerOpen(false)}
-          onSelect={(asset) => {
-            const name = asset.title?.trim() || asset.fileName;
-            setImages((prev) =>
-              // The same asset twice would just spend tokens describing it twice.
-              // The cap is the server's, enforced here so the admin sees the
-              // limit rather than getting a draft that quietly ignored images
-              // they picked.
-              prev.some((i) => i.url === asset.url) || prev.length >= MAX_IMAGES
-                ? prev
-                : [...prev, { url: asset.url, name, altText: asset.altText }]
-            );
+          onSelect={(assets) => {
+            setImages((prev) => {
+              const seen = new Set(prev.map((i) => i.url));
+              const added = assets.flatMap((asset) =>
+                // The same asset twice would just spend tokens describing it
+                // twice. The picker already excludes what is here, so this is
+                // the belt to its braces.
+                seen.has(asset.url)
+                  ? []
+                  : [{ url: asset.url, name: asset.title?.trim() || asset.fileName, altText: asset.altText }]
+              );
+              return [...prev, ...added];
+            });
             setPickerOpen(false);
           }}
         />

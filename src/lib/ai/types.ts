@@ -24,7 +24,36 @@ export type GenerationInput = {
   answers: { question: string; answer: string }[];
   /** Images the page may reference. The model must not invent any others. */
   images: SourceImage[];
+  /** Existing pages, as structure only, for the model to draft in keeping with. */
+  examples: PageOutline[];
 };
+
+/**
+ * The shape of a page that already exists on the site, with no prose.
+ *
+ * The model is shown these so a draft comes out looking like the rest of the
+ * portfolio — the rhythm of sections and the heading vocabulary are house
+ * style, and a model left to invent them writes headings no other page uses.
+ * Structure only, on purpose: the copy on existing pages is the designer's,
+ * and showing it invites pastiche of the sentences rather than of the shape.
+ */
+export type PageOutline = {
+  title: string;
+  sections: { kind: GeneratedSection["kind"]; heading: string; imageCount: number }[];
+};
+
+/**
+ * How an image is named in the brief and referred to in the output.
+ *
+ * Tokens rather than URLs because a Media Library URL is an opaque string of
+ * random characters, and a model asked to copy forty of them exactly will get
+ * some of them wrong — every mistyped character used to be an image silently
+ * dropped from the page, which is indistinguishable from the model choosing
+ * not to use it. A short token is easy to reproduce and easy to check.
+ */
+export function imageToken(index: number): string {
+  return `img-${index + 1}`;
+}
 
 /**
  * The shape the model is asked to produce.
@@ -39,28 +68,38 @@ export type GenerationInput = {
 export type GeneratedSection =
   | { kind: "intro"; eyebrow: string; heading: string; body: string }
   | { kind: "prose"; heading: string; body: string }
-  | { kind: "gallery"; heading: string; imageUrls: string[]; layout: "grid" | "feature" }
-  | { kind: "captioned"; heading: string; items: { imageUrl: string; title: string; description: string }[] }
+  | { kind: "gallery"; heading: string; imageRefs: string[]; layout: "grid" | "feature" }
+  | { kind: "captioned"; heading: string; items: { imageRef: string; title: string; description: string }[] }
   | { kind: "specs"; heading: string; rows: { label: string; value: string }[] }
   | { kind: "timeline"; heading: string; stages: { marker: string; title: string; description: string }[] };
 
 export type GeneratedPage = { sections: GeneratedSection[] };
 
+/**
+ * What one drafting call produced.
+ *
+ * `unseen` exists because there is no count limit on the images an admin may
+ * choose — the real ceiling is how many fit in one request to the provider,
+ * which depends on their size, not their number. Past that point the extra
+ * images are not sent to the model, but they are still placed on the page by
+ * `toBlocks`: every selected image reaches the draft, described or not.
+ */
+export type GenerationResult = {
+  page: GeneratedPage;
+  /** Images the request had no room for. Placed, but never looked at. */
+  unseen: SourceImage[];
+  /**
+   * The model that actually answered. Not implied by configuration: a provider
+   * may work down a list of models when the preferred one is out of quota.
+   */
+  model: string;
+};
+
 export interface PageGenerator {
   /** Identifies the backing provider in logs and in the admin UI. */
   readonly name: string;
-  generateProjectPage(input: GenerationInput): Promise<GeneratedPage>;
+  generateProjectPage(input: GenerationInput): Promise<GenerationResult>;
 }
-
-/**
- * Most images one draft may reference.
- *
- * Lives here rather than in the Server Action so both the action and the modal
- * can read it: a `"use server"` module may only export async functions, and the
- * client needs the same number to stop at, or the server silently drops the
- * extras and the admin gets a draft that ignored images they chose.
- */
-export const MAX_IMAGES = 12;
 
 /**
  * Where an image to be described lives.

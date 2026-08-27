@@ -7,19 +7,61 @@ import { fetchAssets, publishAsset } from "@/app/admin/mediaActions";
 import MediaUploader from "@/app/admin/media/MediaUploader";
 import type { MediaAsset } from "@/lib/getAssets";
 
-interface Props {
+/** What a caller gets back — the fields the picker's call sites actually use. */
+export type PickedAsset = {
+  id: string;
+  url: string;
+  altText?: string;
+  title?: string;
+  fileName: string;
+};
+
+type BaseProps = {
   onClose: () => void;
-  onSelect: (asset: { id: string; url: string; altText?: string; title?: string; fileName: string }) => void;
   /** Which assets to offer: images (default) or PDF documents. */
   kind?: "image" | "document";
+};
+
+/**
+ * Single- and multi-select are one component but two contracts, so the props
+ * are a union rather than a bag of optionals: a single-select call site can
+ * never be handed an array, and `selectedUrls` exists only where it means
+ * something.
+ */
+type Props = BaseProps &
+  (
+    | { multiple?: false; onSelect: (asset: PickedAsset) => void }
+    | {
+        multiple: true;
+        onSelect: (assets: PickedAsset[]) => void;
+        /** URLs the caller already holds — shown as added, and not re-pickable. */
+        selectedUrls?: string[];
+      }
+  );
+
+function picked(asset: MediaAsset): PickedAsset {
+  return {
+    id: asset.id,
+    url: asset.url,
+    altText: asset.altText,
+    title: asset.title,
+    fileName: asset.fileName,
+  };
 }
 
-export default function AssetPicker({ onClose, onSelect, kind = "image" }: Props) {
+export default function AssetPicker(props: Props) {
+  const { onClose, kind = "image" } = props;
+  const multiple = props.multiple === true;
+  const alreadyAdded = new Set(props.multiple ? (props.selectedUrls ?? []) : []);
+
   const [assets, setAssets] = useState<MediaAsset[]>([]);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<{ msg: string; error?: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
   const [selecting, setSelecting] = useState(false);
+  // Ids rather than assets, in click order: the record is looked up at confirm
+  // time, and the order is what the caller receives.
+  const [chosenIds, setChosenIds] = useState<string[]>([]);
 
   async function load() {
     // `loading` starts true; this only runs once from the mount effect, so the
@@ -42,18 +84,52 @@ export default function AssetPicker({ onClose, onSelect, kind = "image" }: Props
 
   // Selecting a draft asset would place an unpublished image on a live page,
   // where it wouldn't display for visitors — so publish it as part of selection.
-  async function choose(asset: MediaAsset) {
-    if (selecting) return;
-    if (asset.status === "draft") {
-      setSelecting(true);
+  // Returns false when a publish failed, having already reported it; the ones
+  // before it stay published, which is the same end state as picking them one
+  // at a time and is harmless.
+  async function publishDrafts(list: MediaAsset[]): Promise<boolean> {
+    for (const asset of list) {
+      if (asset.status !== "draft") continue;
       const res = await publishAsset(asset.id);
-      setSelecting(false);
       if ("error" in res) {
         setStatus({ msg: res.error, error: true });
-        return;
+        return false;
       }
     }
-    onSelect({ id: asset.id, url: asset.url, altText: asset.altText, title: asset.title, fileName: asset.fileName });
+    return true;
+  }
+
+  async function choose(asset: MediaAsset) {
+    if (selecting || props.multiple) return;
+    setSelecting(true);
+    const ok = await publishDrafts([asset]);
+    setSelecting(false);
+    if (!ok) return;
+    props.onSelect(picked(asset));
+    onClose();
+  }
+
+  function toggle(asset: MediaAsset) {
+    if (selecting) return;
+    setChosenIds((prev) =>
+      prev.includes(asset.id) ? prev.filter((id) => id !== asset.id) : [...prev, asset.id]
+    );
+  }
+
+  async function confirm() {
+    if (!props.multiple || selecting || chosenIds.length === 0) return;
+    const byId = new Map(assets.map((a) => [a.id, a]));
+    const chosen = chosenIds.flatMap((id) => {
+      const asset = byId.get(id);
+      return asset ? [asset] : [];
+    });
+
+    setSelecting(true);
+    const ok = await publishDrafts(chosen);
+    setSelecting(false);
+    if (!ok) return;
+
+    props.onSelect(chosen.map(picked));
     onClose();
   }
 
@@ -65,12 +141,28 @@ export default function AssetPicker({ onClose, onSelect, kind = "image" }: Props
     return (a.title ?? "").toLowerCase().includes(q) || a.fileName.toLowerCase().includes(q);
   });
 
+  // What "select all" acts on: everything the current search shows that is not
+  // already held by the caller. Scoping it to the filtered list is the point —
+  // search then select-all is how a set of forty gets picked without forty
+  // clicks.
+  const selectableShown = filtered.filter((a) => !alreadyAdded.has(a.url));
+
+  function selectAllShown() {
+    if (selecting) return;
+    setChosenIds((prev) => [
+      ...prev,
+      ...selectableShown.filter((a) => !prev.includes(a.id)).map((a) => a.id),
+    ]);
+  }
+
+  const heading = multiple ? "Select images" : kind === "document" ? "Select PDF" : "Select image";
+
   return (
     <Modal onClose={onClose} labelledBy="asset-picker-title" overlayClassName={styles.overlay}>
       <div className={styles.panel}>
         <div className={styles.head}>
           <span id="asset-picker-title" className={styles.title}>
-            {kind === "document" ? "Select PDF" : "Select image"}
+            {heading}
           </span>
           <input
             className={styles.search}
@@ -93,24 +185,36 @@ export default function AssetPicker({ onClose, onSelect, kind = "image" }: Props
             </p>
           ) : (
             <div className={styles.grid}>
-              {filtered.map((a) => (
-                <button
-                  key={a.id}
-                  type="button"
-                  className={styles.cell}
-                  disabled={selecting}
-                  onClick={() => choose(a)}
-                >
-                  {kind === "document" ? (
-                    <span className={styles.docThumb} aria-hidden="true">PDF</span>
-                  ) : (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img className={styles.thumb} src={a.url} alt={a.altText ?? a.title ?? a.fileName} loading="lazy" />
-                  )}
-                  <span className={styles.name}>{a.title || a.fileName}</span>
-                  <span className={styles.badge}>{a.status}</span>
-                </button>
-              ))}
+              {filtered.map((a) => {
+                const added = alreadyAdded.has(a.url);
+                const chosen = chosenIds.includes(a.id);
+                return (
+                  <button
+                    key={a.id}
+                    type="button"
+                    className={`${styles.cell} ${chosen ? styles.cellChosen : ""}`}
+                    disabled={selecting || added}
+                    aria-pressed={multiple ? chosen : undefined}
+                    onClick={() => (multiple ? toggle(a) : choose(a))}
+                  >
+                    {kind === "document" ? (
+                      <span className={styles.docThumb} aria-hidden="true">PDF</span>
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img className={styles.thumb} src={a.url} alt={a.altText ?? a.title ?? a.fileName} loading="lazy" />
+                    )}
+                    <span className={styles.name}>{a.title || a.fileName}</span>
+                    <span className={styles.badge}>{added ? "added" : a.status}</span>
+                    {multiple && chosen && (
+                      // The pick order is the order the caller receives, so it
+                      // is worth showing rather than a plain checkmark.
+                      <span className={styles.tick} aria-hidden="true">
+                        {chosenIds.indexOf(a.id) + 1}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
@@ -121,10 +225,50 @@ export default function AssetPicker({ onClose, onSelect, kind = "image" }: Props
             triggerClassName={styles.close}
             accept={kind}
             onUploaded={(asset) => {
-              onSelect({ id: asset.id, url: asset.url, altText: asset.altText, title: asset.title, fileName: asset.fileName });
+              if (props.multiple) {
+                // Keep the picker open: an upload here is usually one of
+                // several images being gathered, not the end of the task.
+                setAssets((prev) => [asset, ...prev]);
+                toggle(asset);
+                return;
+              }
+              props.onSelect(picked(asset));
               onClose();
             }}
           />
+          {props.multiple && (
+            <>
+              <button
+                type="button"
+                className={styles.close}
+                onClick={selectAllShown}
+                disabled={selecting || selectableShown.length === 0}
+              >
+                Select all{query.trim() ? " shown" : ""}
+              </button>
+              <button
+                type="button"
+                className={styles.close}
+                onClick={() => setChosenIds([])}
+                disabled={selecting || chosenIds.length === 0}
+              >
+                Clear
+              </button>
+              <span className={styles.count} role="status">
+                {chosenIds.length} selected
+              </span>
+              <button
+                type="button"
+                className={styles.confirm}
+                onClick={confirm}
+                disabled={selecting || chosenIds.length === 0}
+              >
+                {selecting
+                  ? "Adding…"
+                  : `Add ${chosenIds.length} image${chosenIds.length === 1 ? "" : "s"}`}
+              </button>
+            </>
+          )}
           {status && (
             <span className={`${styles.status} ${status.error ? styles.statusError : ""}`} role="status">
               {status.msg}

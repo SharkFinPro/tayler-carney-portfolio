@@ -5,8 +5,10 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   fetchImageAsInline,
+  fetchImagesWithinBudget,
   ImageFetchError,
   MAX_FETCHED_IMAGE_BYTES,
+  modelImageEdge,
 } from "./fetchImage";
 
 const ASSET = "https://media.graphassets.com/abc123";
@@ -180,5 +182,76 @@ describe("fetchImageAsInline — downscaling", () => {
     const notAnImage = new Uint8Array([1, 2, 3, 4]);
     const out = await fetchImageAsInline(ASSET, respondWith({ bytes: notAnImage }));
     expect(out).toEqual({ mediaType: "image/jpeg", base64: "AQIDBA==" });
+  });
+});
+
+describe("modelImageEdge — resolution is what makes room for a large set", () => {
+  it("keeps full resolution for a small batch", () => {
+    expect(modelImageEdge(1)).toBe(1024);
+    expect(modelImageEdge(12)).toBe(1024);
+  });
+
+  it("steps down as the batch grows, rather than refusing it", () => {
+    expect(modelImageEdge(13)).toBe(768);
+    expect(modelImageEdge(40)).toBe(768);
+    expect(modelImageEdge(41)).toBe(512);
+    expect(modelImageEdge(500)).toBe(512);
+  });
+});
+
+describe("fetchImagesWithinBudget — the ceiling is bytes, not a count", () => {
+  const image = (n: number) => ({ url: `https://media.graphassets.com/${n}` });
+
+  /** Three undecodable bytes per image: 4 base64 characters each, exactly. */
+  function respondToAll(failing: string[] = []) {
+    return vi.fn(async (url: string) => {
+      if (failing.includes(url)) throw new Error("unreachable");
+      const headers = new Headers([["content-type", "image/jpeg"]]);
+      const bytes = new Uint8Array([1, 2, 3]);
+      return {
+        ok: true,
+        status: 200,
+        headers,
+        arrayBuffer: async () => bytes.buffer.slice(0),
+      };
+    }) as unknown as typeof fetch;
+  }
+
+  it("attaches every image, in order, when the budget is ample", async () => {
+    const images = [image(1), image(2), image(3)];
+    const { attached, skipped } = await fetchImagesWithinBudget(images, 1000, respondToAll());
+
+    expect(attached.map((a) => a.image)).toEqual(images);
+    expect(skipped).toEqual([]);
+  });
+
+  it("has no count limit — a set far past the old cap of twelve all attaches", async () => {
+    const images = Array.from({ length: 60 }, (_, i) => image(i));
+    const { attached, skipped } = await fetchImagesWithinBudget(images, 10_000, respondToAll());
+
+    expect(attached).toHaveLength(60);
+    expect(skipped).toEqual([]);
+  });
+
+  it("stops at the budget and reports the rest, rather than failing the draft", async () => {
+    const images = Array.from({ length: 8 }, (_, i) => image(i));
+    // Room for two images of four base64 characters; the third does not fit.
+    const fetchImpl = respondToAll();
+    const { attached, skipped } = await fetchImagesWithinBudget(images, 10, fetchImpl);
+
+    expect(attached.map((a) => a.image)).toEqual([images[0], images[1]]);
+    expect(skipped).toHaveLength(6);
+    // The images past the chunk that filled up are never fetched at all, which
+    // is what keeps "select everything" from costing a fetch per asset.
+    expect(fetchImpl).toHaveBeenCalledTimes(6);
+  });
+
+  it("counts an unreachable image as skipped and keeps the rest", async () => {
+    const images = [image(1), image(2), image(3)];
+    const failing = ["https://media.graphassets.com/2"];
+    const { attached, skipped } = await fetchImagesWithinBudget(images, 1000, respondToAll(failing));
+
+    expect(attached.map((a) => a.image)).toEqual([images[0], images[2]]);
+    expect(skipped).toEqual([images[1]]);
   });
 });

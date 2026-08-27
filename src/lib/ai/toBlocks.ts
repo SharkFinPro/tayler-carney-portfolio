@@ -6,10 +6,10 @@
 //
 //   1. Only the six section kinds below can become blocks at all. There is no
 //      path from model output to an arbitrary block type.
-//   2. Every image URL is checked against the set the admin actually supplied.
-//      A model that invents, guesses, or hallucinates a URL gets it dropped,
-//      so generated content can never point at an asset that doesn't exist or
-//      at an off-site host.
+//   2. Every image reference is resolved against the set the admin actually
+//      supplied — by `img-N` token, or by exact URL for a model that ignored
+//      the tokens. Anything else is dropped, so generated content can never
+//      point at an asset that doesn't exist or at an off-site host.
 //   3. The result is passed through `sanitizeBlocks` — the same validator that
 //      guards the CMS — so anything that slips through the first two still has
 //      to survive the ordinary rules.
@@ -23,7 +23,7 @@ import {
   type ImageRef,
   type RichTextAST,
 } from "@/components/blocks/blocks";
-import type { GeneratedPage, GeneratedSection, SourceImage } from "./types";
+import { imageToken, type GeneratedPage, type GeneratedSection, type SourceImage } from "./types";
 
 /** Plain text to the rich-text AST the renderer expects, one node per line. */
 function toRichText(text: string): RichTextAST {
@@ -49,18 +49,26 @@ const clean = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
 /**
  * Convert one section, or null when it carries nothing usable.
  *
- * `allowed` maps a permitted URL to its source image, so alt text comes from
- * what the admin authored rather than from anything the model wrote.
+ * `allowed` maps every accepted reference — `img-N` token and exact URL alike
+ * — to its source image, so alt text comes from what the admin authored rather
+ * than from anything the model wrote. `used` records which images the page has
+ * actually placed, so the ones the model left out can be added afterwards.
  */
-function toBlock(section: GeneratedSection, allowed: Map<string, SourceImage>): Block | null {
+function toBlock(
+  section: GeneratedSection,
+  allowed: Map<string, SourceImage>,
+  used: Set<string>
+): Block | null {
   const id = newId();
   const heading = clean(section.heading);
 
-  // Resolve a model-supplied URL against the allowlist. Anything not supplied
-  // by the admin is dropped rather than trusted.
-  const image = (url: unknown): ImageRef | null => {
-    const source = allowed.get(clean(url));
-    return source ? { url: source.url, altText: source.altText } : null;
+  // Resolve a model-supplied reference against the allowlist. Anything not
+  // supplied by the admin is dropped rather than trusted.
+  const image = (ref: unknown): ImageRef | null => {
+    const source = allowed.get(clean(ref));
+    if (!source) return null;
+    used.add(source.url);
+    return { url: source.url, altText: source.altText };
   };
 
   switch (section.kind) {
@@ -77,7 +85,7 @@ function toBlock(section: GeneratedSection, allowed: Map<string, SourceImage>): 
     }
 
     case "gallery": {
-      const images = (Array.isArray(section.imageUrls) ? section.imageUrls : [])
+      const images = (Array.isArray(section.imageRefs) ? section.imageRefs : [])
         .map(image)
         .filter((r): r is ImageRef => r !== null);
       if (!images.length) return null;
@@ -93,7 +101,7 @@ function toBlock(section: GeneratedSection, allowed: Map<string, SourceImage>): 
     case "captioned": {
       const items = (Array.isArray(section.items) ? section.items : [])
         .map((item) => {
-          const ref = image(item?.imageUrl);
+          const ref = image(item?.imageRef);
           if (!ref) return null;
           return { title: clean(item?.title), description: clean(item?.description), image: ref };
         })
@@ -129,6 +137,9 @@ function toBlock(section: GeneratedSection, allowed: Map<string, SourceImage>): 
   }
 }
 
+/** Heading for the block that catches images the draft did not place itself. */
+export const LEFTOVER_HEADING = "Additional images";
+
 /**
  * Convert a generated page into blocks ready for the editor.
  *
@@ -137,18 +148,50 @@ function toBlock(section: GeneratedSection, allowed: Map<string, SourceImage>): 
  * back" rather than as a crashed Server Action.
  */
 export function toBlocks(page: GeneratedPage | null | undefined, images: SourceImage[]): Block[] {
-  const allowed = new Map(images.map((img) => [img.url, img]));
+  // Both keys resolve to the same image: the token the brief gave the model,
+  // and the URL, for a model that quoted the URL back anyway.
+  const allowed = new Map<string, SourceImage>();
+  images.forEach((img, i) => {
+    allowed.set(img.url, img);
+    allowed.set(imageToken(i), img);
+  });
+
   const sections = Array.isArray(page?.sections) ? page.sections : [];
+  const used = new Set<string>();
 
   const blocks: Block[] = [];
   for (const section of sections) {
     if (!section || typeof section !== "object") continue;
     try {
-      const block = toBlock(section, allowed);
+      const block = toBlock(section, allowed, used);
       if (block) blocks.push(block);
     } catch {
       // One malformed section must not lose the rest of the draft.
     }
+  }
+
+  // Every selected image ends up on the page, whatever the model did.
+  //
+  // The prompt asks for all of them, but asking is not a guarantee: a model
+  // that picks its eight favourites out of forty is not misbehaving in a way
+  // the schema can catch, and an image that was selected and then silently
+  // vanished is the worst outcome — the admin has no way to tell it apart from
+  // one the draft simply chose not to caption. So the remainder is appended as
+  // an ordinary gallery, in the order they were selected, for the admin to
+  // move, split, or delete like any other block.
+  //
+  // Only when the draft produced something. A page with no sections at all is
+  // a failed generation, and reporting it as "here is a gallery" would hide
+  // that from the admin — the caller checks for an empty result and says so.
+  const leftovers = blocks.length ? images.filter((img) => !used.has(img.url)) : [];
+  if (leftovers.length) {
+    blocks.push({
+      id: newId(),
+      type: "gallery",
+      heading: LEFTOVER_HEADING,
+      images: leftovers.map((img) => ({ url: img.url, altText: img.altText })),
+      layout: "grid",
+    });
   }
 
   // The same validator the CMS uses. Belt and braces: nothing reaches storage
