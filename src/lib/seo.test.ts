@@ -172,3 +172,56 @@ describe("sanitizeSeo — keywords", () => {
     }
   });
 });
+
+// ── The defaults themselves ──────────────────────────────────────────────────
+//
+// The same circularity home.ts and global.ts had: every assertion above
+// compares sanitizeSeo's output to DEFAULT_SEO, the constant the production
+// code fills gaps from, so blanking a default changes both sides at once.
+// These describe what a fresh install actually serves to a crawler.
+
+describe("DEFAULT_SEO — what a fresh install tells search engines", () => {
+  const stringLeaves = (value: unknown, path = ""): [string, string][] => {
+    if (typeof value === "string") return [[path, value]];
+    if (Array.isArray(value)) return value.flatMap((v, i) => stringLeaves(v, `${path}[${i}]`));
+    if (value && typeof value === "object") {
+      return Object.entries(value).flatMap(([k, v]) => stringLeaves(v, path ? `${path}.${k}` : k));
+    }
+    return [];
+  };
+
+  // The home page's description is deliberately blank: the site-wide
+  // description already covers it, and repeating it would duplicate the meta
+  // description across two URLs.
+  const INTENTIONALLY_EMPTY = new Set(["pages.home.description"]);
+  const LEAVES = stringLeaves(DEFAULT_SEO);
+
+  it("has leaves to check, so the walk below is not vacuous", () => {
+    expect(LEAVES.length).toBeGreaterThan(15);
+  });
+
+  it.each(LEAVES.filter(([p]) => !INTENTIONALLY_EMPTY.has(p)))("%s is not blank", (_p, value) => {
+    expect(value.trim()).not.toBe("");
+  });
+
+  it.each([...INTENTIONALLY_EMPTY])("%s stays empty on purpose", (path) => {
+    expect(LEAVES.find(([p]) => p === path)?.[1]).toBe("");
+  });
+
+  it("ships keywords rather than an empty list", () => {
+    expect(DEFAULT_SEO.keywords.length).toBeGreaterThan(0);
+  });
+
+  // The template is interpolated with the page title, so it has to carry the
+  // placeholder or every page title collapses to the same string.
+  it("gives the title template a %s placeholder to fill", () => {
+    expect(DEFAULT_SEO.titleTemplate).toContain("%s");
+  });
+
+  it.each(["home", "portfolio", "atelier", "about", "contact"] as const)(
+    "gives the %s page a title",
+    (page) => {
+      expect(DEFAULT_SEO.pages[page].title.trim()).not.toBe("");
+    }
+  );
+});
