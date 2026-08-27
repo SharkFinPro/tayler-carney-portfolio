@@ -159,3 +159,165 @@ describe("useDragReorder — the order before the interaction", () => {
     expect(ordered).toEqual(before);
   });
 });
+
+// ── Keyboard reordering ──────────────────────────────────────────────────────
+//
+// The whole reason `keyboardReorder` exists: a drag-and-drop list that can only
+// be reordered by dragging cannot be reordered at all without a pointer. That
+// makes these key handlers the accessible path, not a convenience — and the
+// announcement is the only feedback a screen-reader user gets, since the visual
+// change is exactly what they cannot see.
+
+/** Press `key` on the card for `id`, and report whether the default was suppressed. */
+function press(result: { current: ReturnType<typeof useDragReorder<Item>> }, id: string, key: string) {
+  const preventDefault = vi.fn();
+  act(() => {
+    result.current.keyboardReorder(id)({ key, preventDefault } as unknown as React.KeyboardEvent);
+  });
+  return { preventDefault };
+}
+
+describe("useDragReorder — keyboard reordering", () => {
+  it.each(["ArrowUp", "ArrowLeft"])("moves a card one place earlier with %s", (key) => {
+    const { result, current } = setup();
+
+    press(result, "b", key);
+
+    expect(current().map((i) => i.id)).toEqual(["b", "a", "c"]);
+  });
+
+  it.each(["ArrowDown", "ArrowRight"])("moves a card one place later with %s", (key) => {
+    const { result, current } = setup();
+
+    press(result, "b", key);
+
+    expect(current().map((i) => i.id)).toEqual(["a", "c", "b"]);
+  });
+
+  it("sends a card to the front with Home", () => {
+    const { result, current } = setup();
+
+    press(result, "c", "Home");
+
+    expect(current().map((i) => i.id)).toEqual(["c", "a", "b"]);
+  });
+
+  it("sends a card to the back with End", () => {
+    const { result, current } = setup();
+
+    press(result, "a", "End");
+
+    expect(current().map((i) => i.id)).toEqual(["b", "c", "a"]);
+  });
+
+  it.each([
+    ["ArrowUp", "a"],
+    ["Home", "a"],
+    ["ArrowDown", "c"],
+    ["End", "c"],
+  ])("leaves the list alone when %s cannot move %j any further", (key, id) => {
+    const { result, current } = setup();
+
+    press(result, id, key);
+
+    expect(current().map((i) => i.id)).toEqual(["a", "b", "c"]);
+    expect(onCommit).not.toHaveBeenCalled();
+  });
+
+  it.each(["Tab", "Enter", " ", "Escape", "a", "PageUp"])(
+    "ignores %j, and lets the browser keep it",
+    (key) => {
+      const { result, current } = setup();
+
+      const { preventDefault } = press(result, "b", key);
+
+      expect(current().map((i) => i.id)).toEqual(["a", "b", "c"]);
+      expect(preventDefault).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End"])(
+    "suppresses the browser default for %j, which would otherwise scroll",
+    (key) => {
+      const { result } = setup();
+
+      const { preventDefault } = press(result, "b", key);
+
+      expect(preventDefault).toHaveBeenCalledOnce();
+    }
+  );
+
+  // Suppressed even when the card cannot move: the key was still handled, and
+  // scrolling the page instead would look like the press did something else.
+  it.each([
+    ["ArrowUp", "a"],
+    ["Home", "a"],
+    ["ArrowDown", "c"],
+    ["End", "c"],
+  ])("still suppresses the default for %j at the boundary", (key, id) => {
+    const { result } = setup();
+
+    const { preventDefault } = press(result, id, key);
+
+    expect(preventDefault).toHaveBeenCalledOnce();
+  });
+
+  it("does nothing for a key that is not in the list", () => {
+    const { result, current } = setup();
+
+    press(result, "not-a-card", "ArrowUp");
+
+    expect(current().map((i) => i.id)).toEqual(["a", "b", "c"]);
+    expect(onCommit).not.toHaveBeenCalled();
+  });
+
+  it("reorders repeatedly, each move starting from the previous result", () => {
+    const { result, current } = setup();
+
+    press(result, "a", "ArrowDown");
+    press(result, "a", "ArrowDown");
+
+    expect(current().map((i) => i.id)).toEqual(["b", "c", "a"]);
+    expect(onCommit).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("useDragReorder — what a screen reader is told", () => {
+  // The visual change is precisely what this user cannot see, so the live
+  // region is the entire feedback channel.
+  it("announces the new position, one-based and with the total", () => {
+    const { result } = setup();
+
+    press(result, "a", "End");
+
+    expect(result.current.announcement).toBe("Moved to position 3 of 3.");
+  });
+
+  it("announces each intermediate position as the card walks down", () => {
+    const { result } = setup();
+
+    press(result, "a", "ArrowDown");
+    expect(result.current.announcement).toBe("Moved to position 2 of 3.");
+
+    press(result, "a", "ArrowDown");
+    expect(result.current.announcement).toBe("Moved to position 3 of 3.");
+  });
+
+  // Silence would read as "the key did nothing", which is indistinguishable
+  // from a broken handler.
+  it("says why nothing moved at the start of the list", () => {
+    const { result } = setup();
+
+    press(result, "a", "ArrowUp");
+
+    expect(result.current.announcement).toBe("Already at the start of the list.");
+  });
+
+  it("says why nothing moved at the end of the list", () => {
+    const { result } = setup();
+
+    press(result, "c", "ArrowDown");
+
+    expect(result.current.announcement).toBe("Already at the end of the list.");
+  });
+});

@@ -78,8 +78,8 @@ export default defineConfig({
       // set from every file, "even if they are included by glob patterns".
       // So the headline number still covers the whole codebase.
       thresholds: {
-        statements: 84,
-        branches: 75,
+        statements: 85,
+        branches: 76,
         functions: 86,
         lines: 87,
 
