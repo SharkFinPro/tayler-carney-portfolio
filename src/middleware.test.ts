@@ -13,6 +13,14 @@
 // `NextResponse.next({ request: { headers } })` encodes the overrides as
 // `x-middleware-override-headers` plus one `x-middleware-request-<name>` per
 // entry, which is what the helper below reads back.
+//
+// Worth being explicit that this is a Next *internal* — it lives in
+// `next/dist/server/web/spec-extension/response.js`, not in any documented
+// API, so a major bump could change it. It is used anyway because there is no
+// other way to observe the request half from what `middleware()` returns, and
+// the alternative is leaving the site's most silent failure mode untested. If
+// this breaks on an upgrade, the fix is to re-read that file, not to delete
+// the assertions.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";

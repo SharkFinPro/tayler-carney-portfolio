@@ -3,13 +3,21 @@
 // title and no usable filename, "Resume" is what ends up on the link — and
 // nothing else in the codebase pins that.
 
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { at } from "@/test/at";
 
 const resolveAssetRef = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/assetRef", () => ({ resolveAssetRef }));
 
 const { resolveResumeAsset } = await import("./resume");
+
+// Without this, the `mock.calls[0]` assertion below reads whichever test ran
+// first rather than this one. That is precisely the order-dependence the
+// determinism CI job exists to catch — and it caught this one, on the very
+// next PR after the job was added.
+beforeEach(() => {
+  resolveAssetRef.mockReset();
+});
 
 describe("resolveResumeAsset", () => {
   it("resolves the id with 'Resume' as the visible fallback", async () => {

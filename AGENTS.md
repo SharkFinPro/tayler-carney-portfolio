@@ -129,6 +129,7 @@ What is tested, and why those things:
 - **`middleware.ts`** — that the policy is *attached*, not just built. csp.ts proves the string is right; this proves it reaches the response, that the nonce reaches the request (via Next's `x-middleware-request-*` override channel), and that the two carry the same value. If they ever drift, every inline script Next emits is blocked and the site renders blank — with both halves still looking correct in isolation.
 - **`a11y.ts`** — that Enter and Space actually activate, and that the browser default is suppressed. The jsx-a11y rules can see the props are present; they cannot see that pressing Space works and doesn't also scroll the page.
 - **`assetRef.ts`** — the naming fallback chain (a string visitors read) and, more importantly, that a caught error is offered to `rethrowIfControlFlow` before being swallowed. This runs in the root layout and the metadata generator, which is exactly where eating that signal costs a route its dynamic rendering.
+- **`resume.ts`** — three lines of delegation, tested for the one part that isn't plumbing: the `"Resume"` fallback label, which is what a visitor sees on the link when the asset has neither a Media Library title nor a usable filename.
 
 Untested by design: `cms.ts`, `getAssets.ts`, and most React components, which need network or DOM mocking heavy enough to test the mocks rather than the code. Prefer an end-to-end test for those.
 
