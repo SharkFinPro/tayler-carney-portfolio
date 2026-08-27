@@ -41,7 +41,12 @@ export default defineConfig({
   workers: 1,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [["github"], ["list"]] : [["list"]],
+  // `html` in CI because the workflow uploads `playwright-report/`, and only
+  // the html reporter writes it — without this the upload step would silently
+  // archive nothing.
+  reporter: process.env.CI
+    ? [["github"], ["list"], ["html", { open: "never" }]]
+    : [["list"]],
 
   use: {
     baseURL: APP_ORIGIN,
@@ -55,7 +60,7 @@ export default defineConfig({
       command: "node e2e/stub-cms.mjs",
       port: STUB_CMS_PORT,
       env: { STUB_CMS_PORT: String(STUB_CMS_PORT) },
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       stdout: "pipe",
     },
     {
@@ -64,7 +69,18 @@ export default defineConfig({
       command: "npm run build && npm run start -- -p " + APP_PORT,
       port: APP_PORT,
       env: appEnv,
-      reuseExistingServer: !process.env.CI,
+      // Never reuse a server already on this port, not even locally.
+      //
+      // The usual `!process.env.CI` is a trap for a suite whose server is a
+      // *production build*: a server left running from an earlier run is
+      // serving older code, and Playwright will happily test it and report
+      // green. That produced two false passes while this suite was being
+      // written — a deliberately broken sanitizer and a deliberately broken
+      // sitemap filter both "passed" against a stale build.
+      //
+      // The cost is a rebuild per local run. That is the right trade for a
+      // suite whose whole purpose is to be believed.
+      reuseExistingServer: false,
       // A cold production build is the slow part; the default 60s is not enough.
       timeout: 180_000,
       stdout: "pipe",

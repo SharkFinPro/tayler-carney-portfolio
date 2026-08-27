@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { COAT } from "./fixtures.mjs";
+import { ARCHIVED, COAT } from "./fixtures.mjs";
 import { APP_ORIGIN } from "../playwright.config";
 
 // The middleware and the two generated documents can only be checked against a
@@ -48,9 +48,16 @@ test("the sitemap lists the projects the portfolio shows", async ({ request }) =
 
   const xml = await response.text();
   expect(xml).toContain(`${APP_ORIGIN}/portfolio/${COAT.slug}`);
-  // Archived projects are still real pages with real URLs; they are only
-  // hidden from the grid. Dropping them from the sitemap would deindex them.
-  expect(xml).toContain("/portfolio/");
+
+  // An archived project 404s for the public, so listing it would be
+  // advertising a dead URL to search engines — `sitemap.ts` filters it out and
+  // this is what holds that.
+  //
+  // The assertion that was here before was `toContain("/portfolio/")`, which
+  // the line above already guarantees as a substring: it could not fail. Its
+  // comment also had the rule backwards, claiming archived projects were real
+  // pages that must stay listed.
+  expect(xml).not.toContain(ARCHIVED.slug);
 });
 
 test("the admin dashboard redirects an unauthenticated visitor to the login", async ({ page }) => {

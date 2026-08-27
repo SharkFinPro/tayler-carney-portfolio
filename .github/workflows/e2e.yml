@@ -48,12 +48,17 @@ jobs:
       - name: Run end-to-end tests
         run: npm run test:e2e
 
-      # Traces are captured on retry only, so this is usually empty and costs
-      # nothing; when a run fails in CI and not locally, it is the whole story.
-      - name: Upload the report
+      # Two different things, and both are wanted on a failure. The html report
+      # is the readable summary; `test-results/` holds the traces (captured on
+      # retry) and the per-test error context. `if-no-files-found: ignore`
+      # because a green run legitimately produces no `test-results/`.
+      - name: Upload the report and any traces
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
-          path: playwright-report/
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
           retention-days: 14
