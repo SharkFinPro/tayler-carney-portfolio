@@ -10,3 +10,8 @@ coverage
 # Stryker's HTML mutation report and its scratch directory.
 reports
 .stryker-tmp
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/

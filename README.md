@@ -128,6 +128,7 @@ npm test              # Vitest, single run
 npm run test:watch    # Vitest, watch mode
 npm run test:coverage # Vitest with a coverage report, and the coverage floors
 npm run test:mutation # Stryker — breaks the code on purpose, ~5 min, weekly in CI
+npm run test:e2e      # Playwright against the built app + a stubbed CMS
 ```
 
 ### Environment validation
