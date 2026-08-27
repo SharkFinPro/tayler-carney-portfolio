@@ -80,6 +80,7 @@ Model names are interpolated into the mutation string, so a value is only ever w
 - `npm run lint` — ESLint flat config (`eslint.config.mjs`). Two React Compiler rules are deliberately warnings, with the reasoning in the config.
 - `npm run typecheck` — `tsc --noEmit`. `strict` is on.
 - `npm test` / `npm run test:watch` / `npm run test:coverage` — Vitest.
+- `npm run test:mutation` — Stryker. Slow (~5 min) and deliberately not part of `verify`.
 - `npm run verify` — typecheck + lint + test-with-coverage. **This is what CI runs**, alongside the build.
 
 CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs all four on every PR, on Node 22 (what Vercel runs) and Node 24 (what it will run next). Every check runs even when an earlier one fails, so one push reports every problem at once. A second `determinism` job re-runs the suite in randomized order and under `TZ=Pacific/Kiritimati`, which is where order-dependence and unpinned date handling show up. Vercel's own build is a deployment, not a merge gate — it runs no lint, no tests, and arrives after the merge. Run `npm run verify` before pushing.
@@ -155,6 +156,12 @@ The exception is `SuggestAltButton`, whose entire surface is two Server Action c
 On top of the global floor, two glob entries hold the modules where a 60% floor is far too loose to notice a regression: the four validators that run on both render and save (`global`, `home`, `seo`, `portfolio`) are pinned at 100% statements/lines/functions, and `session.ts` — the authorization boundary — is pinned at 100% lines. These are *additional* checks, not carve-outs: Vitest builds the global set from every file "even if they are included by glob patterns", so the headline number still covers the whole codebase. Note v8's `statements` and `lines` genuinely disagree on `session.ts` (96% vs 100%), which is why its statement floor is the lower number rather than a typo.
 
 Raise the floors as gaps close. There is deliberately no `autoUpdate`: a threshold that rewrites itself records nothing.
+
+**Coverage is not the same claim as testing.** Coverage says a line ran; it says nothing about whether anything would have noticed if that line were wrong. `npm run test:mutation` answers the second question by breaking the code on purpose and checking the suite complains. The gap between the two is not small here — when this was first run, `home.ts` had 100% line coverage and a **43% mutation score**: fifty-one ways to break a sanitizer that every test still passed through.
+
+It runs weekly in [mutation.yml](.github/workflows/mutation.yml), not on the pull request: it takes about five minutes, and a surviving mutant is a prompt to write a better assertion rather than a reason to block a merge. The overall score is around 78% with the break threshold at 70, so it fails on a real regression rather than on noise. The per-file table in the log names the weak module; the HTML artifact names the surviving mutant, its line, and which tests ran without noticing — which is the question worth answering, and the one the log cannot.
+
+Worth knowing which modules the score already rates highly, because it means their suites are doing real work rather than merely executing lines: `a11y`, `actionError`, `auth`, `cachedReads`, `ai/index`, `middleware`, `resume` and `siteUrl` are all at 100%.
 
 Because `noUncheckedIndexedAccess` applies to test files too, `src/test/at.ts` provides `at(list, i)`, `only(list)`, and `prop(record, key)`. Use those rather than `list[0]?.field`: optional chaining turns "the list was empty" into "expected undefined to be 'Flats'", while these throw naming the real problem, and they hand back a definite value that narrowing sticks to.
 
