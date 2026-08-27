@@ -41,6 +41,8 @@ const DENIAL = { ok: false as const, error: "Not authorized." };
 const PNG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 const JPEG = [0xff, 0xd8, 0xff];
 const PDF = [0x25, 0x50, 0x44, 0x46, 0x2d];
+// "RIFF", four length bytes the sniffer skips, then "WEBP".
+const WEBP = [0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50];
 const SVG = [...new TextEncoder().encode("<svg xmlns=")];
 const HTML = [...new TextEncoder().encode("<!DOCTYPE html>")];
 
@@ -150,6 +152,9 @@ describe("uploadAsset — what may be stored", () => {
     ["PNG", PNG],
     ["JPEG", JPEG],
     ["PDF", PDF],
+    // WebP is the only two-part signature — "RIFF", four size bytes, "WEBP" —
+    // so it is the one most likely to break on a refactor of the sniffer.
+    ["WebP", WEBP],
   ])("accepts a real %s", async (_n, head) => {
     const result = await uploadAsset(form(fileOf(head)));
     expect(result.ok).toBe(true);
@@ -234,7 +239,33 @@ describe("uploadAsset — after the bytes are accepted", () => {
 
       if (!result.ok) throw new Error(`expected ok, got ${result.error}`);
       expect(result.asset.size).toBe(999);
-      expect(getAssetById.mock.calls.length).toBeGreaterThan(1);
+      // Exactly three: the initial read plus two polls. Pinning the count
+      // rather than "more than one" catches a loop that polls the wrong
+      // number of times as well as one that stops polling entirely.
+      expect(getAssetById).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  // The poll is bounded at 12 attempts, and falling through with an unpopulated
+  // size is the deliberate end of that bound rather than an oversight — the
+  // alternative is hanging the editor on a CMS that never finishes ingesting.
+  // Pinned because it is the behaviour nobody would notice changing: the action
+  // still reports success, just with an asset the gallery cannot size.
+  it("gives up after a bounded number of polls rather than waiting forever", async () => {
+    vi.useFakeTimers();
+    try {
+      getAssetById.mockResolvedValue({ id: "asset-1", size: null });
+
+      const pending = uploadAsset(form(fileOf(PNG)));
+      await vi.advanceTimersByTimeAsync(750 * 20);
+      const result = await pending;
+
+      if (!result.ok) throw new Error(`expected ok, got ${result.error}`);
+      expect(result.asset.size).toBeNull();
+      // The initial read plus the 12 bounded retries, and no more.
+      expect(getAssetById).toHaveBeenCalledTimes(13);
     } finally {
       vi.useRealTimers();
     }
