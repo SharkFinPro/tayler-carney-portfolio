@@ -244,3 +244,145 @@ describe("checkTiered — the backstop must not become the attack", () => {
     expect(blocked.retryAfterMs).toBe(600);
   });
 });
+
+// ── Pruning and eviction, which are what keep this bounded ───────────────────
+//
+// The limiter is an in-memory Map, so two housekeeping rules decide whether it
+// stays a limiter or becomes a leak: expired timestamps are dropped and their
+// key removed, and the Map is capped by evicting least-recently-used keys.
+// Both are invisible from a passing rate-limit test — the budget still works
+// either way, right up until the process runs out of memory.
+
+describe("createRateLimiter — pruning the window", () => {
+  it("forgets attempts once they fall outside the window", () => {
+    let now = 1_000_000;
+    const limiter = createRateLimiter({ limit: 2, windowMs: 1_000, now: () => now });
+
+    expect(limiter.check("k").allowed).toBe(true);
+    expect(limiter.check("k").allowed).toBe(true);
+    expect(limiter.check("k").allowed).toBe(false);
+
+    // Past the window: the two attempts expire and the budget is whole again.
+    now += 1_001;
+    expect(limiter.check("k").allowed).toBe(true);
+  });
+
+  // The boundary is `t > cutoff`, so an attempt exactly one window old is
+  // already outside it.
+  it("expires an attempt sitting exactly on the window edge", () => {
+    let now = 1_000_000;
+    const limiter = createRateLimiter({ limit: 1, windowMs: 1_000, now: () => now });
+
+    expect(limiter.check("k").allowed).toBe(true);
+    now += 1_000;
+    expect(limiter.check("k").allowed).toBe(true);
+  });
+
+  it("keeps an attempt one millisecond inside the window", () => {
+    let now = 1_000_000;
+    const limiter = createRateLimiter({ limit: 1, windowMs: 1_000, now: () => now });
+
+    expect(limiter.check("k").allowed).toBe(true);
+    now += 999;
+    expect(limiter.check("k").allowed).toBe(false);
+  });
+
+  // A key pruned to nothing is deleted before being re-added, which is what
+  // moves it to the end of the Map and so marks it most-recently-used. Without
+  // that delete, `set` on a still-present key keeps its original position, and
+  // a key that just made a request would be evicted ahead of one that has been
+  // idle since — the opposite of what least-recently-used means.
+  //
+  // Observable only through eviction order, which is why this needs maxKeys and
+  // a third key rather than a size check: the delete is immediately undone by
+  // the re-add, so nothing about the count changes.
+  it("treats an expired key that is touched again as freshly used, not stale", () => {
+    let now = 1_000_000;
+    const limiter = createRateLimiter({ limit: 5, windowMs: 1_000, maxKeys: 2, now: () => now });
+
+    limiter.check("a");
+    limiter.check("b");
+
+    // "a" falls out of the window, then makes a fresh request.
+    now += 2_000;
+    limiter.check("a");
+
+    // A third key pushes the Map over its cap. The idle "b" should go, not the
+    // "a" that just made a request.
+    now += 1;
+    limiter.check("c");
+
+    // "a" survived, so its one fresh attempt is still counted.
+    const a = limiter.check("a");
+    if (!a.allowed) throw new Error("expected a to be allowed");
+    expect(a.remaining).toBe(3);
+  });
+});
+
+describe("createRateLimiter — bounding the map", () => {
+  it("evicts the least recently used key once over budget", () => {
+    let now = 1_000_000;
+    const limiter = createRateLimiter({ limit: 1, windowMs: 60_000, maxKeys: 2, now: () => now });
+
+    limiter.check("a");
+    now += 1;
+    limiter.check("b");
+    now += 1;
+    // A third key pushes the map over its cap and evicts "a", the oldest.
+    limiter.check("c");
+    now += 1;
+
+    // "a" was forgotten, so its budget is whole again.
+    expect(limiter.check("a").allowed).toBe(true);
+    // "c" was not.
+    expect(limiter.check("c").allowed).toBe(false);
+  });
+
+  // The cap is `while (size > maxKeys)`, not `>=`, so exactly maxKeys keys are
+  // held without eviction. Off by one and the limiter forgets a key it should
+  // still be counting.
+  it("holds exactly maxKeys keys without evicting any of them", () => {
+    let now = 1_000_000;
+    const limiter = createRateLimiter({ limit: 1, windowMs: 60_000, maxKeys: 2, now: () => now });
+
+    limiter.check("a");
+    now += 1;
+    limiter.check("b");
+    now += 1;
+
+    // Neither was evicted, so both are still spent.
+    expect(limiter.check("a").allowed).toBe(false);
+    expect(limiter.check("b").allowed).toBe(false);
+  });
+
+  // Touching a key makes it most-recently-used, so a busy key is not evicted
+  // in favour of an idle one.
+  it("re-inserts a touched key so it is not the next evicted", () => {
+    let now = 1_000_000;
+    const limiter = createRateLimiter({ limit: 5, windowMs: 60_000, maxKeys: 2, now: () => now });
+
+    limiter.check("a");
+    now += 1;
+    limiter.check("b");
+    now += 1;
+    // Touch "a" so "b" becomes the oldest.
+    limiter.check("a");
+    now += 1;
+    limiter.check("c");
+    now += 1;
+
+    /** The remaining budget, asserting the check was allowed first. */
+    const remainingFor = (key: string) => {
+      const result = limiter.check(key);
+      if (!result.allowed) throw new Error(`expected ${key} to be allowed`);
+      return result.remaining;
+    };
+
+    // "a" first: each check is itself a touch, and asking about "b" would add
+    // it back and evict "a" before the interesting assertion ran.
+    // "a" survived with its two attempts, so a third leaves two of five.
+    expect(remainingFor("a")).toBe(2);
+    // "b" was evicted, so it starts over.
+    expect(remainingFor("b")).toBe(4);
+  });
+});
