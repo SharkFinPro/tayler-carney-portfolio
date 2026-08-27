@@ -108,8 +108,16 @@ export async function createProject(input: CreateInput): Promise<CreateResult> {
     // That is reachable rather than theoretical: this action creates and then
     // publishes as two calls, so if the publish throws, the project exists as
     // a draft and retrying the same title sailed past this check and made a
-    // second one. DRAFT is a superset of PUBLISHED, so nothing that was caught
-    // before stops being caught.
+    // second one.
+    //
+    // DRAFT is a superset of PUBLISHED for entry *existence* — publishing is a
+    // snapshot, not a move, so every published project also has a draft row.
+    // The two can disagree on a field value, so in principle a project whose
+    // slug was renamed in a draft that was never published would be missed
+    // here while the published copy still serves the old route. Nothing in
+    // this app can produce that: slug is set once at creation and no action
+    // edits it afterwards, so it would take someone renaming it in Hygraph's
+    // own Studio and not publishing.
     const existing = await cmsQueryAuthed(
       `query Existing($slug: String!) {
          projects(stage: DRAFT, where: { slug: $slug }) { id }
