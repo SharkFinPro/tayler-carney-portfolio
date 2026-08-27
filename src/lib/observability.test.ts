@@ -74,6 +74,45 @@ describe("reportError — structured output", () => {
     expect(String(error.stack).split("\n").length).toBeLessThanOrEqual(8);
   });
 
+  // The line above only bounds the line count from one side, which several
+  // different wrong implementations satisfy: splitting the stack into
+  // characters, or joining the frames back with no separator, both land well
+  // under eight. What the trim has to do is keep the first eight LINES, still
+  // one per line — so this pins the exact output against a stack of known
+  // shape.
+  //
+  // Eight lines is the message header plus seven frames, since `error.stack`
+  // leads with "Error: <message>". Worth being exact about, because "eight
+  // frames" is the obvious reading and it is off by one.
+  it("keeps exactly the first eight stack lines, one per line", () => {
+    const error = new Error("boom");
+    const frames = Array.from({ length: 20 }, (_, i) => `    at frame${i} (file.ts:${i}:1)`);
+    error.stack = ["Error: boom", ...frames].join("\n");
+
+    reportError({ scope: "cms", context: "x", error });
+
+    const stack = String((lastErrorLine().error as Record<string, unknown>).stack);
+    expect(stack).toBe(["Error: boom", ...frames.slice(0, 7)].join("\n"));
+    expect(stack.split("\n")).toHaveLength(8);
+    // The frames it dropped are genuinely gone, not merely off the end.
+    expect(stack).not.toContain("frame7");
+  });
+
+  // A stack is optional on Error — some runtimes and hand-built rejections
+  // arrive without one. The logger reaching into it unguarded would throw
+  // while trying to report a failure, replacing the original error with its
+  // own.
+  it("survives an Error carrying no stack at all", () => {
+    const error = new Error("stackless");
+    delete (error as { stack?: string }).stack;
+
+    expect(() => reportError({ scope: "cms", context: "x", error })).not.toThrow();
+
+    const logged = lastErrorLine().error as Record<string, unknown>;
+    expect(logged.message).toBe("stackless");
+    expect(logged.stack).toBeUndefined();
+  });
+
   it("includes a cause when there is one", () => {
     const error = new Error("outer");
     error.cause = new Error("inner");
@@ -95,7 +134,11 @@ describe("reportError — structured output", () => {
     ["a plain object", { nope: true }],
   ])("handles a non-Error throw (%s)", (_label, thrown) => {
     expect(() => reportError({ scope: "cms", context: "x", error: thrown })).not.toThrow();
-    expect(lastErrorLine().error).toBeTruthy();
+    // `toBeTruthy` alone would accept `{}` — an empty object is truthy, so a
+    // serializer that dropped the value entirely would pass while logging a
+    // failure with nothing in it. The point of this branch is that whatever
+    // was thrown still reaches the log in readable form.
+    expect(lastErrorLine().error).toEqual({ message: String(thrown) });
   });
 });
 
