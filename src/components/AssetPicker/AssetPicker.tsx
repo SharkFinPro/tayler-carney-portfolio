@@ -25,8 +25,8 @@ type BaseProps = {
 /**
  * Single- and multi-select are one component but two contracts, so the props
  * are a union rather than a bag of optionals: a single-select call site can
- * never be handed an array, and `max` / `selectedUrls` exist only where they
- * mean something.
+ * never be handed an array, and `selectedUrls` exists only where it means
+ * something.
  */
 type Props = BaseProps &
   (
@@ -34,8 +34,6 @@ type Props = BaseProps &
     | {
         multiple: true;
         onSelect: (assets: PickedAsset[]) => void;
-        /** Most assets one confirmation may return. Omitted means no cap. */
-        max?: number;
         /** URLs the caller already holds — shown as added, and not re-pickable. */
         selectedUrls?: string[];
       }
@@ -54,7 +52,6 @@ function picked(asset: MediaAsset): PickedAsset {
 export default function AssetPicker(props: Props) {
   const { onClose, kind = "image" } = props;
   const multiple = props.multiple === true;
-  const max = props.multiple ? props.max : undefined;
   const alreadyAdded = new Set(props.multiple ? (props.selectedUrls ?? []) : []);
 
   const [assets, setAssets] = useState<MediaAsset[]>([]);
@@ -112,16 +109,10 @@ export default function AssetPicker(props: Props) {
     onClose();
   }
 
-  const atCap = max !== undefined && chosenIds.length >= max;
-
   function toggle(asset: MediaAsset) {
     if (selecting) return;
     setChosenIds((prev) =>
-      prev.includes(asset.id)
-        ? prev.filter((id) => id !== asset.id)
-        : max !== undefined && prev.length >= max
-          ? prev
-          : [...prev, asset.id]
+      prev.includes(asset.id) ? prev.filter((id) => id !== asset.id) : [...prev, asset.id]
     );
   }
 
@@ -149,6 +140,20 @@ export default function AssetPicker(props: Props) {
     if (!q) return true;
     return (a.title ?? "").toLowerCase().includes(q) || a.fileName.toLowerCase().includes(q);
   });
+
+  // What "select all" acts on: everything the current search shows that is not
+  // already held by the caller. Scoping it to the filtered list is the point —
+  // search then select-all is how a set of forty gets picked without forty
+  // clicks.
+  const selectableShown = filtered.filter((a) => !alreadyAdded.has(a.url));
+
+  function selectAllShown() {
+    if (selecting) return;
+    setChosenIds((prev) => [
+      ...prev,
+      ...selectableShown.filter((a) => !prev.includes(a.id)).map((a) => a.id),
+    ]);
+  }
 
   const heading = multiple ? "Select images" : kind === "document" ? "Select PDF" : "Select image";
 
@@ -188,7 +193,7 @@ export default function AssetPicker(props: Props) {
                     key={a.id}
                     type="button"
                     className={`${styles.cell} ${chosen ? styles.cellChosen : ""}`}
-                    disabled={selecting || added || (multiple && !chosen && atCap)}
+                    disabled={selecting || added}
                     aria-pressed={multiple ? chosen : undefined}
                     onClick={() => (multiple ? toggle(a) : choose(a))}
                   >
@@ -233,8 +238,24 @@ export default function AssetPicker(props: Props) {
           />
           {props.multiple && (
             <>
+              <button
+                type="button"
+                className={styles.close}
+                onClick={selectAllShown}
+                disabled={selecting || selectableShown.length === 0}
+              >
+                Select all{query.trim() ? " shown" : ""}
+              </button>
+              <button
+                type="button"
+                className={styles.close}
+                onClick={() => setChosenIds([])}
+                disabled={selecting || chosenIds.length === 0}
+              >
+                Clear
+              </button>
               <span className={styles.count} role="status">
-                {chosenIds.length} selected{max !== undefined && ` of ${max}`}
+                {chosenIds.length} selected
               </span>
               <button
                 type="button"

@@ -56,10 +56,11 @@ export function isImageDescriptionConfigured(): boolean {
 export type {
   GenerationInput,
   GeneratedPage,
+  GenerationResult,
   ImageDescriber,
   ImageDescriptionInput,
   ImageSource,
   PageGenerator,
   SourceImage,
 } from "./types";
-export { DRAFT_QUESTIONS, MAX_IMAGES } from "./types";
+export { DRAFT_QUESTIONS } from "./types";

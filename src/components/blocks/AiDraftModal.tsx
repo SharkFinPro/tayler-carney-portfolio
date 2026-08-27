@@ -5,7 +5,7 @@ import Modal from "@/components/Modal";
 import AssetPicker from "@/components/AssetPicker";
 import { BLOCK_LABELS, blockSummary, type Block } from "./blocks";
 import { draftProjectPage, pageGenerationAvailable } from "@/app/admin/aiActions";
-import { DRAFT_QUESTIONS, MAX_IMAGES, type SourceImage } from "@/lib/ai/types";
+import { DRAFT_QUESTIONS, type SourceImage } from "@/lib/ai/types";
 import styles from "./AiDraftModal.module.scss";
 
 type Stage = "compose" | "working" | "review";
@@ -37,6 +37,9 @@ export default function AiDraftModal({
   const [stage, setStage] = useState<Stage>("compose");
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<Block[]>([]);
+  // Images the request had no room for. Reported rather than swallowed: an
+  // image that quietly did nothing looks like a model that ignored it.
+  const [skipped, setSkipped] = useState(0);
 
   // Availability is a server fact (is a key configured?), so it is asked for
   // rather than assumed. Until it answers, the form stays disabled.
@@ -71,6 +74,7 @@ export default function AiDraftModal({
     }
 
     setDraft(result.blocks);
+    setSkipped(result.skippedImages);
     setStage("review");
   }
 
@@ -101,6 +105,13 @@ export default function AiDraftModal({
                 {draft.length} block{draft.length === 1 ? "" : "s"} drafted. Have a read before
                 inserting.
               </p>
+              {skipped > 0 && (
+                <p className={styles.notice} role="status">
+                  {skipped} image{skipped === 1 ? "" : "s"} didn&rsquo;t fit in one request and
+                  {skipped === 1 ? " wasn" : " weren"}&rsquo;t used. Drafting fewer at a time, or
+                  in a couple of passes, gets them all in.
+                </p>
+              )}
               <ol className={styles.reviewList}>
                 {draft.map((block) => (
                   <li key={block.id} className={styles.reviewItem}>
@@ -147,9 +158,8 @@ export default function AiDraftModal({
                 <span className={styles.label}>Images</span>
                 <span className={styles.hint}>
                   Only these are used. Nothing else from the Media Library is referenced.
-                  {images.length > 0
-                    ? ` ${images.length} of ${MAX_IMAGES} added.`
-                    : ` Up to ${MAX_IMAGES}.`}
+                  {images.length > 0 &&
+                    ` ${images.length} added — they are sent in the order below.`}
                 </span>
 
                 {images.length > 0 && (
@@ -179,7 +189,7 @@ export default function AiDraftModal({
                   type="button"
                   className={styles.secondary}
                   onClick={() => setPickerOpen(true)}
-                  disabled={stage === "working" || images.length >= MAX_IMAGES}
+                  disabled={stage === "working"}
                 >
                   {images.length === 0 ? "+ Add images" : "+ Add more images"}
                 </button>
@@ -239,10 +249,9 @@ export default function AiDraftModal({
         <AssetPicker
           multiple
           // Drafting a page means handing over a set of images, so the picker
-          // is opened once and closed once. The remaining headroom is passed
-          // down so the cap is visible while picking, rather than silently
-          // dropping the extras afterwards.
-          max={MAX_IMAGES - images.length}
+          // is opened once and closed once. There is no count to ration
+          // against: how many fit in one request is worked out server-side
+          // from the images themselves.
           selectedUrls={images.map((i) => i.url)}
           onClose={() => setPickerOpen(false)}
           onSelect={(assets) => {
@@ -256,7 +265,7 @@ export default function AiDraftModal({
                   ? []
                   : [{ url: asset.url, name: asset.title?.trim() || asset.fileName, altText: asset.altText }]
               );
-              return [...prev, ...added].slice(0, MAX_IMAGES);
+              return [...prev, ...added];
             });
             setPickerOpen(false);
           }}

@@ -12,7 +12,7 @@ import {
 } from "@/lib/ai";
 import { toBlocks } from "@/lib/ai/toBlocks";
 import { cleanAltText, isDescribableImageUrl } from "@/lib/ai/altText";
-import { MAX_IMAGES, type ImageSource, type SourceImage } from "@/lib/ai/types";
+import type { ImageSource, SourceImage } from "@/lib/ai/types";
 import { auditEvent } from "@/lib/observability";
 import type { Block } from "@/components/blocks/blocks";
 
@@ -38,7 +38,7 @@ export type DraftInput = {
 };
 
 type DraftResult =
-  | { ok: true; blocks: Block[]; generator: string }
+  | { ok: true; blocks: Block[]; generator: string; skippedImages: number }
   | { ok: false; error: string };
 
 /** Whether the admin UI should offer AI drafting at all. */
@@ -184,12 +184,14 @@ export async function draftProjectPage(input: DraftInput): Promise<DraftResult> 
     return { ok: false, error: "Give the project a title first — it's the subject of the page." };
   }
 
+  // No count limit: the ceiling is how much fits in one provider request, which
+  // the generator works out from the images themselves and reports back as
+  // `skipped`. A number here would be a guess about file sizes it cannot see.
   const images = (Array.isArray(input?.images) ? input.images : [])
-    // Same allowlist the alt-text path uses. These URLs are handed to the
-    // provider to fetch, and "starts with https://" is not a host check —
+    // Same allowlist the alt-text path uses. These URLs are fetched by this
+    // process, and "starts with https://" is not a host check —
     // https://evil.test/x.jpg passed it.
     .filter((img) => isDescribableImageUrl(img?.url))
-    .slice(0, MAX_IMAGES)
     .map((img) => ({
       url: img.url,
       name: String(img.name ?? "").trim().slice(0, 200),
@@ -211,7 +213,7 @@ export async function draftProjectPage(input: DraftInput): Promise<DraftResult> 
   }
 
   try {
-    const page = await generator.generateProjectPage({ title, answers, images });
+    const { page, skipped } = await generator.generateProjectPage({ title, answers, images });
 
     // The trust boundary. Model output is mapped onto a fixed vocabulary, every
     // image URL is checked against the ones actually supplied, and the result
@@ -225,8 +227,11 @@ export async function draftProjectPage(input: DraftInput): Promise<DraftResult> 
       };
     }
 
-    console.info(`[ai] drafted ${blocks.length} blocks for "${title}" via ${generator.name}`);
-    return { ok: true, blocks, generator: generator.name };
+    console.info(
+      `[ai] drafted ${blocks.length} blocks for "${title}" via ${generator.name}` +
+        ` (${images.length - skipped.length}/${images.length} images)`
+    );
+    return { ok: true, blocks, generator: generator.name, skippedImages: skipped.length };
   } catch (e) {
     return toActionError(e, "draftProjectPage", "Couldn’t draft that page.");
   }

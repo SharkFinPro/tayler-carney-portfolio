@@ -46,21 +46,27 @@ export type GeneratedSection =
 
 export type GeneratedPage = { sections: GeneratedSection[] };
 
+/**
+ * What one drafting call produced.
+ *
+ * `skipped` exists because there is no count limit on the images an admin may
+ * choose — the real ceiling is how many fit in one request to the provider,
+ * which depends on their size, not their number. When that ceiling is reached
+ * the remaining images are left out rather than the whole draft failing, and
+ * the admin is told which ones, because an image that silently did nothing is
+ * indistinguishable from a model that ignored it.
+ */
+export type GenerationResult = {
+  page: GeneratedPage;
+  /** Images the request had no room for. The model never saw these. */
+  skipped: SourceImage[];
+};
+
 export interface PageGenerator {
   /** Identifies the backing provider in logs and in the admin UI. */
   readonly name: string;
-  generateProjectPage(input: GenerationInput): Promise<GeneratedPage>;
+  generateProjectPage(input: GenerationInput): Promise<GenerationResult>;
 }
-
-/**
- * Most images one draft may reference.
- *
- * Lives here rather than in the Server Action so both the action and the modal
- * can read it: a `"use server"` module may only export async functions, and the
- * client needs the same number to stop at, or the server silently drops the
- * extras and the admin gets a draft that ignored images they chose.
- */
-export const MAX_IMAGES = 12;
 
 /**
  * Where an image to be described lives.

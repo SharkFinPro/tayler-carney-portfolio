@@ -13,6 +13,7 @@ import { GoogleGenAI } from "@google/genai";
 import type {
   GenerationInput,
   GeneratedPage,
+  GenerationResult,
   ImageDescriber,
   ImageDescriptionInput,
   PageGenerator,
@@ -26,7 +27,12 @@ import {
   PAGE_SYSTEM_PROMPT,
   pageBrief,
 } from "./prompts";
-import { fetchImageAsInline, GEMINI_IMAGE_TYPES, ImageFetchError } from "./fetchImage";
+import {
+  fetchImageAsInline,
+  fetchImagesWithinBudget,
+  GEMINI_IMAGE_TYPES,
+  ImageFetchError,
+} from "./fetchImage";
 
 /**
  * Default models, both overridable without a redeploy.
@@ -162,28 +168,17 @@ export function createGeminiGenerator(apiKey: string, model = DEFAULT_PAGE_MODEL
   return {
     name: `gemini:${model}`,
 
-    async generateProjectPage(input: GenerationInput): Promise<GeneratedPage> {
+    async generateProjectPage(input: GenerationInput): Promise<GenerationResult> {
       // Gemini takes image bytes inline rather than fetching a URL, so every
-      // image is fetched here. In parallel, because a dozen sequential
-      // round-trips to the asset host would dominate the request.
-      //
-      // A settled result rather than Promise.all: one unreachable asset should
-      // cost that image, not the whole draft. `fetchImageAsInline` downscales,
-      // which is what keeps twelve of these inside the 20MB request ceiling.
-      const fetched = await Promise.allSettled(
-        input.images.map((img) => fetchImageAsInline(img.url))
-      );
+      // image is fetched here — in bounded parallel, and only for as many as
+      // fit the request. How many that is depends on their size rather than
+      // their number, which is why there is no count limit above this.
+      const { attached, skipped } = await fetchImagesWithinBudget(input.images);
 
-      const parts: { inlineData: { mimeType: string; data: string } }[] = [];
-      const usable: SourceImage[] = [];
-      fetched.forEach((result, i) => {
-        const image = input.images[i];
-        if (result.status !== "fulfilled" || !image) return;
-        parts.push({
-          inlineData: { mimeType: result.value.mediaType, data: result.value.base64 },
-        });
-        usable.push(image);
-      });
+      const parts = attached.map(({ inline }) => ({
+        inlineData: { mimeType: inline.mediaType, data: inline.base64 },
+      }));
+      const usable: SourceImage[] = attached.map(({ image }) => image);
 
       // The brief lists only the images actually attached. Listing a URL whose
       // bytes never arrived would invite the model to reference an image it
@@ -217,7 +212,7 @@ export function createGeminiGenerator(apiKey: string, model = DEFAULT_PAGE_MODEL
         // Structured outputs guarantee the shape, but this still parses
         // untrusted text — a throw here is caught by the caller and reported
         // as a failed draft rather than crashing the action.
-        return JSON.parse(text) as GeneratedPage;
+        return { page: JSON.parse(text) as GeneratedPage, skipped };
       } finally {
         done();
       }
