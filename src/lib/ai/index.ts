@@ -7,6 +7,7 @@
 
 import "server-only";
 import { createAnthropicDescriber, createAnthropicGenerator } from "./anthropic";
+import { createGeminiDescriber } from "./gemini";
 import type { ImageDescriber, PageGenerator } from "./types";
 
 /**
@@ -30,23 +31,36 @@ export function isPageGenerationConfigured(): boolean {
 }
 
 /**
- * The configured image describer, or null when AI is not set up.
+ * The configured image describer, or null when neither provider is set up.
  *
- * Defaults to a smaller model than page drafting, overridable the same way:
- * one sentence about one image is not the same job as writing a case study,
- * and this one is called far more often.
+ * Gemini wins when both keys are present, and that is deliberate rather than
+ * arbitrary: alt text is the one call in this app made often enough for the
+ * difference between a free tier and a metered one to matter, and describing
+ * one image in one sentence is not a job that needs the larger model. Page
+ * drafting is unaffected — it stays on Anthropic, which is the only provider
+ * implementing `PageGenerator`.
+ *
+ * Both are overridable by model without a redeploy. That matters more on the
+ * free tier, where rate limits differ per model, so the fix for repeated 429s
+ * is a config change rather than a code change.
  */
 export function getImageDescriber(): ImageDescriber | null {
-  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
-  if (!apiKey) return null;
+  const geminiKey = process.env.GEMINI_API_KEY?.trim();
+  if (geminiKey) {
+    const model = process.env.GEMINI_ALT_TEXT_MODEL?.trim() || undefined;
+    return createGeminiDescriber(geminiKey, model);
+  }
+
+  const anthropicKey = process.env.ANTHROPIC_API_KEY?.trim();
+  if (!anthropicKey) return null;
 
   const model = process.env.AI_ALT_TEXT_MODEL?.trim() || undefined;
-  return createAnthropicDescriber(apiKey, model);
+  return createAnthropicDescriber(anthropicKey, model);
 }
 
 /** Whether alt-text suggestions are available, without constructing a client. */
 export function isImageDescriptionConfigured(): boolean {
-  return Boolean(process.env.ANTHROPIC_API_KEY?.trim());
+  return Boolean(process.env.GEMINI_API_KEY?.trim() || process.env.ANTHROPIC_API_KEY?.trim());
 }
 
 export type {

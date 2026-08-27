@@ -173,3 +173,46 @@ describe("toActionError — partial writes", () => {
     expect(console.error).toHaveBeenCalledOnce();
   });
 });
+
+describe("toActionError — an AI provider refusing on billing", () => {
+  // The verbatim body Anthropic returned when this actually happened. The
+  // generic fallback fired instead, and finding the cause meant reading a
+  // server log — which is the whole reason this case exists.
+  const REAL = `400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."},"request_id":"req_011CeSJETT4L6tiLJjyzWX2M"}`;
+
+  it("says the account is out of credit, not something generic", () => {
+    const message = messageFor(new Error(REAL));
+    expect(message).toMatch(/out of credit|billing/i);
+    // And says where the problem is not, since every other translated message
+    // in this table blames the CMS.
+    expect(message).toMatch(/CMS itself is fine/);
+  });
+
+  it("does not fall through to the reference-id fallback", () => {
+    expect(messageFor(new Error(REAL))).not.toMatch(/\(ref [0-9A-Z]{6}\)/);
+  });
+
+  it.each([
+    "Your credit balance is too low",
+    "insufficient_quota",
+    "insufficient quota",
+    "Payment Required",
+    "Request failed with status 402",
+    "billing account not configured",
+  ])("recognizes %j", (text) => {
+    expect(messageFor(new Error(text))).toMatch(/out of credit|billing/i);
+  });
+
+  it("still lets a real permission error win", () => {
+    // A token-scope failure is the far more common cause in this app, and it
+    // must not be re-labelled as a billing problem.
+    const message = messageFor(new Error("permission denied for this model"));
+    expect(message).toMatch(/permission/i);
+    expect(message).not.toMatch(/out of credit/i);
+  });
+
+  it("does not fire on an unrelated number that happens to contain 402", () => {
+    const message = messageFor(new Error("entry cmb402xyz could not be updated"));
+    expect(message).not.toMatch(/out of credit/i);
+  });
+});

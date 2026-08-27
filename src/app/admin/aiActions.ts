@@ -97,7 +97,7 @@ export async function suggestAltText(input: AltTextInput): Promise<AltTextResult
   if (!describer) {
     return {
       ok: false,
-      error: "AI suggestions aren't configured. Set ANTHROPIC_API_KEY to enable them.",
+      error: "AI suggestions aren't configured. Set GEMINI_API_KEY or ANTHROPIC_API_KEY to enable them.",
     };
   }
 

@@ -6,6 +6,11 @@
 
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
+import {
+  ALT_TEXT_MAX_TOKENS,
+  ALT_TEXT_SYSTEM_PROMPT,
+  altTextUserPrompt,
+} from "./prompts";
 import type {
   GenerationInput,
   GeneratedPage,
@@ -201,31 +206,13 @@ export function createAnthropicGenerator(apiKey: string, model = DEFAULT_MODEL):
 
 // ── Image description ────────────────────────────────────────────────────────
 
-const ALT_SYSTEM_PROMPT = `You write alt text for images in a structural fashion design portfolio.
-
-Alt text is a label read aloud in place of the image. Write the one sentence a
-sighted reader would get from a glance — not a caption, not a critique, not a
-list of everything present.
-
-Rules:
-- Start with the subject. Never begin with "Image of", "A photo of", "This image
-  shows" or similar: a screen reader has already said it is an image.
-- Aim for under 125 characters. One sentence.
-- Describe what is visible. Never guess at materials, techniques, sizes, brands,
-  places, or the identity of anyone shown.
-- If people appear, describe them by what is visible and relevant to the garment
-  (pose, how the piece is worn), not by inferred age, ethnicity, or gender.
-- Be concrete: "a boxy blazer with exposed shoulder seams on a dress form" beats
-  "a beautiful tailored garment".
-- If the image is a flat, a technical drawing, or a document, say so — that is
-  the most useful thing about it.
-- Reply with the alt text and nothing else. No quotes, no preamble, no label.`;
+// The prompt lives in prompts.ts: two providers write alt text for this same
+// library now, and a private copy in each would drift.
 
 /** Default model for descriptions — a smaller one is plenty for one sentence. */
 const DEFAULT_ALT_MODEL = "claude-sonnet-5";
 
-/** One sentence needs very little room; this also caps the per-call cost. */
-const ALT_MAX_TOKENS = 300;
+
 
 function altUserContent(input: ImageDescriptionInput): Anthropic.ContentBlockParam[] {
   const image: Anthropic.ContentBlockParam =
@@ -240,19 +227,7 @@ function altUserContent(input: ImageDescriptionInput): Anthropic.ContentBlockPar
           },
         };
 
-  const name = input.name?.trim();
-  return [
-    image,
-    {
-      type: "text",
-      // The file name is context, not content: it is often the camera's
-      // "IMG_4821", and when it is meaningful the model should still be
-      // describing the image rather than restating the name.
-      text: name
-        ? `Write the alt text for this image. Its file is named "${name}", which may or may not be meaningful — describe what you can see, not the name.`
-        : "Write the alt text for this image.",
-    },
-  ];
+  return [image, { type: "text", text: altTextUserPrompt(input.name) }];
 }
 
 export function createAnthropicDescriber(apiKey: string, model = DEFAULT_ALT_MODEL): ImageDescriber {
@@ -264,8 +239,8 @@ export function createAnthropicDescriber(apiKey: string, model = DEFAULT_ALT_MOD
     async describeImage(input: ImageDescriptionInput): Promise<string> {
       const message = await client.messages.create({
         model,
-        max_tokens: ALT_MAX_TOKENS,
-        system: ALT_SYSTEM_PROMPT,
+        max_tokens: ALT_TEXT_MAX_TOKENS,
+        system: ALT_TEXT_SYSTEM_PROMPT,
         messages: [{ role: "user", content: altUserContent(input) }],
       });
 

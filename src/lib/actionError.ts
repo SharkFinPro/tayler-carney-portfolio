@@ -64,6 +64,19 @@ const TRANSLATIONS: Translation[] = [
     message: "The CMS is rate-limiting requests right now. Wait a moment and try again.",
   },
   {
+    // An AI provider refusing on billing. Worth its own message because the
+    // generic fallback sent someone to the server log to find out that an
+    // account needed topping up — something they could have fixed in a minute
+    // if the screen had said so.
+    //
+    // Sits below the permission and rate-limit rules on purpose: neither of
+    // those matches a billing refusal, and this one must not shadow a genuine
+    // token-scope error, which is the far more common cause in this app.
+    match: /credit balance|insufficient[_ ]quota|billing|payment required|\b402\b/i,
+    message:
+      "The AI provider rejected the request — the account is out of credit or billing needs attention. The CMS itself is fine.",
+  },
+  {
     // Network-shaped failures: the CMS is unreachable rather than refusing.
     match: /fetch failed|ECONNREFUSED|ENOTFOUND|ETIMEDOUT|network|socket hang up/i,
     message: "Couldn't reach the CMS. Check your connection and try again.",
