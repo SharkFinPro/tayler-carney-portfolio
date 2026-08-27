@@ -59,16 +59,43 @@ export default defineConfig({
       // Raise them as the gaps close; there is no autoUpdate, because a
       // threshold that rewrites itself records nothing.
       //
-      // Deliberately global-only. Vitest also accepts per-glob thresholds, but
-      // a file matching a glob key is *excluded* from the global total, so
-      // locking the sanitizers at 100% that way would silently redefine the
-      // headline number to mean "everything except the sanitizers". One honest
-      // number beats two subtle ones.
+      // The glob entries below are additional, stricter checks on top of the
+      // global floor rather than carve-outs from it: Vitest builds the global
+      // set from every file, "even if they are included by glob patterns".
+      // So the headline number still covers the whole codebase.
       thresholds: {
         statements: 60,
         branches: 57,
         functions: 66,
         lines: 61,
+
+        // The validators that run on BOTH render and save, where AGENTS.md
+        // notes a gap is a gap in two places. They are at full line coverage
+        // today and a 60% global floor is far too loose to notice if one of
+        // them regressed, which is exactly the module where it would matter.
+        //
+        // Branches sit lower than lines because each has a few defensive
+        // `?? []` arms that no reachable input exercises; 93 is just under
+        // global.ts, the weakest of the four.
+        "src/lib/{global,home,seo,portfolio}.ts": {
+          statements: 100,
+          functions: 100,
+          lines: 100,
+          branches: 93,
+        },
+
+        // The authorization boundary, and the first module AGENTS.md lists as
+        // worth testing. Same reasoning: the global floor cannot see it move.
+        //
+        // Statements sits at 96 rather than 100 while lines is 100: v8 counts
+        // the two `if (…) return false` guards as statements on lines that are
+        // themselves executed, so the two metrics genuinely disagree here.
+        "src/lib/session.ts": {
+          statements: 96,
+          functions: 100,
+          lines: 100,
+          branches: 88,
+        },
       },
 
       // Note: the v4 text reporter omits rows for fully-covered files, so a
