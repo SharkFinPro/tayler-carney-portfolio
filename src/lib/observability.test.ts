@@ -77,10 +77,14 @@ describe("reportError — structured output", () => {
   // The line above only bounds the line count from one side, which several
   // different wrong implementations satisfy: splitting the stack into
   // characters, or joining the frames back with no separator, both land well
-  // under eight. What the trim has to do is keep the FIRST eight frames, still
+  // under eight. What the trim has to do is keep the first eight LINES, still
   // one per line — so this pins the exact output against a stack of known
   // shape.
-  it("keeps exactly the first eight stack frames, one per line", () => {
+  //
+  // Eight lines is the message header plus seven frames, since `error.stack`
+  // leads with "Error: <message>". Worth being exact about, because "eight
+  // frames" is the obvious reading and it is off by one.
+  it("keeps exactly the first eight stack lines, one per line", () => {
     const error = new Error("boom");
     const frames = Array.from({ length: 20 }, (_, i) => `    at frame${i} (file.ts:${i}:1)`);
     error.stack = ["Error: boom", ...frames].join("\n");

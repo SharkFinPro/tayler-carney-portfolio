@@ -54,10 +54,19 @@ describe("resolveAssetRef — when there is nothing to resolve", () => {
   // An absent asset is an ordinary condition — a reference to something since
   // deleted — and the optional chaining is what keeps it on the normal path.
   // Drop it and the same payloads throw a TypeError that the catch below
-  // quietly absorbs: the return value is identical, so nothing above notices,
-  // but every missing asset is now travelling as an exception. That is worth
-  // pinning on its own, because the catch is where error reporting would go,
-  // and it would then fire on a condition that is not an error.
+  // absorbs, returning the same null.
+  //
+  // Being straight about what this pins: today the two are indistinguishable
+  // from outside. `rethrowIfControlFlow` only rethrows errors carrying a Next
+  // `digest`, and a TypeError has none, so it returns silently and the caller
+  // sees an identical result. This asserts on an internal call rather than an
+  // output, which is a cost worth naming — it is also the only thing that can
+  // tell the two implementations apart.
+  //
+  // It earns its place because the design intent is real: that catch exists
+  // for genuine failures, and routing every missing asset through it means the
+  // next thing added there — error reporting is the obvious candidate — starts
+  // firing on a condition that is not a failure.
   it.each([
     ["a missing asset", { asset: null }],
     ["an absent asset key", {}],
@@ -128,8 +137,11 @@ describe("resolveAssetRef — the read itself", () => {
   // supply that field, and nothing fails. In production the field would simply
   // stop arriving — losing `title` silently demotes every asset to its
   // filename, which is the fallback working exactly as designed and therefore
-  // invisible. This asserts the request asks for what the name chain reads.
-  it("asks for each field the display name is built from", async () => {
+  // invisible.
+  //
+  // All three fields are read by this resolver, though not all by the name:
+  // `title` and `fileName` feed the display name, `url` is the returned link.
+  it("asks for every field it goes on to read", async () => {
     await resolveAssetRef("asset-123");
 
     const [query] = at(cmsRead.mock.calls, 0) as [string];
