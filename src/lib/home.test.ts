@@ -168,6 +168,13 @@ describe("archive.imageUrl", () => {
 // updating when someone rewords a headline. What they pin is that a default is
 // present at all, which is the part that matters: DEFAULT_HOME is what a fresh
 // install and every cleared field render.
+//
+// The trade-off is worth naming. Stryker's string mutator only ever blanks a
+// literal, so "present but wrong" — a typo in a headline, a mislabelled stat —
+// is invisible to both these tests and the mutation score. The routes and
+// button labels below are pinned exactly for that reason; the prose is not,
+// because a test asserting the copy would fail every time someone edited it,
+// which is a different way of testing nothing.
 
 /** Every string leaf in an object, as `[dotted.path, value]`. */
 function stringLeaves(value: unknown, path = ""): [string, string][] {
@@ -210,18 +217,31 @@ describe("DEFAULT_HOME — what a fresh install renders", () => {
 });
 
 describe("DEFAULT_HOME — the links", () => {
-  // These are navigation targets on the homepage of a fresh install. A blank
-  // one is a button that goes nowhere, and `safeHref` would happily keep it:
-  // "" is not an unsafe scheme, it is just useless.
+  // These are navigation targets on the homepage of a fresh install, and
+  // `safeHref` cannot save a blank one — because the fallback it would reach
+  // for IS the default. `safeHref(missing, d.archive.buttonHref)` rejects the
+  // missing value correctly (isSafeUrl("") is false) and then returns the
+  // default, so if the default is itself blank the guard has nothing better to
+  // hand back and a blank href ships. Only pinning the default prevents that.
   it.each([
     ["hero.primaryCta.href", "/portfolio"],
     ["hero.secondaryCta.href", "/about"],
     ["archive.buttonHref", "/about"],
-    ["destinations[0].href", "/portfolio"],
-    ["destinations[1].href", "/atelier"],
-    ["destinations[2].href", "/about"],
   ])("%s points at %s", (path, expected) => {
     expect(LEAVES.find(([p]) => p === path)?.[1]).toBe(expected);
+  });
+
+  // Matched by title rather than by position: the order of the cards on the
+  // homepage is a content decision someone may reasonably change, and a
+  // reshuffle should not fail a test about where the links point.
+  it.each([
+    ["Portfolio", "/portfolio"],
+    ["Atelier", "/atelier"],
+    ["About", "/about"],
+  ])("the %s destination points at %s", (title, expected) => {
+    const card = DEFAULT_HOME.destinations.find((d) => d.title === title);
+    expect(card, `no destination titled ${title}`).toBeDefined();
+    expect(card?.href).toBe(expected);
   });
 
   it("gives every link a label to click", () => {
