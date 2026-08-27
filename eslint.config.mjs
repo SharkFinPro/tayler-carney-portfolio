@@ -82,9 +82,23 @@ const config = [
       // skipping deliberately while investigating is legitimate; it just
       // should not survive a merge unnoticed.
       "vitest/no-disabled-tests": "warn",
-      // A `describe` whose callback is async, or returns a value, silently
-      // does not register the tests inside it.
+      // A commented-out test is a quieter hole than a skipped one: a skip is
+      // at least reported as a skip, while this is reported as nothing.
+      "vitest/no-commented-out-tests": "error",
+      // An `expect` inside a `.then()` on a promise the test never returns or
+      // awaits. The test finishes — and passes — before the assertion runs.
+      "vitest/valid-expect-in-promise": "error",
+      // A `describe` callback containing a `return` statement, which ends
+      // registration early and silently leaves out every test below it.
+      //
+      // Narrower than it sounds, and worth being exact since the obvious
+      // reading is wrong: this rule does NOT flag an `async` describe
+      // callback. That failure mode — the tests inside registering after the
+      // suite has been collected — is not covered by anything in this plugin.
       "vitest/valid-describe-callback": "error",
+      // `toMatchSnapshot()` inside `test.concurrent` without taking the local
+      // `expect` from the test context: concurrent tests share the global one,
+      // so snapshots are matched against the wrong test's state.
       "vitest/require-local-test-context-for-concurrent-snapshots": "error",
     },
   },
