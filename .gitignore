@@ -7,3 +7,6 @@ tsconfig.tsbuildinfo
 next-env.d.ts
 .claude/settings.local.json
 coverage
+# Stryker's HTML mutation report and its scratch directory.
+reports
+.stryker-tmp

@@ -15,9 +15,22 @@
 // `@/lib/rateLimit` is deliberately NOT mocked: the budgets are the guard, so
 // a stub of the limiter would assert only that a stub was called. The limiters
 // are module-scope and therefore shared across every test in this file, so
-// each test gets its own client key (see `nextClient`) and the two tests that
+// each test gets its own client key (see `nextClient`) and the tests that
 // actually want to exhaust a budget say so explicitly. That also keeps the
 // file order-independent, which the determinism job would otherwise catch.
+//
+// That discipline is load-bearing twice over, so keep it. Stryker runs with
+// `coverageAnalysis: "perTest"`, which replays a single test in isolation to
+// decide whether it kills a mutant. A test that leaned on state another test
+// had already put in the shared limiter would behave differently when replayed
+// alone, and the mutant would be misclassified rather than fail loudly. Every
+// test here must therefore call `useClient()` — the `beforeEach` does it by
+// default — and never reuse another test's address.
+//
+// Unlike actions.test.ts, this file does NOT reset modules between tests: the
+// budgets here are keyed per client with no shared backstop, so distinct keys
+// are enough. actions.ts has a global bucket under a constant key, which is
+// why that file has to go further.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { at } from "@/test/at";

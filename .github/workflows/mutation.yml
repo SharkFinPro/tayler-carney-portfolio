@@ -1,0 +1,62 @@
+name: Mutation testing
+
+# Coverage says a line ran. It does not say anything would have noticed if that
+# line were wrong — and the gap between those two is not small here. When this
+# was first run, `home.ts` sat at 100% line coverage and a 43% mutation score:
+# fifty-one ways to break a sanitizer that every test still passed through.
+#
+# Deliberately not on the pull request. It takes about five minutes, which is
+# five times the whole CI run, and a surviving mutant is a prompt to write a
+# better assertion rather than a reason to block a merge. Weekly, plus on
+# demand, keeps it visible without putting it in the way — the same call
+# audit.yml already makes for advisories.
+on:
+  schedule:
+    # Mondays at 07:23 UTC. An hour after the audit job so the two are not
+    # competing for a runner, and off the hour so it is not queued behind
+    # everyone else's 07:00 cron.
+    - cron: "23 7 * * 1"
+  workflow_dispatch:
+
+# A second run of a five-minute job on the same ref helps nobody.
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stryker:
+    name: Stryker
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        id: install
+        run: npm ci
+
+      # `break` is set to 70 in stryker.conf.json against a current score of
+      # 78, so this fails on a real regression rather than on noise. The score
+      # moving between 78 and 71 is worth reading, not worth failing.
+      - name: Run mutation tests
+        if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
+        run: npm run test:mutation
+
+      # The per-file table in the log says which module is weak; the HTML
+      # report says which surviving mutant, on which line, and which tests ran
+      # without noticing. That second question is the one worth answering, and
+      # it is not answerable from the log.
+      - name: Upload the mutation report
+        if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: mutation-report
+          path: reports/mutation
+          if-no-files-found: warn
+          retention-days: 30

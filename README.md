@@ -97,7 +97,9 @@ ADMIN_KEY=             # Admin login passphrase + session signing key
 WEBSITE_URL=           # Base URL for metadata, sitemap, and OpenGraph
 ```
 
-> **Hygraph permissions:** the mutation token needs **Update (Draft)** + **Publish** on every editable model, plus **Create / Read (Draft) / Update (Draft) / Publish / Unpublish / Delete** on `Asset` for the Media Library.
+> **Hygraph permissions:** the mutation token needs **Read (Draft)** + **Update (Draft)** + **Publish** on every editable model, plus **Unpublish** + **Delete** on `Project` for the archived drawer, and **Create / Read (Draft) / Update (Draft) / Publish / Unpublish / Delete** on `Asset` for the Media Library.
+>
+> `Read (Draft)` is easy to leave out — it is a *read* permission on a token named for mutations — and leaving it out degrades quietly rather than erroring: admins see stale content and duplicate slugs become creatable. See [AGENTS.md](AGENTS.md) for the four places that depend on it.
 
 ### Development
 
@@ -125,6 +127,7 @@ npm run lint          # ESLint (flat config)
 npm test              # Vitest, single run
 npm run test:watch    # Vitest, watch mode
 npm run test:coverage # Vitest with a coverage report, and the coverage floors
+npm run test:mutation # Stryker — breaks the code on purpose, ~5 min, weekly in CI
 ```
 
 ### Environment validation
