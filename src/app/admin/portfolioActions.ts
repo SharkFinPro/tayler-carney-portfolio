@@ -3,7 +3,7 @@
 import { toActionError } from "@/lib/actionError";
 import { auditEvent } from "@/lib/observability";
 import { requireAuth } from "@/lib/auth";
-import { cmsMutate, cmsQuery } from "@/lib/cms";
+import { cmsMutate, cmsQueryAuthed } from "@/lib/cms";
 import { sanitizePortfolio, slugify, type PortfolioConfig } from "@/lib/portfolio";
 
 type Result = { ok: true } | { ok: false; error: string };
@@ -101,8 +101,19 @@ export async function createProject(input: CreateInput): Promise<CreateResult> {
   try {
     // Guard against duplicate slugs up front — the project page routes on slug,
     // so two projects sharing one would shadow each other.
-    const existing = await cmsQuery(
-      `query Existing($slug: String!) { projects(where: { slug: $slug }) { id } }`,
+    //
+    // Read at DRAFT, through the mutation token, like every other admin read.
+    // This used `cmsQuery`, which sends the public token and therefore sees
+    // only the PUBLISHED stage — so an unpublished project's slug looked free.
+    // That is reachable rather than theoretical: this action creates and then
+    // publishes as two calls, so if the publish throws, the project exists as
+    // a draft and retrying the same title sailed past this check and made a
+    // second one. DRAFT is a superset of PUBLISHED, so nothing that was caught
+    // before stops being caught.
+    const existing = await cmsQueryAuthed(
+      `query Existing($slug: String!) {
+         projects(stage: DRAFT, where: { slug: $slug }) { id }
+       }`,
       { slug }
     );
     if (existing?.projects?.length) {
