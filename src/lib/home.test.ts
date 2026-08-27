@@ -150,3 +150,124 @@ describe("archive.imageUrl", () => {
     expect(sanitizeHome({ archive: { imageUrl: "" } }).archive.imageUrl).toBe("");
   });
 });
+
+// ── The defaults themselves ──────────────────────────────────────────────────
+//
+// Everything above asserts sanitizeHome's *behaviour* by comparing its output
+// to DEFAULT_HOME — which is the same constant the production code fills gaps
+// from. That is circular for the constant's own contents: blank out
+// DEFAULT_HOME.hero.headline and both sides of every `toEqual` change together,
+// so the suite stays green while a fresh install renders an empty headline.
+//
+// Mutation testing put a number on it. Of 51 mutants surviving in this file,
+// all 51 were edits to these literals — 42 strings blanked, 7 objects emptied,
+// 2 arrays emptied — and not one test noticed.
+//
+// The cases below assert *properties* of the defaults rather than copying them
+// out, so they cannot go stale as the copy is edited, and they do not need
+// updating when someone rewords a headline. What they pin is that a default is
+// present at all, which is the part that matters: DEFAULT_HOME is what a fresh
+// install and every cleared field render.
+
+/** Every string leaf in an object, as `[dotted.path, value]`. */
+function stringLeaves(value: unknown, path = ""): [string, string][] {
+  if (typeof value === "string") return [[path, value]];
+  if (Array.isArray(value)) {
+    return value.flatMap((v, i) => stringLeaves(v, `${path}[${i}]`));
+  }
+  if (value && typeof value === "object") {
+    return Object.entries(value).flatMap(([k, v]) =>
+      stringLeaves(v, path ? `${path}.${k}` : k)
+    );
+  }
+  return [];
+}
+
+// The only two defaults that are deliberately empty: an unset hero image, and
+// its alt text. `archive.imageUrl` is asserted separately below to stay that
+// way, since a non-empty default there would put a broken image on every fresh
+// install.
+const INTENTIONALLY_EMPTY = new Set(["archive.imageUrl", "archive.imageAlt"]);
+
+const LEAVES = stringLeaves(DEFAULT_HOME);
+
+describe("DEFAULT_HOME — what a fresh install renders", () => {
+  it("has leaves to check at all, so the walk below is not vacuous", () => {
+    expect(LEAVES.length).toBeGreaterThan(30);
+  });
+
+  it.each(LEAVES.filter(([p]) => !INTENTIONALLY_EMPTY.has(p)))(
+    "%s is not blank",
+    (_path, value) => {
+      expect(value.trim()).not.toBe("");
+    }
+  );
+
+  it.each([...INTENTIONALLY_EMPTY])("%s stays empty, so nothing broken renders", (path) => {
+    const leaf = LEAVES.find(([p]) => p === path);
+    expect(leaf?.[1]).toBe("");
+  });
+});
+
+describe("DEFAULT_HOME — the links", () => {
+  // These are navigation targets on the homepage of a fresh install. A blank
+  // one is a button that goes nowhere, and `safeHref` would happily keep it:
+  // "" is not an unsafe scheme, it is just useless.
+  it.each([
+    ["hero.primaryCta.href", "/portfolio"],
+    ["hero.secondaryCta.href", "/about"],
+    ["archive.buttonHref", "/about"],
+    ["destinations[0].href", "/portfolio"],
+    ["destinations[1].href", "/atelier"],
+    ["destinations[2].href", "/about"],
+  ])("%s points at %s", (path, expected) => {
+    expect(LEAVES.find(([p]) => p === path)?.[1]).toBe(expected);
+  });
+
+  it("gives every link a label to click", () => {
+    expect(DEFAULT_HOME.hero.primaryCta.label.trim()).not.toBe("");
+    expect(DEFAULT_HOME.hero.secondaryCta.label.trim()).not.toBe("");
+    expect(DEFAULT_HOME.archive.buttonLabel.trim()).not.toBe("");
+  });
+});
+
+describe("DEFAULT_HOME — the repeatable sections", () => {
+  // `sanitizeHome` drops a stat with neither key nor value and a destination
+  // with neither title nor description. A default list of empty objects would
+  // therefore survive sanitizing as an empty list, and the homepage would
+  // render the section headings with nothing under them.
+  it("ships hero stats rather than an empty row of them", () => {
+    expect(DEFAULT_HOME.hero.stats.length).toBeGreaterThan(0);
+  });
+
+  it.each(DEFAULT_HOME.hero.stats.map((s, i) => [i, s] as const))(
+    "stat %i has both a key and a value",
+    (_i, stat) => {
+      expect(stat.key?.trim()).not.toBe("");
+      expect(stat.value?.trim()).not.toBe("");
+    }
+  );
+
+  it("ships destinations rather than an empty list", () => {
+    expect(DEFAULT_HOME.destinations.length).toBeGreaterThan(0);
+  });
+
+  it.each(DEFAULT_HOME.destinations.map((d, i) => [i, d] as const))(
+    "destination %i survives its own sanitizer",
+    (_i, dest) => {
+      // The filter keeps a card only if it has a title or a description.
+      expect(Boolean(dest.title?.trim() || dest.description?.trim())).toBe(true);
+    }
+  );
+
+  it("survives being passed through the sanitizer unchanged", () => {
+    // The strongest statement of the same idea: the defaults are valid input
+    // to the validator that produces them, so nothing in them is silently
+    // dropped on the first save of an untouched homepage.
+    expect(sanitizeHome(DEFAULT_HOME)).toEqual(DEFAULT_HOME);
+    expect(sanitizeHome(DEFAULT_HOME).destinations).toHaveLength(
+      DEFAULT_HOME.destinations.length
+    );
+    expect(sanitizeHome(DEFAULT_HOME).hero.stats).toHaveLength(DEFAULT_HOME.hero.stats.length);
+  });
+});
