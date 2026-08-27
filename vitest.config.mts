@@ -78,10 +78,33 @@ export default defineConfig({
       // set from every file, "even if they are included by glob patterns".
       // So the headline number still covers the whole codebase.
       thresholds: {
-        statements: 73,
-        branches: 66,
-        functions: 74,
-        lines: 75,
+        statements: 78,
+        branches: 70,
+        functions: 79,
+        lines: 80,
+
+        // The AI surface. Both actions sit in front of a paid call, so a guard
+        // that stops guarding shows up as a bill rather than as a bug — and
+        // both fetch image URLs from this process, which is why the host
+        // allowlist rather than a scheme check is the thing being pinned.
+        // index.ts is the promise that an unconfigured install is a working
+        // install: with no key the getters return null and the UI hides its
+        // entry points, which is a contract with three call sites.
+        //
+        // Branches sit at 89 for aiActions: a few `?? ""` arms normalising
+        // model output have no reachable input that skips them.
+        "src/app/admin/aiActions.ts": {
+          statements: 100,
+          functions: 100,
+          lines: 100,
+          branches: 89,
+        },
+        "src/lib/ai/index.ts": {
+          statements: 100,
+          functions: 100,
+          lines: 100,
+          branches: 100,
+        },
 
         // The Content Security Policy, end to end. csp.ts says it plainly in
         // its own header: this is the one security control here whose failure

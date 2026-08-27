@@ -79,13 +79,6 @@ export async function pageGenerationAvailable(): Promise<boolean> {
   return isPageGenerationConfigured();
 }
 
-/**
- * Draft a set of content blocks for a project page.
- *
- * Deliberately does NOT save. The blocks come back for the admin to review,
- * edit, and explicitly accept — generated content should never appear on the
- * live site without someone having looked at it.
- */
 /** Whether the admin UI should offer alt-text suggestions. */
 export async function altTextSuggestionAvailable(): Promise<boolean> {
   const denied = await requireAuth();
@@ -188,6 +181,13 @@ export async function suggestAltText(input: AltTextInput): Promise<AltTextResult
   }
 }
 
+/**
+ * Draft a set of content blocks for a project page.
+ *
+ * Deliberately does NOT save. The blocks come back for the admin to review,
+ * edit, and explicitly accept — generated content should never appear on the
+ * live site without someone having looked at it.
+ */
 export async function draftProjectPage(input: DraftInput): Promise<DraftResult> {
   const denied = await requireAuth();
   if (denied) return denied;
