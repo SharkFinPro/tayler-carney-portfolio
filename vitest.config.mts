@@ -78,10 +78,22 @@ export default defineConfig({
       // set from every file, "even if they are included by glob patterns".
       // So the headline number still covers the whole codebase.
       thresholds: {
-        statements: 83,
-        branches: 74,
-        functions: 84,
-        lines: 85,
+        statements: 84,
+        branches: 75,
+        functions: 86,
+        lines: 87,
+
+        // The two documents written for crawlers rather than readers, and the
+        // origin they share. Nothing here fails visibly: a lost `disallow`
+        // gets the admin login indexed, and a malformed sitemap directive is
+        // ignored rather than reported, so the sitemap silently stops being
+        // announced while robots.txt still looks correct.
+        "src/{app/robots.ts,app/sitemap.ts,lib/siteUrl.ts}": {
+          statements: 100,
+          functions: 100,
+          lines: 100,
+          branches: 100,
+        },
 
         // The authentication surface. Everything it guarantees is invisible in
         // a working app: a session cookie that stopped being httpOnly, or
