@@ -442,16 +442,26 @@ describe("cleanAltText — the last few edges", () => {
     expect(cleanAltText(quote)).toBe(quote);
   });
 
-  // The tail strip runs on the truncated body, and it removes a RUN of
-  // trailing punctuation rather than one character — a body ending ", " has
-  // both to go before the ellipsis.
-  it("removes a whole run of trailing punctuation before the ellipsis", () => {
-    const body = "wool, ".repeat(60);
-    const out = cleanAltText(body);
+  it("removes trailing punctuation before the ellipsis", () => {
+    const out = cleanAltText("wool, ".repeat(60));
 
     expect(out.endsWith("…")).toBe(true);
     expect(out).not.toMatch(/[\s,;:.\-]…$/);
     // And what remains is a word, not a fragment of punctuation.
     expect(out.slice(0, -1)).toMatch(/wool$/);
+  });
+
+  // A RUN of punctuation, not one character. The cut has to land immediately
+  // after two of them for the difference to show, which takes a deliberate
+  // shape: a long unbroken word ending "..", then a following word too long to
+  // fit. The boundary is then the space before that word, leaving the ".." at
+  // the end of the body. Stripping only one would leave a stray dot before the
+  // ellipsis, which reads as a typo rather than as truncation.
+  it("removes a whole run of trailing punctuation, not just one character", () => {
+    const input = `${"w".repeat(MAX_ALT_LENGTH - 7)}..` + ` ${"x".repeat(60)}`;
+    const out = cleanAltText(input);
+
+    expect(out.endsWith("w…")).toBe(true);
+    expect(out).not.toMatch(/\.…$/);
   });
 });
