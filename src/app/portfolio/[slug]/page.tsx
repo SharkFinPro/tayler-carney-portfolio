@@ -4,7 +4,7 @@ import ProjectPageClient from "./ProjectPageClient";
 import { Metadata } from "next";
 import { CACHE_TAGS, cmsRead } from "@/lib/cachedReads";
 import { isAuthed } from "@/lib/auth";
-import { orderProjects, sanitizePortfolio } from "@/lib/portfolio";
+import { getAllProjects, getProjectMeta, normalizeSlug } from "./projectAccess";
 import type { LegacyProject } from "@/components/blocks/blocks";
 
 interface ProjectPageProps {
@@ -21,21 +21,6 @@ type ProjectRecord = LegacyProject & {
   description: string;
   projectPage?: unknown;
 };
-
-// Metadata needs only two fields. Previously `generateMetadata` ran the full
-// ~20-relation project query, and the page component ran it again — two
-// executions of a large query to render one page.
-const getProjectMeta = cache(async (slug: string) => {
-  const data = (await cmsRead(
-    `query ProjectMeta($slug: String!, $stage: Stage!) {
-       projects(stage: $stage, where: { slug: $slug }) { title description }
-     }`,
-    { slug: slug.toLowerCase() },
-    { tags: [CACHE_TAGS.projects, CACHE_TAGS.project(slug.toLowerCase())] }
-  )) as { projects?: { title: string; description: string }[] } | null;
-
-  return data?.projects?.[0] ?? null;
-});
 
 const getProject = cache(async function getProject(slug: string) {
   try {
@@ -134,27 +119,6 @@ const getProject = cache(async function getProject(slug: string) {
   }
 });
 
-// Sibling projects for prev/next navigation, in the same order the portfolio
-// index uses. Archived projects are kept here (including the archived flag) and
-// filtered per-viewer at the call site, so the fetch doesn't depend on admin
-// state and can run concurrently with it.
-const getAllProjects = cache(async function getAllProjects() {
-  const data = (await cmsRead(
-    `query SiblingProjects($stage: Stage!) {
-       projects(stage: $stage) { id slug title }
-       siteDatas(stage: $stage) { portfolio }
-     }`,
-    {},
-    { tags: [CACHE_TAGS.projects, CACHE_TAGS.siteData] }
-  )) as {
-    projects?: { id: string; slug: string; title: string }[];
-    siteDatas?: { portfolio?: unknown }[];
-  } | null;
-
-  const config = sanitizePortfolio(data?.siteDatas?.[0]?.portfolio);
-  return orderProjects(data?.projects ?? [], config);
-});
-
 export async function generateMetadata({
   params,
 }: ProjectPageProps): Promise<Metadata> {
@@ -185,6 +149,11 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
     getAllProjects(),
   ]);
 
+  // Reachability — does this project exist, and may this viewer see it — is
+  // decided in `layout.tsx`, which runs first and is the only place that can
+  // set a real 404 status. This check is not a second opinion on that: it
+  // narrows `project` to non-null for the type system, and by the time it runs
+  // the layout has already turned away anything that would fail it.
   if (!project) {
     notFound();
   }
@@ -194,12 +163,10 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   const allProjects = isAdmin
     ? orderedProjects
     : orderedProjects.filter((p) => !p.archived);
-  // An archived project is filtered out of the list for non-admins, so its
-  // absence here means it must not be reachable directly either.
-  const currentIndex = allProjects.findIndex((p) => p.slug === slug);
-  if (!isAdmin && currentIndex === -1) {
-    notFound();
-  }
+  // Stored slugs are lowercase, so the raw URL param has to be normalised
+  // before it is compared — otherwise a mixed-case URL finds no match and
+  // silently loses its prev/next links.
+  const currentIndex = allProjects.findIndex((p) => p.slug === normalizeSlug(slug));
   // `?? null` rather than a cast: an index that is in range by arithmetic can
   // still miss if the list changed, and prev/next are optional anyway.
   const prevProject = (currentIndex > 0 ? allProjects[currentIndex - 1] : null) ?? null;

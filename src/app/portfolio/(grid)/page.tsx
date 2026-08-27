@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import PortfolioClient from "./PortfolioClient";
+import PortfolioClient from "../PortfolioClient";
 import { CACHE_TAGS, cmsRead } from "@/lib/cachedReads";
 import { isAuthed } from "@/lib/auth";
 import getSiteData from "@/components/SiteData";

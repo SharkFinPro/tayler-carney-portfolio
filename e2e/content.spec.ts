@@ -54,32 +54,36 @@ test("a project detail page renders the project the slug names", async ({ page }
   await expect(page.getByText(COAT.title).first()).toBeVisible();
 });
 
-// KNOWN BUG, found by this test on the day it was written. An unknown project
-// slug renders the 404 UI correctly but serves it with HTTP 200 — a "soft
-// 404", which search engines index as a real page rather than dropping it.
+// The status, not just the body. These returned 200 while rendering the 404
+// UI until the layout guard landed — a soft 404, which search engines index as
+// a real page, so a retired project would never drop out of results.
 //
-// `test.fail()` rather than a deleted test or an assertion on the wrong
-// behaviour: this records what the response *should* be, stays green while the
-// bug exists, and turns red the moment it starts passing, so the fix cannot
-// land unnoticed.
-//
-// Not for want of looking. Ruled out by bisecting against a production build,
-// each with its own `next build` and a direct `curl`:
-//
-//   - `notFound()` itself works — a bare probe route returns 404, and so does
-//     one behind a dynamic `[slug]` segment.
-//   - Not the middleware: the probe returns 404 with the CSP middleware active.
-//   - Not `loading.tsx` (the Suspense-boundary explanation), removed and rebuilt.
-//   - Not `generateMetadata` resolving before the page: calling `notFound()`
-//     there instead of returning a "Project Not Found" title changes nothing.
-//   - Not `isAuthed()` or `cmsRead()`: probes awaiting each still return 404.
-//
-// An unrouted URL (`/definitely-not-a-route`) returns a correct 404 throughout,
-// so this is specific to this route.
-test.fail("an unknown project slug is a 404, not an empty page", async ({ page }) => {
+// Cause: `loading.tsx` puts the page in a Suspense boundary, and Next commits
+// the 200 when that boundary is reached, before the page's `notFound()` runs.
+// The layout runs outside the boundary, which is why the guard lives there.
+test("an unknown project slug is a 404, not an empty page", async ({ page }) => {
   const response = await page.goto("/portfolio/no-such-project");
 
   expect(response?.status()).toBe(404);
+});
+
+// An archived project is a real entry in the CMS that the public must not
+// reach: it is dropped from the grid and from the sitemap, so serving it a 200
+// would contradict both.
+test("an archived project 404s for a visitor who is not signed in", async ({ page }) => {
+  const response = await page.goto(`/portfolio/${ARCHIVED.slug}`);
+
+  expect(response?.status()).toBe(404);
+});
+// A real project reached by a differently-cased URL — an old bookmark, a link
+// with title-cased text. The slug query lowercases, so the project is found;
+// the reachability check compared the raw param and did not, which 404'd a
+// published project. It must resolve, not 404.
+test("a real project is reachable through a mixed-case URL", async ({ page }) => {
+  const mixed = COAT.slug.replace(/^./, (c) => c.toUpperCase());
+  const response = await page.goto(`/portfolio/${mixed}`);
+
+  expect(response?.status()).toBe(200);
 });
 
 test("the site's own pages are reachable", async ({ page }) => {
