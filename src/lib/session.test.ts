@@ -157,6 +157,34 @@ describe("verifySession — a malformed token is refused on its shape", () => {
     await expect(verifySession(`${expiry}.${signature}`)).resolves.toBe(false);
   });
 
+  // The case the junk strings above do NOT cover, and the one that matters.
+  //
+  // Arbitrary junk is rejected with or without the length check, because it
+  // mismatches on the first character either way. A *truncated genuine*
+  // signature does not: every character it has is correct, so a comparison
+  // that only walked the shorter string would find no mismatch and accept it.
+  // The length check is the only thing standing between a valid prefix and a
+  // valid session — an attacker who can submit one character would otherwise
+  // be in.
+  it.each([1, 8, 32, 63])("refuses a genuine signature truncated to %d characters", async (length) => {
+    const expiry = Date.now() + 60_000;
+    const token = await signSession(expiry);
+    const signature = token.slice(token.indexOf(".") + 1);
+
+    expect(signature.length).toBeGreaterThan(length);
+    await expect(verifySession(`${expiry}.${signature.slice(0, length)}`)).resolves.toBe(false);
+  });
+
+  // The mirror: a genuine signature with anything appended is also wrong,
+  // which the same guard catches from the other side.
+  it("refuses a genuine signature with extra characters appended", async () => {
+    const expiry = Date.now() + 60_000;
+    const token = await signSession(expiry);
+    const signature = token.slice(token.indexOf(".") + 1);
+
+    await expect(verifySession(`${expiry}.${signature}00`)).resolves.toBe(false);
+  });
+
   it.each([
     ["a non-numeric expiry", "notanumber"],
     ["an infinite expiry", "Infinity"],
