@@ -78,10 +78,10 @@ export default defineConfig({
       // set from every file, "even if they are included by glob patterns".
       // So the headline number still covers the whole codebase.
       thresholds: {
-        statements: 65,
-        branches: 60,
-        functions: 70,
-        lines: 67,
+        statements: 68,
+        branches: 61,
+        functions: 71,
+        lines: 69,
 
         // The Content Security Policy, end to end. csp.ts says it plainly in
         // its own header: this is the one security control here whose failure
@@ -123,12 +123,16 @@ export default defineConfig({
           branches: 93,
         },
 
-        // The content write boundary: authorization, the two field whitelists,
-        // and sanitize-before-write. `model` is interpolated straight into the
-        // mutation string, so the whitelist is the only thing between a
-        // caller-supplied string and a GraphQL document — a branch going
-        // uncovered here is a branch nothing proves the shape of.
-        "src/app/admin/contentActions.ts": {
+        // The admin write boundary. In contentActions, `model` is interpolated
+        // straight into the mutation string, so the whitelists are the only
+        // thing between a caller-supplied string and a GraphQL document. In
+        // portfolioActions it is the two rules that are invisible in review:
+        // that a reorder must never publish (SiteData is one entry, so
+        // publishing a field publishes every other pending draft on the site),
+        // and that the app's only permanent delete unpublishes first and
+        // tolerates that failing. A branch uncovered here is a branch nothing
+        // proves the shape of.
+        "src/app/admin/{contentActions,portfolioActions}.ts": {
           statements: 100,
           functions: 100,
           lines: 100,
