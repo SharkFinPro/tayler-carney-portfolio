@@ -31,12 +31,21 @@ import { fetchImageAsInline, GEMINI_IMAGE_TYPES, ImageFetchError } from "./fetch
 /**
  * Default models, both overridable without a redeploy.
  *
- * That matters more on a free tier than it did on a metered one: free-tier
- * rate limits differ per model, so the fix for repeated 429s is a config
- * change rather than a code change.
+ * Chosen by measurement, not by reading the model list. On this account's free
+ * tier the newest models are the contended ones: `gemini-3.7-flash` and
+ * `gemini-3.5-flash` both returned 503 "experiencing high demand" for a page
+ * draft, while 3.6-flash answered in 14s and 3.5-flash-lite in 21s. (And
+ * `gemini-2.5-flash`, which the model docs still list, is retired — 404.)
+ *
+ * So: the page draft gets 3.6-flash, which is the fastest thing that reliably
+ * answers, and alt text gets flash-lite, which is plenty for one sentence and
+ * is the least contended tier — it is also the call made far more often.
+ *
+ * Both are env-overridable because 503s move around: a model that answers
+ * today may be busy tomorrow, and that should be a config change.
  */
-const DEFAULT_PAGE_MODEL = "gemini-3.7-flash";
-const DEFAULT_ALT_MODEL = "gemini-3.7-flash";
+const DEFAULT_PAGE_MODEL = "gemini-3.6-flash";
+const DEFAULT_ALT_MODEL = "gemini-3.5-flash-lite";
 
 /** Room for a full page draft. One sentence of alt text needs far less. */
 const PAGE_MAX_TOKENS = 16_000;
@@ -72,6 +81,59 @@ function withTimeout(): { signal: AbortSignal; done: () => void } {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   return { signal: controller.signal, done: () => clearTimeout(timer) };
+}
+
+/**
+ * Backoff between retries of a busy model, in milliseconds.
+ *
+ * The free tier returns 503 "This model is currently experiencing high demand"
+ * often enough to be an ordinary outcome rather than an incident — both of the
+ * newest Flash models did it while this was being written. The message says
+ * the spike is usually temporary, and it is: a second attempt a moment later
+ * generally lands.
+ *
+ * Deliberately short and finite. Three attempts adds at most ~4s to a call
+ * that already takes 15, and never turns a genuine outage into a hang.
+ */
+const RETRY_BACKOFF_MS = [1_000, 3_000];
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Whether an error is the provider saying "busy, try again" rather than
+ * "you asked for something wrong".
+ *
+ * Only 503/UNAVAILABLE. Notably NOT 429: that is a quota refusal, and retrying
+ * it spends the quota that is already exhausted.
+ */
+function isTransient(error: unknown): boolean {
+  const status = (error as { status?: number } | null)?.status;
+  if (status === 503) return true;
+
+  const message = error instanceof Error ? error.message : String(error);
+  return /"code":\s*503|UNAVAILABLE|experiencing high demand/i.test(message);
+}
+
+/**
+ * Run `attempt`, retrying only while the provider says it is busy.
+ *
+ * Exported for its suite: the distinction it draws — retry a 503, never retry
+ * a 429 — is the kind that is easy to get backwards and impossible to see
+ * from the outside once it is.
+ */
+export async function withRetry<T>(
+  attempt: () => Promise<T>,
+  wait: (ms: number) => Promise<unknown> = sleep
+): Promise<T> {
+  for (let i = 0; ; i++) {
+    try {
+      return await attempt();
+    } catch (error) {
+      const backoff = RETRY_BACKOFF_MS[i];
+      if (backoff === undefined || !isTransient(error)) throw error;
+      await wait(backoff);
+    }
+  }
 }
 
 /**
@@ -131,19 +193,21 @@ export function createGeminiGenerator(apiKey: string, model = DEFAULT_PAGE_MODEL
 
       const { signal, done } = withTimeout();
       try {
-        const response = await client.models.generateContent({
-          model,
-          // Images first, then the brief: the model reads the visual evidence
-          // before the instructions about what to do with it.
-          contents: [{ role: "user", parts: [...parts, { text: brief }] }],
-          config: {
-            systemInstruction: PAGE_SYSTEM_PROMPT,
-            maxOutputTokens: PAGE_MAX_TOKENS,
-            responseMimeType: "application/json",
-            responseJsonSchema: PAGE_SCHEMA,
-            abortSignal: signal,
-          },
-        });
+        const response = await withRetry(() =>
+          client.models.generateContent({
+            model,
+            // Images first, then the brief: the model reads the visual
+            // evidence before the instructions about what to do with it.
+            contents: [{ role: "user", parts: [...parts, { text: brief }] }],
+            config: {
+              systemInstruction: PAGE_SYSTEM_PROMPT,
+              maxOutputTokens: PAGE_MAX_TOKENS,
+              responseMimeType: "application/json",
+              responseJsonSchema: PAGE_SCHEMA,
+              abortSignal: signal,
+            },
+          })
+        );
 
         assertNotBlocked(response);
 
@@ -172,23 +236,25 @@ export function createGeminiDescriber(apiKey: string, model = DEFAULT_ALT_MODEL)
       const { signal, done } = withTimeout();
 
       try {
-        const response = await client.models.generateContent({
-          model,
-          contents: [
-            {
-              role: "user",
-              parts: [
-                { inlineData: { mimeType: image.mediaType, data: image.base64 } },
-                { text: altTextUserPrompt(input.name) },
-              ],
+        const response = await withRetry(() =>
+          client.models.generateContent({
+            model,
+            contents: [
+              {
+                role: "user",
+                parts: [
+                  { inlineData: { mimeType: image.mediaType, data: image.base64 } },
+                  { text: altTextUserPrompt(input.name) },
+                ],
+              },
+            ],
+            config: {
+              systemInstruction: ALT_TEXT_SYSTEM_PROMPT,
+              maxOutputTokens: ALT_TEXT_MAX_TOKENS,
+              abortSignal: signal,
             },
-          ],
-          config: {
-            systemInstruction: ALT_TEXT_SYSTEM_PROMPT,
-            maxOutputTokens: ALT_TEXT_MAX_TOKENS,
-            abortSignal: signal,
-          },
-        });
+          })
+        );
 
         assertNotBlocked(response);
         return response.text ?? "";

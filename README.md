@@ -158,9 +158,13 @@ missing.
 **Why Gemini:** it has a free tier that includes image input, and both of
 these features are image-driven. Get a key from
 [AI Studio](https://aistudio.google.com). `GEMINI_PAGE_MODEL` and
-`GEMINI_ALT_TEXT_MODEL` override the model per feature — useful on a free tier,
-where rate limits differ per model, so a 429 is a config change rather than a
-code change.
+`GEMINI_ALT_TEXT_MODEL` override the model per feature. The defaults were
+picked by measuring, not from the model list: on the free tier the *newest*
+models are the contended ones, and both `gemini-3.7-flash` and
+`gemini-3.5-flash` returned 503 "experiencing high demand" for a page draft
+while `gemini-3.6-flash` answered in 14 seconds. A busy model is retried twice
+automatically; if one keeps failing, switching model is a config change rather
+than a code change.
 
 The free tier does come with a data trade: Google may use free-tier prompts and
 responses to improve its products, and human reviewers may read them. Paid

@@ -216,3 +216,28 @@ describe("toActionError — an AI provider refusing on billing", () => {
     expect(message).not.toMatch(/out of credit/i);
   });
 });
+
+describe("toActionError — a busy model", () => {
+  // Verbatim from the free tier, hit repeatedly while this was being built.
+  const BUSY = `{"error":{"code":503,"message":"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.","status":"UNAVAILABLE"}}`;
+
+  it("says the model is busy and that it usually clears", () => {
+    const message = messageFor(new Error(BUSY));
+    expect(message).toMatch(/busy/i);
+    expect(message).not.toMatch(/\(ref [0-9A-Z]{6}\)/);
+  });
+
+  it("is not confused with a spent quota", () => {
+    // 429 means the admin has used their allowance; 503 means they are
+    // queueing for capacity. Retrying helps with one and not the other, so
+    // the two must not read the same.
+    const busy = messageFor(new Error(BUSY));
+    const quota = messageFor(new Error("429 too many requests"));
+    expect(busy).not.toBe(quota);
+    expect(quota).toMatch(/rate-limiting/i);
+  });
+
+  it("does not fire on an id that happens to contain 503", () => {
+    expect(messageFor(new Error("entry cm503abc could not be updated"))).not.toMatch(/busy/i);
+  });
+});

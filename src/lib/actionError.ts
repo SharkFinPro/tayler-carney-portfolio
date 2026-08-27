@@ -64,6 +64,16 @@ const TRANSLATIONS: Translation[] = [
     message: "The CMS is rate-limiting requests right now. Wait a moment and try again.",
   },
   {
+    // A model that is simply busy. On a free tier this is an ordinary outcome
+    // rather than an incident — the provider retries it twice before giving
+    // up, so by the time this message is seen it has genuinely stayed busy.
+    // Distinct from the rate-limit message above, which is about a quota the
+    // admin has spent rather than capacity they are queueing for.
+    match: /experiencing high demand|\bUNAVAILABLE\b|service unavailable|\b503\b/i,
+    message:
+      "The AI model is busy right now — that usually clears in a moment. Try again, or set a different model if it keeps happening.",
+  },
+  {
     // An AI provider refusing on billing. Worth its own message because the
     // generic fallback sent someone to the server log to find out that an
     // account needed topping up — something they could have fixed in a minute
