@@ -17,30 +17,61 @@ concurrency:
 
 jobs:
   verify:
-    name: Typecheck, lint, test, build
+    name: Verify (Node ${{ matrix.node }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+
+    strategy:
+      # One red cell should not cancel the other: knowing a failure reproduces
+      # on both Node versions (or doesn't) is most of the diagnosis.
+      fail-fast: false
+      matrix:
+        # 22 is what Vercel runs, so that is the version that gates the merge.
+        # 24 is the next LTS the platform will move to; running it here means
+        # an incompatibility surfaces on a PR of ours rather than on the day
+        # Vercel changes the default underneath us.
+        node: [22, 24]
 
     steps:
       - uses: actions/checkout@v7
 
-      # Node 22 is what Vercel runs, so that is what should gate the merge.
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: ${{ matrix.node }}
           cache: npm
 
       - name: Install dependencies
+        id: install
         run: npm ci
 
+      # Every check below runs even when an earlier one failed, so a single push
+      # reports every problem at once. Previously the job stopped at the first
+      # failure, which meant a lint error hid the test and build results and
+      # each fix bought exactly one more line of feedback.
+      #
+      # They are still skipped when the install failed (nothing downstream can
+      # be meaningful then) and when the run was cancelled.
       - name: Typecheck
+        if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
         run: npm run typecheck
 
       - name: Lint
+        if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
         run: npm run lint
 
+      # Coverage floors are a property of the codebase, not of the Node version,
+      # so exactly one leg enforces them — the same one that gates the merge and
+      # uploads the report. The other leg still runs the whole suite; what it is
+      # there to answer is "do the tests pass on 24", not "is coverage adequate
+      # on 24", and checking the same floors twice only adds a second way for an
+      # unchanged codebase to go red. (Measured: the two legs currently emit
+      # byte-identical coverage tables, so this is about not depending on that
+      # rather than about a divergence we have seen.)
+      #
+      # `npm run test:coverage` is also what `npm run verify` runs locally.
       - name: Test
-        run: npm run test
+        if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
+        run: ${{ matrix.node == 22 && 'npm run test:coverage' || 'npm test' }}
 
       # The production build needs no secrets: every CMS-backed route is
       # rendered on demand, so nothing is fetched at build time. If that ever
@@ -51,6 +82,62 @@ jobs:
       # next.config.ts asserts the env contract at build time so a misconfigured
       # *deploy* fails, but CI has no production secrets to assert against.
       - name: Build
+        if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
         run: npm run build
         env:
           SKIP_ENV_VALIDATION: "1"
+
+      # Keep the lcov report from the version that gates the merge. The text
+      # table is in the log, but lcov is the only complete per-file picture
+      # (the v4 text reporter omits rows for fully-covered files), and having
+      # it as an artifact means a coverage question can be answered from a
+      # finished run rather than by re-running locally.
+      - name: Upload coverage
+        if: ${{ !cancelled() && steps.install.conclusion == 'success' && matrix.node == 22 }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-lcov
+          path: coverage/lcov.info
+          if-no-files-found: warn
+          retention-days: 14
+
+  determinism:
+    name: Determinism (shuffled order, UTC+14)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    # A pure-unit suite that passes only in declaration order, or only in the
+    # runner's timezone, is a suite that will fail on an unrelated PR months
+    # from now with no clue attached. Both failure modes are cheap to rule out
+    # here — the suite runs in about two seconds — and expensive to diagnose
+    # later, so they get their own job rather than a note in a document.
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        id: install
+        run: npm ci
+
+      # Both steps go through `npm test` rather than calling vitest directly, so
+      # they keep running whatever that script means if it ever grows flags.
+      #
+      # Shuffles both file order and test order within a file, surfacing any
+      # state leaked between the suites. Vitest prints the seed it used, so a
+      # failure here is reproducible with `--sequence.seed=<seed>`.
+      - name: Tests in randomized order
+        if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
+        run: npm test -- --sequence.shuffle
+
+      # UTC+14 is the furthest zone ahead of UTC, so any code that formats or
+      # compares dates against "today" without pinning a zone lands on the
+      # wrong calendar day here while passing in the runner's default UTC.
+      - name: Tests in a non-UTC timezone
+        if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
+        run: npm test
+        env:
+          TZ: Pacific/Kiritimati

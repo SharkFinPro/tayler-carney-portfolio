@@ -17,10 +17,101 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "lcov"],
-      // Only the modules the suite actually targets — reporting 0% for React
-      // components nothing here tests would make the number meaningless.
-      include: ["src/lib/**/*.ts", "src/components/blocks/**/*.ts"],
-      exclude: ["**/*.test.ts"],
+
+      // Every module that is *logic* rather than markup, whether or not a suite
+      // currently reaches it. The previous list named only the directories the
+      // suite already targeted, which meant the headline number could not fall
+      // when untested code was added — and it quietly omitted the ~980 lines of
+      // Server Actions in `src/app/admin`, which are the authorization and CMS
+      // write boundary and the highest-risk code in the repo.
+      //
+      // `.tsx` is deliberately still absent. Rendering components needs DOM
+      // mocking heavy enough to test the mocks rather than the code (AGENTS.md
+      // records that call), so counting them would restore exactly the
+      // meaningless-denominator problem the old list was avoiding. Components
+      // are covered by end-to-end tests instead. Note this is an allowlist for
+      // files the suite never imports: a `.tsx` module that *is* imported by a
+      // test still appears in the report anyway, which is why SuggestAltButton.tsx
+      // and AnnotatedImage.tsx are in it.
+      include: [
+        "src/lib/**/*.ts",
+        "src/app/**/*.ts",
+        "src/components/**/*.ts",
+        "src/middleware.ts",
+      ],
+      exclude: [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        // Test-only helpers and the `server-only` stub.
+        "src/test/**",
+        // Type-only module: it compiles to nothing, so it can be neither
+        // covered nor uncovered, and v8 reports it as a 0% file regardless.
+        "src/lib/ai/types.ts",
+        // One-line re-export barrels (`export { default } from "./Thing"`).
+        // They exist for import ergonomics and hold no logic to test.
+        // `src/lib/ai/index.ts` is NOT one of these — it gates the AI features
+        // on env config and is real behaviour — so it is left in.
+        "src/components/*/index.ts",
+      ],
+
+      // Floors, not targets: set just under today's numbers so a change that
+      // *lowers* coverage fails while ordinary noise does not flap the build.
+      // Raise them as the gaps close; there is no autoUpdate, because a
+      // threshold that rewrites itself records nothing.
+      //
+      // The margins are deliberately thin — a few statements in most cases —
+      // and that has a consequence worth stating plainly: adding a chunk of
+      // *untested* code will fail this check even though it removed no
+      // coverage. That is the intended reading, not an accident. AGENTS.md
+      // already asks for a suite in the same commit as the module it covers,
+      // and a ratio floor is what makes that convention enforceable rather
+      // than advisory. Coverage here is deterministic (the Node 22 and 24 legs
+      // emit identical tables), so a red build means the code moved, not that
+      // the measurement wobbled.
+      //
+      // When a PR genuinely should lower the floor — deleting a well-tested
+      // module, say — lower it in that same PR and say why. That is a visible,
+      // reviewable decision, which is the whole point of not auto-updating.
+      //
+      // The glob entries below are additional, stricter checks on top of the
+      // global floor rather than carve-outs from it: Vitest builds the global
+      // set from every file, "even if they are included by glob patterns".
+      // So the headline number still covers the whole codebase.
+      thresholds: {
+        statements: 60,
+        branches: 57,
+        functions: 66,
+        lines: 61,
+
+        // The validators that run on BOTH render and save, where AGENTS.md
+        // notes a gap is a gap in two places. They are at full line coverage
+        // today and a 60% global floor is far too loose to notice if one of
+        // them regressed, which is exactly the module where it would matter.
+        //
+        // Branches sit lower than lines because each has a few defensive
+        // `?? []` arms that no reachable input exercises; 93 is just under
+        // global.ts, the weakest of the four.
+        "src/lib/{global,home,seo,portfolio}.ts": {
+          statements: 100,
+          functions: 100,
+          lines: 100,
+          branches: 93,
+        },
+
+        // The authorization boundary, and the first module AGENTS.md lists as
+        // worth testing. Same reasoning: the global floor cannot see it move.
+        //
+        // Statements sits at 96 rather than 100 while lines is 100: v8 counts
+        // the two `if (…) return false` guards as statements on lines that are
+        // themselves executed, so the two metrics genuinely disagree here.
+        "src/lib/session.ts": {
+          statements: 96,
+          functions: 100,
+          lines: 100,
+          branches: 88,
+        },
+      },
+
       // Note: the v4 text reporter omits rows for fully-covered files, so a
       // module at 100% shows up only in the directory aggregate. Use the lcov
       // report for a complete per-file picture.

@@ -80,9 +80,9 @@ Model names are interpolated into the mutation string, so a value is only ever w
 - `npm run lint` — ESLint flat config (`eslint.config.mjs`). Two React Compiler rules are deliberately warnings, with the reasoning in the config.
 - `npm run typecheck` — `tsc --noEmit`. `strict` is on.
 - `npm test` / `npm run test:watch` / `npm run test:coverage` — Vitest.
-- `npm run verify` — typecheck + lint + test. **This is what CI runs**, alongside the build.
+- `npm run verify` — typecheck + lint + test-with-coverage. **This is what CI runs**, alongside the build.
 
-CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs all four on every PR. Vercel's own build is a deployment, not a merge gate — it runs no lint, no tests, and arrives after the merge. Run `npm run verify` before pushing.
+CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs all four on every PR, on Node 22 (what Vercel runs) and Node 24 (what it will run next). Every check runs even when an earlier one fails, so one push reports every problem at once. A second `determinism` job re-runs the suite in randomized order and under `TZ=Pacific/Kiritimati`, which is where order-dependence and unpinned date handling show up. Vercel's own build is a deployment, not a merge gate — it runs no lint, no tests, and arrives after the merge. Run `npm run verify` before pushing.
 
 ## Environment / deployment
 
@@ -128,7 +128,15 @@ What is tested, and why those things:
 
 Untested by design: `cms.ts`, `getAssets.ts`, and most React components, which need network or DOM mocking heavy enough to test the mocks rather than the code. Prefer an end-to-end test for those.
 
+Untested, but *not* by design — these are gaps rather than policy, and adding a suite to one is welcome work rather than a change of direction: the Server Actions in `src/app/admin` (the authorization and CMS write boundary), `middleware.ts`, `auth.ts`, `a11y.ts`, `assetRef.ts`, `resume.ts`, and `projectToBlocks` in `blocks.ts` (which is live — it is the fallback that renders any project whose `projectPage` has never been authored). The distinction matters when reading the coverage number: the first list is code we have decided not to unit-test, the second is simply work not done yet.
+
 The exception is `SuggestAltButton`, whose entire surface is two Server Action calls — one `vi.mock` of that module, and the properties under test are ones review cannot see: that an unconfigured install renders no button at all, that availability is asked for once rather than once per gallery card, and that a failed suggestion never reaches the field. Note that `cleanup()` has to be called in `afterEach` by hand: Testing Library only registers auto-cleanup when Vitest globals are on, and they are not.
+
+**Coverage is gated.** `vitest.config.mts` sets global floors just under the current numbers, so a change that lowers coverage fails the PR that lowers it; `npm run verify` and CI both run `test:coverage` for that reason. The denominator is every `.ts` module that holds logic — `src/lib`, `src/app` (including the Server Actions), `src/components` hooks, and `src/middleware.ts` — not only the directories the suite already reaches, because a denominator that grows with the tests can never report a regression. `.tsx` is excluded on the same reasoning as “untested by design” above: components are an end-to-end concern, and counting them would swamp the number with markup nothing here claims to test. The modules named as untested by design *are* in the denominator and do drag it down — that is the honest reading, and the floors are set where they actually are rather than where it would be flattering.
+
+On top of the global floor, two glob entries hold the modules where a 60% floor is far too loose to notice a regression: the four validators that run on both render and save (`global`, `home`, `seo`, `portfolio`) are pinned at 100% statements/lines/functions, and `session.ts` — the authorization boundary — is pinned at 100% lines. These are *additional* checks, not carve-outs: Vitest builds the global set from every file "even if they are included by glob patterns", so the headline number still covers the whole codebase. Note v8's `statements` and `lines` genuinely disagree on `session.ts` (96% vs 100%), which is why its statement floor is the lower number rather than a typo.
+
+Raise the floors as gaps close. There is deliberately no `autoUpdate`: a threshold that rewrites itself records nothing.
 
 Because `noUncheckedIndexedAccess` applies to test files too, `src/test/at.ts` provides `at(list, i)`, `only(list)`, and `prop(record, key)`. Use those rather than `list[0]?.field`: optional chaining turns "the list was empty" into "expected undefined to be 'Flats'", while these throw naming the real problem, and they hand back a definite value that narrowing sticks to.
 
