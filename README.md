@@ -142,7 +142,7 @@ production secrets.
 
 ### AI assistance (optional)
 
-Two optional features, either or both:
+Two optional features, both behind one `GEMINI_API_KEY`:
 
 - **Draft with AI**, in the block editor: pick images from the Media Library,
   answer a few short questions, and get draft content blocks back for review.
@@ -155,19 +155,19 @@ nobody checked is worse for a screen-reader user than an empty attribute — a
 confident wrong description gets believed, a missing one is at least obviously
 missing.
 
-**Which provider:** alt text works with either `GEMINI_API_KEY` or
-`ANTHROPIC_API_KEY`, and prefers Gemini when both are set — it has a free tier
-that includes image input, and describing one image in one sentence is the
-call this app makes most often and the one that needs the least model. Page
-drafting is Anthropic only.
+**Why Gemini:** it has a free tier that includes image input, and both of
+these features are image-driven. Get a key from
+[AI Studio](https://aistudio.google.com). `GEMINI_PAGE_MODEL` and
+`GEMINI_ALT_TEXT_MODEL` override the model per feature — useful on a free tier,
+where rate limits differ per model, so a 429 is a config change rather than a
+code change.
 
-Gemini's free tier does come with a data trade: Google may use free-tier
-prompts and responses to improve its products, and human reviewers may read
-them. Paid Gemini does not. For images already published on a public site
-that is usually fine; for unreleased work sitting in DRAFT it is worth
-deciding deliberately.
+The free tier does come with a data trade: Google may use free-tier prompts and
+responses to improve its products, and human reviewers may read them. Paid
+Gemini does not. For images already published on a public site that is usually
+fine; for unreleased work sitting in DRAFT it is worth deciding deliberately.
 
-Without any key both features hide themselves and everything else works
+Without a key both features hide themselves and everything else works
 unchanged — no one needs a key to run the site.
 
 ## License

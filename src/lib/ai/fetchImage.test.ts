@@ -125,3 +125,60 @@ describe("fetchImageAsInline — the response is what gets checked", () => {
     expect(init?.signal).toBeInstanceOf(AbortSignal);
   });
 });
+
+describe("fetchImageAsInline — downscaling", () => {
+  /** A real JPEG, large enough that resizing has something to do. */
+  async function jpeg(width: number, height: number): Promise<Uint8Array> {
+    const { default: sharp } = await import("sharp");
+    const buffer = await sharp({
+      create: { width, height, channels: 3, background: { r: 120, g: 90, b: 60 } },
+    })
+      .jpeg()
+      .toBuffer();
+    return new Uint8Array(buffer);
+  }
+
+  /** Read back the dimensions of what we were about to send. */
+  async function dimensionsOf(base64: string) {
+    const { default: sharp } = await import("sharp");
+    const { width, height } = await sharp(Buffer.from(base64, "base64")).metadata();
+    return { width, height };
+  }
+
+  it("shrinks a large image to the model edge", async () => {
+    // The reason this matters: page drafting sends up to twelve of these
+    // inline in one request, against a 20MB ceiling.
+    const original = await jpeg(3000, 2000);
+    const out = await fetchImageAsInline(ASSET, respondWith({ bytes: original }));
+
+    expect(await dimensionsOf(out.base64)).toEqual({ width: 1024, height: 683 });
+    expect(out.base64.length).toBeLessThan(original.byteLength);
+  });
+
+  it("leaves a small image at its own size rather than upscaling it", async () => {
+    const original = await jpeg(400, 300);
+    const out = await fetchImageAsInline(ASSET, respondWith({ bytes: original }));
+    expect(await dimensionsOf(out.base64)).toEqual({ width: 400, height: 300 });
+  });
+
+  it("re-encodes as JPEG, so the declared type matches the bytes", async () => {
+    const { default: sharp } = await import("sharp");
+    const png = new Uint8Array(
+      await sharp({ create: { width: 50, height: 50, channels: 3, background: "red" } })
+        .png()
+        .toBuffer()
+    );
+    const out = await fetchImageAsInline(ASSET, respondWith({ type: "image/png", bytes: png }));
+
+    expect(out.mediaType).toBe("image/jpeg");
+    expect((await sharp(Buffer.from(out.base64, "base64")).metadata()).format).toBe("jpeg");
+  });
+
+  it("falls back to the original when the bytes are not a decodable image", async () => {
+    // A smaller image is an optimization; failing to make one should not be
+    // the difference between getting alt text and not.
+    const notAnImage = new Uint8Array([1, 2, 3, 4]);
+    const out = await fetchImageAsInline(ASSET, respondWith({ bytes: notAnImage }));
+    expect(out).toEqual({ mediaType: "image/jpeg", base64: "AQIDBA==" });
+  });
+});

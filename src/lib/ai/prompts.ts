@@ -1,10 +1,139 @@
-// Prompts shared between providers.
+// Prompts and the response schema, shared across providers.
 //
-// The alt-text instructions live here rather than inside one provider file
-// because two providers now write alt text for the same library. If each held
-// its own copy they would drift, and the drift would be visible in the
-// content: which service happened to be configured would decide how an image
-// is described to a screen-reader user. Same prompt, either way.
+// These live here rather than inside a provider file because the provider is
+// meant to be the swappable part — and it has already been swapped once. When
+// they sat inside the provider, replacing it meant either importing from a
+// file named for the old vendor or copying the prompts into the new one and
+// letting the two drift.
+
+/**
+ * System prompt for drafting a project page.
+ */
+export const PAGE_SYSTEM_PROMPT = `You draft case-study pages for a structural fashion design portfolio.
+
+The site's voice is editorial and technical: precise, concrete, unhurried. It
+documents garment engineering — pattern-making, material research, construction
+— and treats each piece as a structural problem. Write like a design archive,
+not like marketing copy.
+
+Rules:
+- Write only from what the designer told you and what you can see in the images.
+  Never invent techniques, materials, measurements, dates, collaborators, or
+  awards. If you don't know something, leave it out.
+- Use ONLY the image URLs supplied in the user message, exactly as given. Never
+  construct, guess, or modify a URL.
+- Prefer specific observation over adjectives. "A bias-cut wool panel seamed off
+  the shoulder" beats "a beautiful flowing design".
+- No first-person plural, no exclamation marks, no phrases like "stunning",
+  "showcase", "elevate", "journey", or "dive into".
+- Open with one 'intro' section. Follow it with 2 to 6 more that suit the
+  material you actually have. Do not pad the page to fill the schema.
+- 'specs' rows should hold real, factual attributes (Material, Construction,
+  Year) — only ones the designer stated or that are plainly visible.
+- 'timeline' is for process stages, and only when the designer described a
+  process. Otherwise omit it.`;
+
+/**
+ * JSON Schema for a drafted page.
+ *
+ * Structured outputs constrain the model to this shape, so the Server Action
+ * never has to parse loose prose or repair broken JSON. `additionalProperties:
+ * false` throughout keeps the output to exactly the vocabulary `toBlocks`
+ * understands.
+ */
+export const PAGE_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["sections"],
+  properties: {
+    sections: {
+      type: "array",
+      minItems: 2,
+      maxItems: 10,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["kind", "heading"],
+        properties: {
+          kind: {
+            type: "string",
+            enum: ["intro", "prose", "gallery", "captioned", "specs", "timeline"],
+          },
+          heading: { type: "string" },
+          eyebrow: { type: "string" },
+          body: { type: "string" },
+          layout: { type: "string", enum: ["grid", "feature"] },
+          imageUrls: { type: "array", items: { type: "string" } },
+          items: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["imageUrl", "title", "description"],
+              properties: {
+                imageUrl: { type: "string" },
+                title: { type: "string" },
+                description: { type: "string" },
+              },
+            },
+          },
+          rows: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["label", "value"],
+              properties: { label: { type: "string" }, value: { type: "string" } },
+            },
+          },
+          stages: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["marker", "title", "description"],
+              properties: {
+                marker: { type: "string" },
+                title: { type: "string" },
+                description: { type: "string" },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+} as const;
+
+/**
+ * The brief that accompanies the images.
+ *
+ * The URL list is load-bearing rather than decorative: the model is told to use
+ * only these URLs, and `toBlocks` then enforces it by allowlisting every URL in
+ * the output against the set the admin actually supplied. The prompt asks; the
+ * mapping layer is what makes it true.
+ */
+export function pageBrief(input: {
+  title: string;
+  answers: { question: string; answer: string }[];
+  images: { url: string; name: string }[];
+}): string {
+  const answered = input.answers.filter((a) => a.answer.trim());
+
+  return [
+    `Project title: ${input.title}`,
+    "",
+    answered.length
+      ? answered.map((a) => `Q: ${a.question}\nA: ${a.answer.trim()}`).join("\n\n")
+      : "(The designer did not answer the questions — work from the images alone.)",
+    "",
+    "Images available for this page, with the exact URLs you must use:",
+    ...input.images.map((img, i) => `${i + 1}. ${img.name} — ${img.url}`),
+  ].join("\n");
+}
+
+
+// ── Alt text ────────────────────────────────────────────────────────────────
 
 export const ALT_TEXT_SYSTEM_PROMPT = `You write alt text for images in a structural fashion design portfolio.
 

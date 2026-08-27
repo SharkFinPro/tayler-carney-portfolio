@@ -1,22 +1,22 @@
 // Fetch a Media Library image so it can be sent to a provider inline.
 //
-// Anthropic will fetch an image URL itself. Gemini will not — it takes the
-// bytes inline — so something has to do the fetching, and that something is
-// this module rather than the provider file, because it is the part with
-// security consequences and a second provider must not reimplement it.
+// Gemini takes image bytes inline rather than fetching a URL, so something has
+// to do the fetching. That something is this module rather than the provider
+// file, because it is the part with security consequences and a second
+// provider must not reimplement it.
 //
 // Doing the fetch ourselves is a net improvement, not a cost: the URL is
 // checked against the asset-host allowlist *before* the request goes out, and
-// the response is bounded before any of it reaches a model. Handing a URL to a
-// third party to fetch means trusting their idea of which hosts are reasonable.
+// the response is bounded and downscaled before any of it reaches a model.
+// Handing a URL to a third party to fetch means trusting their idea of which
+// hosts are reasonable.
 
 import { isDescribableImageUrl } from "./altText";
 
 /**
- * Image formats Gemini accepts. Deliberately not the same list as Anthropic's
- * (which takes GIF but not HEIC), so it lives beside the provider that needs
- * it rather than in a shared "supported types" constant that would be wrong
- * for one of them.
+ * Image formats Gemini accepts. Notably not GIF, which the Media Library will
+ * happily hold — hence the check rather than an assumption that anything the
+ * uploader stored can be described.
  */
 export const GEMINI_IMAGE_TYPES = [
   "image/png",
@@ -108,5 +108,52 @@ export async function fetchImageAsInline(
     throw new ImageFetchError("That image came back empty.");
   }
 
-  return { mediaType, base64: Buffer.from(bytes).toString("base64") };
+  return downscale(Buffer.from(bytes), mediaType);
+}
+
+/**
+ * Longest edge of an image sent to a model.
+ *
+ * Nothing here needs more. The model is being asked what the image *is* — a
+ * boxy blazer on a dress form — not to inspect stitch density, and a 1024px
+ * JPEG answers that as well as a 4000px original.
+ *
+ * The reason it is not optional: page drafting sends up to twelve images in
+ * one request, Gemini takes them inline, and the whole request has to fit in
+ * 20MB. Twelve full-resolution garment photographs do not. Downscaling turns
+ * "sometimes fails on a big project" into "always fits", and costs nothing
+ * anyone can see.
+ */
+const MAX_MODEL_IMAGE_EDGE = 1024;
+
+/** Quality for the re-encode. 82 is indistinguishable here and roughly halves the bytes. */
+const RE_ENCODE_QUALITY = 82;
+
+/**
+ * Resize to `MAX_MODEL_IMAGE_EDGE` and re-encode as JPEG.
+ *
+ * On any failure the original is returned rather than throwing: a smaller
+ * image is an optimization, and a codec sharp dislikes should not be the
+ * difference between getting alt text and not. HEIC is the realistic case —
+ * it needs a libvips built with the codec, which is not guaranteed.
+ */
+async function downscale(buffer: Buffer, mediaType: string): Promise<FetchedImage> {
+  try {
+    const { default: sharp } = await import("sharp");
+    const resized = await sharp(buffer)
+      // `withoutEnlargement` so a small flat is not upscaled into blur.
+      .rotate()
+      .resize({
+        width: MAX_MODEL_IMAGE_EDGE,
+        height: MAX_MODEL_IMAGE_EDGE,
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .jpeg({ quality: RE_ENCODE_QUALITY })
+      .toBuffer();
+
+    return { mediaType: "image/jpeg", base64: resized.toString("base64") };
+  } catch {
+    return { mediaType, base64: buffer.toString("base64") };
+  }
 }

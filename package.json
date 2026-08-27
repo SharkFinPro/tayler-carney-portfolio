@@ -21,7 +21,6 @@
   "author": "Alex Martin",
   "license": "MIT",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.120.0",
     "@fortawesome/fontawesome-svg-core": "^7.3.1",
     "@fortawesome/free-brands-svg-icons": "^7.3.1",
     "@fortawesome/free-regular-svg-icons": "^7.3.1",

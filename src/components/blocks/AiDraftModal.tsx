@@ -91,7 +91,7 @@ export default function AiDraftModal({
           {available === false && (
             <p className={styles.notice} role="status">
               AI drafting isn&rsquo;t configured on this deployment. Set{" "}
-              <code>ANTHROPIC_API_KEY</code> to enable it.
+              <code>GEMINI_API_KEY</code> to enable it.
             </p>
           )}
 
