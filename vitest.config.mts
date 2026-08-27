@@ -78,10 +78,35 @@ export default defineConfig({
       // set from every file, "even if they are included by glob patterns".
       // So the headline number still covers the whole codebase.
       thresholds: {
-        statements: 64,
-        branches: 59,
-        functions: 69,
-        lines: 66,
+        statements: 65,
+        branches: 60,
+        functions: 70,
+        lines: 67,
+
+        // The Content Security Policy, end to end. csp.ts says it plainly in
+        // its own header: this is the one security control here whose failure
+        // mode is silent, because a policy that accidentally allows
+        // 'unsafe-inline' looks identical to one that doesn't until someone
+        // lands an XSS. middleware.ts is the other half — the policy only
+        // matters if it is actually attached, and the nonce it names only
+        // works if the same value reaches the request.
+        "src/{middleware.ts,lib/csp.ts}": {
+          statements: 100,
+          functions: 100,
+          lines: 100,
+          branches: 100,
+        },
+
+        // Two small helpers whose failures are equally quiet: a keyboard user
+        // unable to operate an element that works fine with a mouse, and a
+        // route that stops rendering dynamically because a caught error ate
+        // Next's control-flow signal.
+        "src/lib/{a11y,assetRef}.ts": {
+          statements: 100,
+          functions: 100,
+          lines: 100,
+          branches: 100,
+        },
 
         // The validators that run on BOTH render and save, where AGENTS.md
         // notes a gap is a gap in two places. They are at full line coverage
