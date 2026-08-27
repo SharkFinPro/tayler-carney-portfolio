@@ -534,10 +534,13 @@ describe("pasted structure", () => {
     expect(kidsOf(out)).toHaveLength(1);
   });
 
-  // Unknown tags are unwrapped to their text rather than dropped: losing the
-  // words is worse than losing the tag they came in.
+  // These are block-level in HTML but absent from BLOCK_TAGS, so they are not
+  // routed through `blockToAst` at all — they join the inline run and are
+  // unwrapped by `serializeInline`'s default arm, then wrapped in a paragraph
+  // by the flush. The outcome is what matters: the words survive. Losing the
+  // text would be far worse than losing the tag it arrived in.
   it.each(["<section>Words</section>", "<article>Words</article>", "<main>Words</main>"])(
-    "turns the unknown block %j into a paragraph",
+    "unwraps %j, keeping its text as a paragraph",
     (html) => {
       const out = fromHtml(html);
 
@@ -545,6 +548,15 @@ describe("pasted structure", () => {
       expect(firstText(out)).toBe("Words");
     }
   );
+
+  // A tag that IS in BLOCK_TAGS but has no case of its own falls to
+  // `blockToAst`'s default arm. `<li>` outside a list is the reachable one.
+  it("turns a stray list item into a paragraph", () => {
+    const out = fromHtml("<li>Orphaned</li>");
+
+    expect(nodeAt(out).type).toBe("paragraph");
+    expect(firstText(out)).toBe("Orphaned");
+  });
 
   it("unwraps an unknown inline element, keeping its text", () => {
     const out = fromHtml("<p>before <cite>cited</cite> after</p>");
