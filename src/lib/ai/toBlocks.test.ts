@@ -588,6 +588,23 @@ describe("toBlocks — a section that is not an object", () => {
     expect(toBlocks(page([section]), [])).toEqual([]);
   });
 
+  // The guard is `!section || typeof section !== "object"`, and the values
+  // above do not actually exercise it: each of them yields [] whether the
+  // guard runs or not, because `toBlock` either falls to its default arm or
+  // throws into the surrounding catch. A FUNCTION is the shape that tells them
+  // apart — truthy, not `typeof "object"`, and able to carry `kind`, `heading`
+  // and `body` as own properties. Without the guard this produces a real
+  // richText block from something that is not a section at all.
+  it("skips a function carrying section-shaped properties", () => {
+    const impostor = Object.assign(() => {}, {
+      kind: "prose",
+      heading: "Smuggled",
+      body: "Should never render.",
+    });
+
+    expect(toBlocks(page([impostor]), [])).toEqual([]);
+  });
+
   it("keeps the valid sections around a non-object one", () => {
     const out = toBlocks(
       page([{ kind: "prose", heading: "A", body: "First." }, "nonsense", { kind: "prose", heading: "B", body: "Second." }]),
