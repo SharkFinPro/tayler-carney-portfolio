@@ -261,9 +261,15 @@ describe("DEFAULT_HOME — the repeatable sections", () => {
   );
 
   it("survives being passed through the sanitizer unchanged", () => {
-    // The strongest statement of the same idea: the defaults are valid input
-    // to the validator that produces them, so nothing in them is silently
-    // dropped on the first save of an untouched homepage.
+    // Worth being precise about what this one does and does not say. It is
+    // circular with respect to the constant's *contents* — blank a default and
+    // both sides change together, exactly like the tests above it — so it
+    // contributes nothing to the property the rest of this block exists for.
+    //
+    // What it does pin is the sanitizer: the defaults are a fixed point of the
+    // validator that produces them, so nothing in them is silently dropped on
+    // the first save of an untouched homepage. A field the sanitizer stopped
+    // carrying, or a row its filter started rejecting, fails here.
     expect(sanitizeHome(DEFAULT_HOME)).toEqual(DEFAULT_HOME);
     expect(sanitizeHome(DEFAULT_HOME).destinations).toHaveLength(
       DEFAULT_HOME.destinations.length
