@@ -78,10 +78,24 @@ export default defineConfig({
       // set from every file, "even if they are included by glob patterns".
       // So the headline number still covers the whole codebase.
       thresholds: {
-        statements: 78,
-        branches: 70,
-        functions: 79,
-        lines: 80,
+        statements: 80,
+        branches: 71,
+        functions: 81,
+        lines: 82,
+
+        // The authentication surface. Everything it guarantees is invisible in
+        // a working app: a session cookie that stopped being httpOnly, or
+        // stopped being secure in production, or a login that stopped delaying
+        // failures and stopped counting them, all look exactly like a login
+        // form that works. The tiered limiter in particular has an order that
+        // matters — consulting the shared backstop first lets one attacker who
+        // has burned their own budget drain it and lock out the real admin.
+        "src/{lib/auth.ts,app/admin/actions.ts}": {
+          statements: 100,
+          functions: 100,
+          lines: 100,
+          branches: 100,
+        },
 
         // The AI surface. Both actions sit in front of a paid call, so a guard
         // that stops guarding shows up as a bill rather than as a bug — and
