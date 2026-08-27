@@ -287,25 +287,35 @@ describe("createRateLimiter — pruning the window", () => {
     expect(limiter.check("k").allowed).toBe(false);
   });
 
-  // A key whose attempts have all expired is deleted rather than left holding
-  // an empty array — otherwise every address ever seen stays in the Map for
-  // the lifetime of the process, which is the leak this exists to avoid.
-  it("drops a key entirely once its attempts expire, rather than keeping it empty", () => {
+  // A key pruned to nothing is deleted before being re-added, which is what
+  // moves it to the end of the Map and so marks it most-recently-used. Without
+  // that delete, `set` on a still-present key keeps its original position, and
+  // a key that just made a request would be evicted ahead of one that has been
+  // idle since — the opposite of what least-recently-used means.
+  //
+  // Observable only through eviction order, which is why this needs maxKeys and
+  // a third key rather than a size check: the delete is immediately undone by
+  // the re-add, so nothing about the count changes.
+  it("treats an expired key that is touched again as freshly used, not stale", () => {
     let now = 1_000_000;
-    // maxKeys of 1 makes the Map's occupancy observable: if the expired key
-    // were still present, adding a second key would evict the first.
-    const limiter = createRateLimiter({ limit: 1, windowMs: 1_000, maxKeys: 1, now: () => now });
+    const limiter = createRateLimiter({ limit: 5, windowMs: 1_000, maxKeys: 2, now: () => now });
 
-    limiter.check("a");
-    now += 2_000;
-    // "a" has expired. Touch it so the prune runs, then use a different key.
     limiter.check("a");
     limiter.check("b");
 
-    // If "a" had been left behind, evicting to maxKeys would have removed it
-    // and this would still be allowed either way — so assert on "a" instead,
-    // which is now the evicted one.
-    expect(limiter.check("b").allowed).toBe(false);
+    // "a" falls out of the window, then makes a fresh request.
+    now += 2_000;
+    limiter.check("a");
+
+    // A third key pushes the Map over its cap. The idle "b" should go, not the
+    // "a" that just made a request.
+    now += 1;
+    limiter.check("c");
+
+    // "a" survived, so its one fresh attempt is still counted.
+    const a = limiter.check("a");
+    if (!a.allowed) throw new Error("expected a to be allowed");
+    expect(a.remaining).toBe(3);
   });
 });
 
