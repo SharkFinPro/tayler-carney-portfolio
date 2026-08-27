@@ -15,13 +15,20 @@ const signSession = vi.hoisted(() => vi.fn());
 const verifySession = vi.hoisted(() => vi.fn());
 
 vi.mock("next/headers", () => ({ cookies }));
-vi.mock("@/lib/session", () => ({
-  ADMIN_COOKIE_NAME: "admin_session",
-  SESSION_TTL_MS: 7 * 24 * 60 * 60 * 1000,
+
+// Only the two crypto functions are stubbed; ADMIN_COOKIE_NAME and
+// SESSION_TTL_MS come through real. Hardcoding them here instead would make
+// this suite self-consistent rather than correct: because auth.ts reads them
+// from this module, a copy in the mock would silently become the value under
+// test, and changing the real TTL would leave these assertions passing against
+// a number that no longer exists anywhere else.
+vi.mock("@/lib/session", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./session")>()),
   signSession,
   verifySession,
 }));
 
+const { ADMIN_COOKIE_NAME, SESSION_TTL_MS } = await import("./session");
 const { clearSession, isAuthed, requireAuth, setSession } = await import("./auth");
 
 const set = vi.fn();
@@ -54,7 +61,7 @@ describe("setSession — the cookie attributes", () => {
     await setSession();
 
     const [name, value] = at(set.mock.calls, 0);
-    expect(name).toBe("admin_session");
+    expect(name).toBe(ADMIN_COOKIE_NAME);
     expect(value).toBe("signed-token");
   });
 
@@ -78,7 +85,7 @@ describe("setSession — the cookie attributes", () => {
 
   it("expires with the token rather than living forever", async () => {
     await setSession();
-    expect(cookieOptions().maxAge).toBe((7 * 24 * 60 * 60 * 1000) / 1000);
+    expect(cookieOptions().maxAge).toBe(SESSION_TTL_MS / 1000);
   });
 
   // The one attribute that is deliberately conditional. Off in development so
@@ -108,7 +115,7 @@ describe("setSession — the cookie attributes", () => {
 describe("clearSession", () => {
   it("deletes the session cookie", async () => {
     await clearSession();
-    expect(del).toHaveBeenCalledWith("admin_session");
+    expect(del).toHaveBeenCalledWith(ADMIN_COOKIE_NAME);
   });
 });
 
