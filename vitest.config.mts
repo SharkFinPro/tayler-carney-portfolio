@@ -78,10 +78,10 @@ export default defineConfig({
       // set from every file, "even if they are included by glob patterns".
       // So the headline number still covers the whole codebase.
       thresholds: {
-        statements: 80,
-        branches: 71,
-        functions: 81,
-        lines: 82,
+        statements: 83,
+        branches: 74,
+        functions: 84,
+        lines: 85,
 
         // The authentication surface. Everything it guarantees is invisible in
         // a working app: a session cookie that stopped being httpOnly, or
