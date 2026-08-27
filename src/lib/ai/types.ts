@@ -1,9 +1,12 @@
 // Provider-agnostic contracts for the AI-assisted features.
 //
-// The interface exists so the Anthropic implementation is a detail rather than
+// The interface exists so the provider implementation is a detail rather than
 // a dependency of the rest of the app: the Server Action, the mapping layer,
 // and the tests all speak this contract, and a different provider (or a fake)
-// drops in without touching them.
+// drops in without touching them. That is not hypothetical — this app moved
+// from Anthropic to Gemini, and only `ai/index.ts` and the provider file
+// changed. (The named reference here used to be Anthropic, which is how a
+// comment quietly becomes wrong.)
 //
 // This module is pure — no SDK import, no server-only import — so the mapping
 // and validation around it stay testable without any network or key.
