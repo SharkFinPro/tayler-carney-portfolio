@@ -236,7 +236,7 @@ describe("useDragReorder — keyboard reordering", () => {
     }
   );
 
-  it.each(["ArrowUp", "ArrowDown", "Home", "End"])(
+  it.each(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End"])(
     "suppresses the browser default for %j, which would otherwise scroll",
     (key) => {
       const { result } = setup();
@@ -246,6 +246,21 @@ describe("useDragReorder — keyboard reordering", () => {
       expect(preventDefault).toHaveBeenCalledOnce();
     }
   );
+
+  // Suppressed even when the card cannot move: the key was still handled, and
+  // scrolling the page instead would look like the press did something else.
+  it.each([
+    ["ArrowUp", "a"],
+    ["Home", "a"],
+    ["ArrowDown", "c"],
+    ["End", "c"],
+  ])("still suppresses the default for %j at the boundary", (key, id) => {
+    const { result } = setup();
+
+    const { preventDefault } = press(result, id, key);
+
+    expect(preventDefault).toHaveBeenCalledOnce();
+  });
 
   it("does nothing for a key that is not in the list", () => {
     const { result, current } = setup();
