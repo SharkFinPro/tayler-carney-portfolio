@@ -4,7 +4,7 @@ import ProjectPageClient from "./ProjectPageClient";
 import { Metadata } from "next";
 import { CACHE_TAGS, cmsRead } from "@/lib/cachedReads";
 import { isAuthed } from "@/lib/auth";
-import { orderProjects, sanitizePortfolio } from "@/lib/portfolio";
+import { getAllProjects, getProjectMeta } from "./projectAccess";
 import type { LegacyProject } from "@/components/blocks/blocks";
 
 interface ProjectPageProps {
@@ -21,21 +21,6 @@ type ProjectRecord = LegacyProject & {
   description: string;
   projectPage?: unknown;
 };
-
-// Metadata needs only two fields. Previously `generateMetadata` ran the full
-// ~20-relation project query, and the page component ran it again — two
-// executions of a large query to render one page.
-const getProjectMeta = cache(async (slug: string) => {
-  const data = (await cmsRead(
-    `query ProjectMeta($slug: String!, $stage: Stage!) {
-       projects(stage: $stage, where: { slug: $slug }) { title description }
-     }`,
-    { slug: slug.toLowerCase() },
-    { tags: [CACHE_TAGS.projects, CACHE_TAGS.project(slug.toLowerCase())] }
-  )) as { projects?: { title: string; description: string }[] } | null;
-
-  return data?.projects?.[0] ?? null;
-});
 
 const getProject = cache(async function getProject(slug: string) {
   try {
@@ -132,27 +117,6 @@ const getProject = cache(async function getProject(slug: string) {
     console.error("Error fetching project: ", error);
     throw error;
   }
-});
-
-// Sibling projects for prev/next navigation, in the same order the portfolio
-// index uses. Archived projects are kept here (including the archived flag) and
-// filtered per-viewer at the call site, so the fetch doesn't depend on admin
-// state and can run concurrently with it.
-const getAllProjects = cache(async function getAllProjects() {
-  const data = (await cmsRead(
-    `query SiblingProjects($stage: Stage!) {
-       projects(stage: $stage) { id slug title }
-       siteDatas(stage: $stage) { portfolio }
-     }`,
-    {},
-    { tags: [CACHE_TAGS.projects, CACHE_TAGS.siteData] }
-  )) as {
-    projects?: { id: string; slug: string; title: string }[];
-    siteDatas?: { portfolio?: unknown }[];
-  } | null;
-
-  const config = sanitizePortfolio(data?.siteDatas?.[0]?.portfolio);
-  return orderProjects(data?.projects ?? [], config);
 });
 
 export async function generateMetadata({
