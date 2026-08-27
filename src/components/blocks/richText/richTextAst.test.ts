@@ -430,14 +430,10 @@ describe("pasted marks carried as inline styles", () => {
     expect(at(kidsOf(out), 0)).toMatchObject({ text: "Both", bold: true, italic: true });
   });
 
-  // Current behaviour, pinned rather than endorsed: `serializeInline` resets
-  // marks to {} when it builds a link node, so a mark applied *around* a link
-  // does not reach the link's text. In the editor's own output that never
-  // arises — bolding inside a link produces <a><strong>…</strong></a>, which
-  // survives — so this only costs fidelity on a paste where the emphasis wraps
-  // the anchor. Asserted so the reset reads as a decision someone made rather
-  // than one nobody noticed; changing it is a renderer question, not a test one.
-  it("drops a mark applied outside a link, keeping the link itself", () => {
+  // Marks thread through a link like every other inline element. They used not
+  // to: the link case reset them to {}, so pasting bold text containing a link
+  // kept the link and lost the bold with nothing to indicate it.
+  it("keeps a mark applied outside a link on the link's own text", () => {
     const out = fromHtml(
       `<p><span style="font-weight: bold"><a href="/x">Linked</a></span></p>`
     );
@@ -445,7 +441,90 @@ describe("pasted marks carried as inline styles", () => {
     const link = at(kidsOf(out), 0);
     expect(link.type).toBe("link");
     expect(link.href).toBe("/x");
-    expect(at(link.children as Record<string, unknown>[], 0)).toEqual({ text: "Linked" });
+    expect(at(link.children as Record<string, unknown>[], 0)).toMatchObject({
+      text: "Linked",
+      bold: true,
+    });
+  });
+
+  it.each([
+    ["<strong>", "bold"],
+    ["<em>", "italic"],
+    ["<u>", "underline"],
+  ])("threads a %s wrapping a link onto its text as %s", (tag, mark) => {
+    const close = `</${tag.slice(1)}`;
+    const out = fromHtml(`<p>${tag}<a href="/x">Linked</a>${close}</p>`);
+
+    const link = at(kidsOf(out), 0);
+    expect(at(link.children as Record<string, unknown>[], 0)).toMatchObject({ [mark]: true });
+  });
+
+  // Marks render INSIDE the anchor (`textToHtml` wraps the text, and
+  // `nodeToHtml`'s link case wraps that), so inheriting them cannot produce
+  // nested or interleaved <a> tags. Checked for every mark, not just bold.
+  it.each(["bold", "italic", "underline", "code"])(
+    "round-trips a link carrying the %s mark, marks inside the anchor",
+    (mark) => {
+      const children = [
+        {
+          type: "paragraph",
+          children: [
+            { type: "link", href: "/x", children: [{ text: "Linked", [mark]: true }] },
+          ],
+        },
+      ];
+
+      const html = astToHtml({ children });
+      expect(html).toMatch(/<a href="\/x"><(strong|em|u|code)>Linked<\/(strong|em|u|code)><\/a>/);
+
+      const once = roundTrip(children);
+      expect(roundTrip(once as unknown[])).toEqual(once);
+      expect(at(kidsOf(once), 0)).toMatchObject({ type: "link", href: "/x" });
+    }
+  );
+
+  it("keeps a marked link inside a list item stable", () => {
+    const children = [
+      {
+        type: "bulleted-list",
+        children: [
+          {
+            type: "list-item",
+            children: [
+              {
+                type: "list-item-child",
+                children: [
+                  { type: "link", href: "/x", children: [{ text: "Linked", bold: true }] },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ];
+
+    const once = roundTrip(children);
+    expect(roundTrip(once as unknown[])).toEqual(once);
+    expect(JSON.stringify(once)).toContain('"bold":true');
+  });
+
+  // The shape the editor itself writes has to keep working unchanged.
+  it("still round-trips a bold link back to the same AST", () => {
+    const children = [
+      {
+        type: "paragraph",
+        children: [{ type: "link", href: "/x", children: [{ text: "Linked", bold: true }] }],
+      },
+    ];
+
+    const once = roundTrip(children);
+    expect(roundTrip(once as unknown[])).toEqual(once);
+
+    const link = at(kidsOf(once), 0);
+    expect(at(link.children as Record<string, unknown>[], 0)).toMatchObject({
+      text: "Linked",
+      bold: true,
+    });
   });
 
   it("keeps a mark applied inside a link, which is what the editor emits", () => {

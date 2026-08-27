@@ -179,10 +179,17 @@ function serializeInline(nodes: ChildNode[], marks: Marks): AstNode[] {
         out.push(...serializeInline(kids, { ...marks, code: true }));
         break;
       case "a": {
+        // Marks thread through a link the same way they thread through every
+        // other inline element above. This used to reset them to {}, which
+        // meant emphasis applied *around* an anchor was dropped: pasting bold
+        // text containing a link kept the link and lost the bold, silently.
+        // The editor's own output never produced that shape — bolding inside
+        // a link gives <a><strong>, which survived either way — so it only
+        // ever cost fidelity on a paste.
         const link: AstNode = {
           type: "link",
           href: el.getAttribute("href") ?? "",
-          children: ensureChildren(serializeInline(kids, {}))
+          children: ensureChildren(serializeInline(kids, marks))
         };
         if (el.getAttribute("target") === "_blank") link.openInNewTab = true;
         out.push(link);
