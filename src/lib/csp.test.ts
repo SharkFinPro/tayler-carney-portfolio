@@ -16,7 +16,10 @@ function directive(policy: string, name: string): string {
   return found.slice(name.length).trim();
 }
 
-const NONCE = "TESTNONCE0123456789abcd==";
+// 24 characters, like a real one: createNonce() base64-encodes 16 bytes, and
+// the suite asserts that length a few cases down. A fixture of a length base64
+// cannot produce would quietly undercut the directives asserted against it.
+const NONCE = "TESTNONCE0123456789abc==";
 
 describe("createNonce", () => {
   it("produces a fresh value every call", () => {
