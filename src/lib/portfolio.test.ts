@@ -181,3 +181,147 @@ describe("slugify", () => {
     }
   });
 });
+
+// ── slugify, orderProjects, and the cover-image guard ────────────────────────
+//
+// These three carry the parts of portfolio.ts a mutation survives in: the slug
+// regexes that decide whether a project has a reachable URL, the comparator
+// that decides what order the grid renders in, and the absolute-URL check that
+// keeps a relative path out of next/image.
+
+describe("slugify", () => {
+  it.each([
+    ["A Wool Coat", "a-wool-coat"],
+    ["UPPER CASE", "upper-case"],
+    ["Mixed CaSe", "mixed-case"],
+  ])("lowercases %j to %j", (input, expected) => {
+    expect(slugify(input)).toBe(expected);
+  });
+
+  it.each([
+    ["  padded  ", "padded"],
+    ["a   b", "a-b"],
+    ["a - b", "a-b"],
+    ["a_b", "a-b"],
+    ["a...b", "a-b"],
+  ])("collapses the separators in %j to %j", (input, expected) => {
+    expect(slugify(input)).toBe(expected);
+  });
+
+  // Both ends, and runs at both ends. A leading or trailing hyphen would make
+  // a URL that looks like a typo, and the route still has to resolve.
+  it.each([
+    ["-leading", "leading"],
+    ["trailing-", "trailing"],
+    ["---leading", "leading"],
+    ["trailing---", "trailing"],
+    ["---both---", "both"],
+    ["!!!wrapped!!!", "wrapped"],
+  ])("strips the hyphens around %j", (input, expected) => {
+    expect(slugify(input)).toBe(expected);
+  });
+
+  it.each(["", "   ", "!!!", "---", "。。"])("returns empty for %j, which has no slug in it", (input) => {
+    expect(slugify(input)).toBe("");
+  });
+
+  it("keeps digits, which are part of a real project name", () => {
+    expect(slugify("Look 02")).toBe("look-02");
+  });
+});
+
+describe("orderProjects — the comparator's three cases", () => {
+  const project = (id: string) => ({ id });
+
+  it("orders by the configured position", () => {
+    const out = orderProjects([project("a"), project("b"), project("c")], {
+      entries: [{ id: "c", archived: false }, { id: "a", archived: false }, { id: "b", archived: false }],
+    });
+    expect(out.map((p) => p.id)).toEqual(["c", "a", "b"]);
+  });
+
+  // A project the config has never seen — newly created, most often — sorts
+  // after everything configured rather than jumping to the front.
+  it("puts an unconfigured project after the configured ones", () => {
+    const out = orderProjects([project("new"), project("a")], {
+      entries: [{ id: "a", archived: false }],
+    });
+    expect(out.map((p) => p.id)).toEqual(["a", "new"]);
+  });
+
+  it("puts an unconfigured project after, whichever side it starts on", () => {
+    const out = orderProjects([project("a"), project("new")], {
+      entries: [{ id: "a", archived: false }],
+    });
+    expect(out.map((p) => p.id)).toEqual(["a", "new"]);
+  });
+
+  // Two unconfigured projects compare equal, so they keep the order the CMS
+  // returned rather than being shuffled against each other.
+  //
+  // Two of them is not enough to pin this: with a two-element array, several
+  // wrong comparators — including ones that never reach the equal branch at
+  // all — still leave [x, y] untouched. Interleaving a configured project is
+  // what makes a wrong return value visibly reorder the result.
+  it("leaves unconfigured projects in the order they arrived", () => {
+    const out = orderProjects([project("x"), project("y"), project("z")], { entries: [] });
+    expect(out.map((p) => p.id)).toEqual(["x", "y", "z"]);
+  });
+
+  it("sorts a configured project ahead of the unconfigured ones around it", () => {
+    const out = orderProjects([project("u1"), project("c"), project("u2")], {
+      entries: [{ id: "c", archived: false }],
+    });
+    expect(out.map((p) => p.id)).toEqual(["c", "u1", "u2"]);
+  });
+});
+
+describe("sanitizePortfolio — the cover image must be an absolute http URL", () => {
+  const coverOf = (coverUrl: unknown, coverAlt?: unknown) =>
+    at(sanitizePortfolio({ entries: [{ id: "a", coverUrl, coverAlt }] }).entries, 0);
+
+  // It is rendered through next/image, which needs a real remote host — so the
+  // relative and mailto forms `isSafeUrl` permits elsewhere are rejected here.
+  it.each([
+    "/local/cover.png",
+    "#anchor",
+    "mailto:someone@example.test",
+    "javascript:alert(1)",
+    "example.test/cover.png",
+    "",
+    "   ",
+  ])("rejects %j", (coverUrl) => {
+    expect(coverOf(coverUrl).coverUrl).toBeUndefined();
+  });
+
+  it.each([
+    "https://media.graphassets.com/a.png",
+    "http://media.graphassets.com/a.png",
+    "HTTPS://media.graphassets.com/a.png",
+  ])("accepts the absolute url %j", (coverUrl) => {
+    expect(coverOf(coverUrl).coverUrl).toBe(coverUrl.trim());
+  });
+
+  it("trims the url it stores", () => {
+    expect(coverOf("  https://media.graphassets.com/a.png  ").coverUrl).toBe(
+      "https://media.graphassets.com/a.png"
+    );
+  });
+
+  it("keeps the alt text alongside a valid cover", () => {
+    expect(coverOf("https://media.graphassets.com/a.png", "  A coat  ").coverAlt).toBe("A coat");
+  });
+
+  it.each(["", "   ", 42, null, undefined])(
+    "leaves coverAlt unset rather than empty for %j",
+    (coverAlt) => {
+      expect(coverOf("https://media.graphassets.com/a.png", coverAlt).coverAlt).toBeUndefined();
+    }
+  );
+
+  // No cover means no alt: an alt describing an image that is not there would
+  // be read out by a screen reader with nothing to attach it to.
+  it("drops the alt text when the cover was rejected", () => {
+    expect(coverOf("/local/cover.png", "A coat").coverAlt).toBeUndefined();
+  });
+});
