@@ -59,6 +59,17 @@ const PREAMBLES = [
   /^description[:\-\s]+/i,
 ];
 
+/**
+ * Exposed for tests, like `__TRANSLATIONS_FOR_TEST` in actionError.ts.
+ *
+ * The suites deliberately write their inputs as literals rather than deriving
+ * them from these lists — blanking an entry would otherwise blank it on both
+ * sides and prove nothing. What the exports are for is the reverse check: that
+ * every entry has a case, so the tables cannot grow past their coverage.
+ */
+export const __OPENERS_FOR_TEST = REDUNDANT_OPENERS;
+export const __PREAMBLES_FOR_TEST = PREAMBLES;
+
 /** Strip one layer of matching quotes, straight or curly. */
 function unquote(s: string): string {
   const pairs: [string, string][] = [
