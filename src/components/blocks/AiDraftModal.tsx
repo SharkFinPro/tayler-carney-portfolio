@@ -37,9 +37,10 @@ export default function AiDraftModal({
   const [stage, setStage] = useState<Stage>("compose");
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<Block[]>([]);
-  // Images the request had no room for. Reported rather than swallowed: an
-  // image that quietly did nothing looks like a model that ignored it.
-  const [skipped, setSkipped] = useState(0);
+  // Images that went on the page without the model having seen them: the
+  // request had no room. Reported because their placement is unconsidered —
+  // they land in a trailing gallery rather than wherever they belong.
+  const [unseen, setUnseen] = useState(0);
 
   // Availability is a server fact (is a key configured?), so it is asked for
   // rather than assumed. Until it answers, the form stays disabled.
@@ -74,7 +75,7 @@ export default function AiDraftModal({
     }
 
     setDraft(result.blocks);
-    setSkipped(result.skippedImages);
+    setUnseen(result.unseenImages);
     setStage("review");
   }
 
@@ -105,11 +106,11 @@ export default function AiDraftModal({
                 {draft.length} block{draft.length === 1 ? "" : "s"} drafted. Have a read before
                 inserting.
               </p>
-              {skipped > 0 && (
+              {unseen > 0 && (
                 <p className={styles.notice} role="status">
-                  {skipped} image{skipped === 1 ? "" : "s"} didn&rsquo;t fit in one request and
-                  {skipped === 1 ? " wasn" : " weren"}&rsquo;t used. Drafting fewer at a time, or
-                  in a couple of passes, gets them all in.
+                  Every image you picked is on the page. {unseen} of them didn&rsquo;t fit in one
+                  request, so {unseen === 1 ? "it was" : "they were"} placed at the end without
+                  being looked at — worth a check before you insert.
                 </p>
               )}
               <ol className={styles.reviewList}>

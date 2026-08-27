@@ -11,9 +11,11 @@ import {
   isPageGenerationConfigured,
 } from "@/lib/ai";
 import { toBlocks } from "@/lib/ai/toBlocks";
+import { outlinePages } from "@/lib/ai/houseStyle";
+import { cmsQueryAuthed } from "@/lib/cms";
 import { cleanAltText, isDescribableImageUrl } from "@/lib/ai/altText";
-import type { ImageSource, SourceImage } from "@/lib/ai/types";
-import { auditEvent } from "@/lib/observability";
+import type { ImageSource, PageOutline, SourceImage } from "@/lib/ai/types";
+import { auditEvent, reportError } from "@/lib/observability";
 import type { Block } from "@/components/blocks/blocks";
 
 // Drafting is the only action here that costs money per call, so it gets its
@@ -38,8 +40,37 @@ export type DraftInput = {
 };
 
 type DraftResult =
-  | { ok: true; blocks: Block[]; generator: string; skippedImages: number }
+  | { ok: true; blocks: Block[]; generator: string; unseenImages: number }
   | { ok: false; error: string };
+
+/**
+ * Read the existing case studies so a draft can be laid out like them.
+ *
+ * Read at DRAFT stage through the mutation token, matching the rest of the
+ * admin surface: a page the designer is midway through restructuring is a
+ * better example of where the site is going than its last published version.
+ *
+ * Never throws. Examples make a draft better, and a CMS hiccup should cost the
+ * draft its house-style reference rather than cost the admin their draft.
+ */
+async function loadExamples(excludeTitle: string): Promise<PageOutline[]> {
+  try {
+    const data = await cmsQueryAuthed(
+      `query DraftExamples {
+         projects(stage: DRAFT, first: 100) { title projectPage }
+       }`
+    );
+    const projects: { title?: string; projectPage?: unknown }[] = data?.projects ?? [];
+
+    return outlinePages(
+      projects.map((p) => ({ title: p.title ?? "", layout: p.projectPage })),
+      excludeTitle
+    );
+  } catch (e) {
+    reportError({ scope: "ai", context: "draftProjectPage.examples", error: e });
+    return [];
+  }
+}
 
 /** Whether the admin UI should offer AI drafting at all. */
 export async function pageGenerationAvailable(): Promise<boolean> {
@@ -213,7 +244,15 @@ export async function draftProjectPage(input: DraftInput): Promise<DraftResult> 
   }
 
   try {
-    const { page, skipped } = await generator.generateProjectPage({ title, answers, images });
+    // Sequential rather than alongside the images: the examples are the cheap
+    // half, and a draft should not start generating before they land.
+    const examples = await loadExamples(title);
+    const { page, unseen } = await generator.generateProjectPage({
+      title,
+      answers,
+      images,
+      examples,
+    });
 
     // The trust boundary. Model output is mapped onto a fixed vocabulary, every
     // image URL is checked against the ones actually supplied, and the result
@@ -229,9 +268,9 @@ export async function draftProjectPage(input: DraftInput): Promise<DraftResult> 
 
     console.info(
       `[ai] drafted ${blocks.length} blocks for "${title}" via ${generator.name}` +
-        ` (${images.length - skipped.length}/${images.length} images)`
+        ` (${images.length} images, ${unseen.length} unseen, ${examples.length} examples)`
     );
-    return { ok: true, blocks, generator: generator.name, skippedImages: skipped.length };
+    return { ok: true, blocks, generator: generator.name, unseenImages: unseen.length };
   } catch (e) {
     return toActionError(e, "draftProjectPage", "Couldn’t draft that page.");
   }

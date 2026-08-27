@@ -173,17 +173,17 @@ export function createGeminiGenerator(apiKey: string, model = DEFAULT_PAGE_MODEL
       // image is fetched here — in bounded parallel, and only for as many as
       // fit the request. How many that is depends on their size rather than
       // their number, which is why there is no count limit above this.
-      const { attached, skipped } = await fetchImagesWithinBudget(input.images);
+      const { attached, skipped: unseen } = await fetchImagesWithinBudget(input.images);
 
       const parts = attached.map(({ inline }) => ({
         inlineData: { mimeType: inline.mediaType, data: inline.base64 },
       }));
       const usable: SourceImage[] = attached.map(({ image }) => image);
 
-      // The brief lists only the images actually attached. Listing a URL whose
-      // bytes never arrived would invite the model to reference an image it
-      // cannot see, and `toBlocks` would then drop the section for having an
-      // image the admin "did not supply" — a confusing way to fail.
+      // The brief lists only the images actually attached, and the token for
+      // each one is its position in THIS list — a model cannot be asked to
+      // reference an image whose bytes never arrived. `toBlocks` places those
+      // afterwards, so nothing is lost by leaving them out of the brief.
       const brief = pageBrief({ ...input, images: usable });
 
       const { signal, done } = withTimeout();
@@ -212,7 +212,7 @@ export function createGeminiGenerator(apiKey: string, model = DEFAULT_PAGE_MODEL
         // Structured outputs guarantee the shape, but this still parses
         // untrusted text — a throw here is caught by the caller and reported
         // as a failed draft rather than crashing the action.
-        return { page: JSON.parse(text) as GeneratedPage, skipped };
+        return { page: JSON.parse(text) as GeneratedPage, unseen };
       } finally {
         done();
       }

@@ -6,6 +6,8 @@
 // file named for the old vendor or copying the prompts into the new one and
 // letting the two drift.
 
+import { imageToken, type PageOutline } from "./types";
+
 /**
  * System prompt for drafting a project page.
  */
@@ -16,18 +18,40 @@ documents garment engineering — pattern-making, material research, constructio
 — and treats each piece as a structural problem. Write like a design archive,
 not like marketing copy.
 
-Rules:
+USING THE IMAGES — the part that matters most:
+- Every image in the brief must appear somewhere in the page. All of them. A
+  page that uses eight of forty images is wrong, however good those eight are.
+  Before you finish, check every reference token off the list.
+- Refer to an image by its token exactly as written — img-1, img-2, img-3 —
+  never by URL, never by file name, never by a token that is not on the list.
+- Use each image once. Group them: a 'gallery' section holds as many as the set
+  needs, and a run of similar images (flats, fittings, process shots) belongs in
+  one gallery rather than in a section each.
+- Order matters. The tokens are listed in the order the designer chose them, so
+  keep runs of them together unless the images plainly say otherwise.
+- 'captioned' is for images that each earn a sentence — a construction detail, a
+  finished look. Do not caption forty images individually.
+
+STRUCTURE:
+- Follow the example page outlines in the brief. They are this site's existing
+  case studies, and they are the house style: match their section rhythm, their
+  proportion of prose to images, and the register of their headings. Headings
+  here are short noun phrases naming what the section holds — not sentences,
+  not questions.
+- Open with one 'intro' section. Then as many sections as the material and the
+  images actually need: forty images is a longer page than four, not the same
+  page with fuller galleries.
+- Do not pad the page to fill the schema, and do not invent a section with
+  nothing to say just to have somewhere to put images.
+
+WRITING:
 - Write only from what the designer told you and what you can see in the images.
   Never invent techniques, materials, measurements, dates, collaborators, or
   awards. If you don't know something, leave it out.
-- Use ONLY the image URLs supplied in the user message, exactly as given. Never
-  construct, guess, or modify a URL.
 - Prefer specific observation over adjectives. "A bias-cut wool panel seamed off
   the shoulder" beats "a beautiful flowing design".
 - No first-person plural, no exclamation marks, no phrases like "stunning",
   "showcase", "elevate", "journey", or "dive into".
-- Open with one 'intro' section. Follow it with 2 to 6 more that suit the
-  material you actually have. Do not pad the page to fill the schema.
 - 'specs' rows should hold real, factual attributes (Material, Construction,
   Year) — only ones the designer stated or that are plainly visible.
 - 'timeline' is for process stages, and only when the designer described a
@@ -49,7 +73,7 @@ export const PAGE_SCHEMA = {
     sections: {
       type: "array",
       minItems: 2,
-      maxItems: 10,
+      maxItems: 16,
       items: {
         type: "object",
         additionalProperties: false,
@@ -63,15 +87,22 @@ export const PAGE_SCHEMA = {
           eyebrow: { type: "string" },
           body: { type: "string" },
           layout: { type: "string", enum: ["grid", "feature"] },
-          imageUrls: { type: "array", items: { type: "string" } },
+          imageRefs: {
+            type: "array",
+            description: 'Image reference tokens from the brief, e.g. "img-3". Never URLs.',
+            items: { type: "string" },
+          },
           items: {
             type: "array",
             items: {
               type: "object",
               additionalProperties: false,
-              required: ["imageUrl", "title", "description"],
+              required: ["imageRef", "title", "description"],
               properties: {
-                imageUrl: { type: "string" },
+                imageRef: {
+                  type: "string",
+                  description: 'One image reference token from the brief, e.g. "img-3".',
+                },
                 title: { type: "string" },
                 description: { type: "string" },
               },
@@ -106,19 +137,37 @@ export const PAGE_SCHEMA = {
 } as const;
 
 /**
+ * One example page, as structure with the prose stripped out.
+ *
+ * A compact list rather than JSON: the model is being shown a rhythm to match,
+ * and a list of "kind — heading (n images)" reads as one, where a nested object
+ * reads as a schema to fill in.
+ */
+function outlineLines(outline: PageOutline): string {
+  const sections = outline.sections.map((s) => {
+    const images = s.imageCount > 0 ? ` (${s.imageCount} image${s.imageCount === 1 ? "" : "s"})` : "";
+    return `  - ${s.kind}: "${s.heading}"${images}`;
+  });
+  return [`"${outline.title}"`, ...sections].join("\n");
+}
+
+/**
  * The brief that accompanies the images.
  *
- * The URL list is load-bearing rather than decorative: the model is told to use
- * only these URLs, and `toBlocks` then enforces it by allowlisting every URL in
- * the output against the set the admin actually supplied. The prompt asks; the
- * mapping layer is what makes it true.
+ * The token list is load-bearing rather than decorative: the model is told to
+ * place every one of them, and `toBlocks` resolves each reference against the
+ * set the admin actually supplied, appending whatever was left out rather than
+ * losing it. The prompt asks; the mapping layer is what makes it true.
  */
 export function pageBrief(input: {
   title: string;
   answers: { question: string; answer: string }[];
   images: { url: string; name: string }[];
+  examples?: PageOutline[];
 }): string {
   const answered = input.answers.filter((a) => a.answer.trim());
+  const examples = input.examples ?? [];
+  const count = input.images.length;
 
   return [
     `Project title: ${input.title}`,
@@ -127,9 +176,21 @@ export function pageBrief(input: {
       ? answered.map((a) => `Q: ${a.question}\nA: ${a.answer.trim()}`).join("\n\n")
       : "(The designer did not answer the questions — work from the images alone.)",
     "",
-    "Images available for this page, with the exact URLs you must use:",
-    ...input.images.map((img, i) => `${i + 1}. ${img.name} — ${img.url}`),
-  ].join("\n");
+    examples.length
+      ? [
+          "Existing case-study pages on this site, as structure only. Draft in",
+          "keeping with these — section rhythm, image grouping, heading register:",
+          "",
+          examples.map(outlineLines).join("\n\n"),
+          "",
+        ].join("\n")
+      : "",
+    `The ${count} image${count === 1 ? "" : "s"} for this page, in the order the designer chose them.`,
+    "Refer to each one by its token. Every one of them must appear in the page:",
+    ...input.images.map((img, i) => `${imageToken(i)} — ${img.name}`),
+  ]
+    .filter((part) => part !== "")
+    .join("\n");
 }
 
 
