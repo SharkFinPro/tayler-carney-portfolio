@@ -163,6 +163,18 @@ describe("assertEnv", () => {
     expect(() => assertEnv({})).toThrow(/WEBSITE_URL[\s\S]*ADMIN_KEY/);
   });
 
+  // The warning block is filtered to warnings before its length is checked. If
+  // that filter let errors through, a wholly-broken environment would print an
+  // empty "the build continues" block immediately before throwing — which
+  // reads as though the build is carrying on, next to the error saying it is
+  // not.
+  it("prints no warning block when the issues are all errors", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(() => assertEnv({})).toThrow();
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
   it("warns without throwing when only warnings are present", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     expect(() => assertEnv({ ...VALID, ADMIN_KEY: "short" })).not.toThrow();
@@ -227,10 +239,16 @@ describe("validateEnv — every required variable explains itself", () => {
     expect(message.replace(/^is required — needed for /, "").trim()).not.toBe("");
   });
 
-  it("gives each variable its own purpose rather than one shared sentence", () => {
+  // A Set-size check alone would only catch *duplicated* purposes: blank one
+  // out and the empty string is still unique among the rest, so the count is
+  // unchanged. Both halves are asserted here so the test holds on its own
+  // rather than leaning on its neighbour above.
+  it("gives each variable a non-empty purpose, distinct from every other", () => {
     const purposes = REQUIRED.map((name) =>
-      (issueFor(name)?.message ?? "").replace(/^is required — needed for /, "")
+      (issueFor(name)?.message ?? "").replace(/^is required — needed for /, "").trim()
     );
+
+    expect(purposes.filter((p) => p !== "")).toHaveLength(REQUIRED.length);
     expect(new Set(purposes).size).toBe(REQUIRED.length);
   });
 

@@ -41,6 +41,27 @@ describe("createRateLimiter", () => {
     expect(result.retryAfterMs).toBeGreaterThan(0);
   });
 
+  // Retry-after counts from the OLDEST attempt still in the window, not from
+  // now — that is the moment a slot actually frees up. Measuring from now
+  // instead tells every blocked caller to wait a whole window, so a client
+  // that obeys it comes back later than it needed to, every time.
+  //
+  // The existing tiered tests cannot catch this: their clock starts at 0, and
+  // a zero timestamp makes "oldest attempt" and "now" arithmetically
+  // identical. This one needs a non-zero clock and time passing mid-window.
+  it("counts retry-after from the oldest attempt in the window, not from now", () => {
+    const { limiter, advance } = makeLimiter({ limit: 1, windowMs: 1_000 });
+    limiter.check("ip");
+
+    advance(400);
+    const result = limiter.check("ip");
+    if (result.allowed) throw new Error("expected a block");
+
+    // The one attempt on record expires 1000ms after it was made, which is
+    // 600ms from now — not the full 1000ms window.
+    expect(result.retryAfterMs).toBe(600);
+  });
+
   it("keeps blocking while the window holds", () => {
     const { limiter, advance } = makeLimiter({ limit: 2, windowMs: 60_000 });
     limiter.check("ip");
