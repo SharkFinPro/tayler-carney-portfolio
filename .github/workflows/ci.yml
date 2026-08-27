@@ -59,12 +59,19 @@ jobs:
         if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
         run: npm run lint
 
-      # Coverage, not a bare test run: vitest.config.mts sets floors, and a
-      # change that lowers coverage should fail the PR that lowers it. This is
-      # the same command `npm run verify` runs locally.
+      # Coverage floors are a property of the codebase, not of the Node version,
+      # so exactly one leg enforces them — the same one that gates the merge and
+      # uploads the report. The other leg still runs the whole suite; what it is
+      # there to answer is "do the tests pass on 24", not "is coverage adequate
+      # on 24", and checking the same floors twice only adds a second way for an
+      # unchanged codebase to go red. (Measured: the two legs currently emit
+      # byte-identical coverage tables, so this is about not depending on that
+      # rather than about a divergence we have seen.)
+      #
+      # `npm run test:coverage` is also what `npm run verify` runs locally.
       - name: Test
         if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
-        run: npm run test:coverage
+        run: ${{ matrix.node == 22 && 'npm run test:coverage' || 'npm test' }}
 
       # The production build needs no secrets: every CMS-backed route is
       # rendered on demand, so nothing is fetched at build time. If that ever
@@ -86,7 +93,7 @@ jobs:
       # it as an artifact means a coverage question can be answered from a
       # finished run rather than by re-running locally.
       - name: Upload coverage
-        if: ${{ !cancelled() && matrix.node == 22 }}
+        if: ${{ !cancelled() && steps.install.conclusion == 'success' && matrix.node == 22 }}
         uses: actions/upload-artifact@v7
         with:
           name: coverage-lcov
@@ -113,19 +120,24 @@ jobs:
           cache: npm
 
       - name: Install dependencies
+        id: install
         run: npm ci
 
+      # Both steps go through `npm test` rather than calling vitest directly, so
+      # they keep running whatever that script means if it ever grows flags.
+      #
       # Shuffles both file order and test order within a file, surfacing any
       # state leaked between the suites. Vitest prints the seed it used, so a
       # failure here is reproducible with `--sequence.seed=<seed>`.
       - name: Tests in randomized order
-        run: npx vitest run --sequence.shuffle
+        if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
+        run: npm test -- --sequence.shuffle
 
       # UTC+14 is the furthest zone ahead of UTC, so any code that formats or
       # compares dates against "today" without pinning a zone lands on the
       # wrong calendar day here while passing in the runner's default UTC.
       - name: Tests in a non-UTC timezone
-        if: ${{ !cancelled() }}
-        run: npx vitest run
+        if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
+        run: npm test
         env:
           TZ: Pacific/Kiritimati

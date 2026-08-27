@@ -59,6 +59,20 @@ export default defineConfig({
       // Raise them as the gaps close; there is no autoUpdate, because a
       // threshold that rewrites itself records nothing.
       //
+      // The margins are deliberately thin — a few statements in most cases —
+      // and that has a consequence worth stating plainly: adding a chunk of
+      // *untested* code will fail this check even though it removed no
+      // coverage. That is the intended reading, not an accident. AGENTS.md
+      // already asks for a suite in the same commit as the module it covers,
+      // and a ratio floor is what makes that convention enforceable rather
+      // than advisory. Coverage here is deterministic (the Node 22 and 24 legs
+      // emit identical tables), so a red build means the code moved, not that
+      // the measurement wobbled.
+      //
+      // When a PR genuinely should lower the floor — deleting a well-tested
+      // module, say — lower it in that same PR and say why. That is a visible,
+      // reviewable decision, which is the whole point of not auto-updating.
+      //
       // The glob entries below are additional, stricter checks on top of the
       // global floor rather than carve-outs from it: Vitest builds the global
       // set from every file, "even if they are included by glob patterns".
