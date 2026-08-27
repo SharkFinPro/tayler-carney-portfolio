@@ -75,6 +75,17 @@ test("an archived project 404s for a visitor who is not signed in", async ({ pag
 
   expect(response?.status()).toBe(404);
 });
+// A real project reached by a differently-cased URL — an old bookmark, a link
+// with title-cased text. The slug query lowercases, so the project is found;
+// the reachability check compared the raw param and did not, which 404'd a
+// published project. It must resolve, not 404.
+test("a real project is reachable through a mixed-case URL", async ({ page }) => {
+  const mixed = COAT.slug.replace(/^./, (c) => c.toUpperCase());
+  const response = await page.goto(`/portfolio/${mixed}`);
+
+  expect(response?.status()).toBe(200);
+});
+
 test("the site's own pages are reachable", async ({ page }) => {
   for (const path of ["/about", "/atelier", "/contact"]) {
     const response = await page.goto(path);

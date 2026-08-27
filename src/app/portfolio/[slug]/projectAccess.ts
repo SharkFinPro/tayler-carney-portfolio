@@ -10,6 +10,17 @@ import { orderProjects, sanitizePortfolio } from "@/lib/portfolio";
 // hit, not a second CMS round-trip.
 
 /**
+ * A slug as the CMS stores it.
+ *
+ * `slugify` lowercases on the way in, so every stored slug is lowercase, and
+ * the queries below already lowercase the value they send. The reachability
+ * check has to normalise too — comparing a raw URL param against stored slugs
+ * meant `/portfolio/Stubbed-Wool-Coat` passed the existence query and then
+ * failed the reachability comparison, 404ing a real published project.
+ */
+export const normalizeSlug = (slug: string) => slug.toLowerCase();
+
+/**
  * The two fields metadata needs — deliberately not the page's ~20-relation
  * query, which would be a large read to answer "does this exist".
  */

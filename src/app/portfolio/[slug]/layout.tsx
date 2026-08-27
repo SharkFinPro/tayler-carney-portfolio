@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { isAuthed } from "@/lib/auth";
-import { getAllProjects, getProjectMeta } from "./projectAccess";
+import { getAllProjects, getProjectMeta, normalizeSlug } from "./projectAccess";
 
 // This layout exists for one reason: to make an unreachable project return an
 // actual 404 status.
@@ -46,7 +46,7 @@ export default async function ProjectLayout({ children, params }: ProjectLayoutP
   // from the grid and from the sitemap, so reaching one directly must 404 too.
   // Admins keep access, which is how an archived piece is reviewed before it
   // goes back up.
-  const reachable = orderedProjects.some((p) => p.slug === slug && !p.archived);
+  const reachable = orderedProjects.some((p) => p.slug === normalizeSlug(slug) && !p.archived);
   if (!isAdmin && !reachable) {
     notFound();
   }

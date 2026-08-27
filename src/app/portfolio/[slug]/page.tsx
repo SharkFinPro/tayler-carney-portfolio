@@ -4,7 +4,7 @@ import ProjectPageClient from "./ProjectPageClient";
 import { Metadata } from "next";
 import { CACHE_TAGS, cmsRead } from "@/lib/cachedReads";
 import { isAuthed } from "@/lib/auth";
-import { getAllProjects, getProjectMeta } from "./projectAccess";
+import { getAllProjects, getProjectMeta, normalizeSlug } from "./projectAccess";
 import type { LegacyProject } from "@/components/blocks/blocks";
 
 interface ProjectPageProps {
@@ -149,6 +149,11 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
     getAllProjects(),
   ]);
 
+  // Reachability — does this project exist, and may this viewer see it — is
+  // decided in `layout.tsx`, which runs first and is the only place that can
+  // set a real 404 status. This check is not a second opinion on that: it
+  // narrows `project` to non-null for the type system, and by the time it runs
+  // the layout has already turned away anything that would fail it.
   if (!project) {
     notFound();
   }
@@ -158,12 +163,10 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   const allProjects = isAdmin
     ? orderedProjects
     : orderedProjects.filter((p) => !p.archived);
-  // An archived project is filtered out of the list for non-admins, so its
-  // absence here means it must not be reachable directly either.
-  const currentIndex = allProjects.findIndex((p) => p.slug === slug);
-  if (!isAdmin && currentIndex === -1) {
-    notFound();
-  }
+  // Stored slugs are lowercase, so the raw URL param has to be normalised
+  // before it is compared — otherwise a mixed-case URL finds no match and
+  // silently loses its prev/next links.
+  const currentIndex = allProjects.findIndex((p) => p.slug === normalizeSlug(slug));
   // `?? null` rather than a cast: an index that is in range by arithmetic can
   // still miss if the list changed, and prev/next are optional anyway.
   const prevProject = (currentIndex > 0 ? allProjects[currentIndex - 1] : null) ?? null;
