@@ -78,10 +78,10 @@ export default defineConfig({
       // set from every file, "even if they are included by glob patterns".
       // So the headline number still covers the whole codebase.
       thresholds: {
-        statements: 60,
-        branches: 57,
-        functions: 66,
-        lines: 61,
+        statements: 64,
+        branches: 59,
+        functions: 69,
+        lines: 66,
 
         // The validators that run on BOTH render and save, where AGENTS.md
         // notes a gap is a gap in two places. They are at full line coverage
@@ -96,6 +96,18 @@ export default defineConfig({
           functions: 100,
           lines: 100,
           branches: 93,
+        },
+
+        // The content write boundary: authorization, the two field whitelists,
+        // and sanitize-before-write. `model` is interpolated straight into the
+        // mutation string, so the whitelist is the only thing between a
+        // caller-supplied string and a GraphQL document — a branch going
+        // uncovered here is a branch nothing proves the shape of.
+        "src/app/admin/contentActions.ts": {
+          statements: 100,
+          functions: 100,
+          lines: 100,
+          branches: 100,
         },
 
         // The authorization boundary, and the first module AGENTS.md lists as
