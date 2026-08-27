@@ -73,7 +73,14 @@ export const PAGE_SCHEMA = {
     sections: {
       type: "array",
       minItems: 2,
-      maxItems: 16,
+      // No maxItems, deliberately. Gemini rejects the whole request with a
+      // bare 400 INVALID_ARGUMENT once `maxItems` times the per-item schema
+      // size crosses some internal ceiling: measured here, 10 was accepted and
+      // 16 was not — and 10 had been fine until these items grew a couple of
+      // `description` fields. A number that quietly depends on the size of the
+      // schema around it is a trap for whoever adds the next field, and the
+      // page length that matters is the one the prompt asks for anyway.
+      // `maxOutputTokens` is the real bound on runaway output.
       items: {
         type: "object",
         additionalProperties: false,
