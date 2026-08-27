@@ -44,9 +44,10 @@ describe("the query", () => {
   it("asks for no stage, so an admin browsing cannot leak unpublished slugs", async () => {
     await sitemap();
 
+    // Only `$stage` matters: cachedReads substitutes a stage exactly when the
+    // query text contains that variable, so its absence is the whole guard.
     const query = at(cmsRead.mock.calls, 0)[0] as string;
     expect(query).not.toContain("$stage");
-    expect(query).not.toContain("stage:");
   });
 
   it("tags the read so a publish can invalidate it", async () => {
@@ -144,6 +145,27 @@ describe("the project routes", () => {
 
     const entry = at(await sitemap(), STATIC_PATHS.length);
     expect(entry.lastModified).toBeInstanceOf(Date);
+  });
+});
+
+describe("Next's control-flow signals", () => {
+  // The catch here exists to survive an unreachable CMS, but Next signals
+  // control flow by throwing too — so a catch that swallows everything eats
+  // those as well. `force-dynamic` arguably makes one of the five unreachable
+  // in this file; it does not make the other four unreachable.
+  it.each(["NEXT_REDIRECT", "NEXT_NOT_FOUND", "DYNAMIC_SERVER_USAGE"])(
+    "rethrows %s rather than degrading to the static routes",
+    async (digest) => {
+      const signal = Object.assign(new Error(digest), { digest });
+      cmsRead.mockRejectedValue(signal);
+
+      await expect(sitemap()).rejects.toThrow(digest);
+    }
+  );
+
+  it("still degrades for an ordinary error", async () => {
+    cmsRead.mockRejectedValue(new Error("CMS down"));
+    await expect(sitemap()).resolves.toHaveLength(STATIC_PATHS.length);
   });
 });
 

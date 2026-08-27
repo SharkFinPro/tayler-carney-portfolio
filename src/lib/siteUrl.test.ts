@@ -3,9 +3,15 @@
 //
 // Every assertion below is a regression test: `robots.ts` and `sitemap.ts`
 // each used `(process.env.WEBSITE_URL ?? "").replace(/\/$/, "")`, which strips
-// exactly one trailing slash and does not trim. A `WEBSITE_URL` of "   " was
-// therefore truthy, and robots emitted `"   /sitemap.xml"` — precisely the
-// invalid relative directive its own comment says it omits rather than emits.
+// exactly one trailing slash and does not trim.
+//
+// The case that actually reaches production is a trailing newline, not typed
+// spaces. `validateEnv` checks a trimmed *copy* of WEBSITE_URL and never
+// rewrites `process.env`, so a value ending in "\n" — a secret mounted from a
+// file, or a `.env` line with a stray newline — satisfies the build's env
+// assertion and then arrives here intact. The old strip did not match it, so
+// robots advertised a sitemap URL with a newline inside it, and every sitemap
+// entry carried one too.
 
 import { describe, expect, it } from "vitest";
 import { siteBaseUrl } from "./siteUrl";
@@ -23,12 +29,24 @@ describe("siteBaseUrl", () => {
     expect(siteBaseUrl(raw)).toBe(expected);
   });
 
+  // The shapes deploy tooling actually produces, first.
   it.each([
+    ["https://example.test\n", "https://example.test"],
+    ["https://example.test/\n", "https://example.test"],
+    ["https://example.test\r\n", "https://example.test"],
     ["  https://example.test  ", "https://example.test"],
     ["\thttps://example.test\n", "https://example.test"],
     ["  https://example.test/  ", "https://example.test"],
   ])("trims surrounding whitespace from %j", (raw, expected) => {
     expect(siteBaseUrl(raw)).toBe(expected);
+  });
+
+  // Spelled out because it is the one that shipped: the old single-slash strip
+  // left the newline in place, so this is what robots.txt advertised.
+  it("does not leave a newline inside the advertised sitemap URL", () => {
+    const base = siteBaseUrl("https://example.test\n");
+    expect(`${base}/sitemap.xml`).toBe("https://example.test/sitemap.xml");
+    expect(`${base}/sitemap.xml`).not.toMatch(/\s/);
   });
 
   // The load-bearing case. Callers branch on truthiness to decide whether they

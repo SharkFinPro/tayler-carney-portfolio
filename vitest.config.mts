@@ -80,8 +80,8 @@ export default defineConfig({
       thresholds: {
         statements: 84,
         branches: 75,
-        functions: 85,
-        lines: 86,
+        functions: 86,
+        lines: 87,
 
         // The two documents written for crawlers rather than readers, and the
         // origin they share. Nothing here fails visibly: a lost `disallow`
