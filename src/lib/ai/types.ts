@@ -88,6 +88,11 @@ export type GenerationResult = {
   page: GeneratedPage;
   /** Images the request had no room for. Placed, but never looked at. */
   unseen: SourceImage[];
+  /**
+   * The model that actually answered. Not implied by configuration: a provider
+   * may work down a list of models when the preferred one is out of quota.
+   */
+  model: string;
 };
 
 export interface PageGenerator {

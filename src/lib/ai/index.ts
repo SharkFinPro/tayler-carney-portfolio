@@ -10,10 +10,31 @@
 // an AI SDK, which is the point of the interfaces in types.ts.
 
 import "server-only";
-import { createGeminiDescriber, createGeminiGenerator } from "./gemini";
+import { createGeminiDescriber, createGeminiGenerator, type ModelChain } from "./gemini";
 import type { ImageDescriber, PageGenerator } from "./types";
 
 const apiKey = () => process.env.GEMINI_API_KEY?.trim();
+
+/**
+ * Read a comma-separated model chain from an env var.
+ *
+ * A list rather than one name because a provider tries them in order until one
+ * answers, and the reason to override in the first place is usually that the
+ * default leader has stopped answering. A single name is still valid input —
+ * it is a chain of one, which pins the model and disables the fallback.
+ *
+ * Anything unparseable (empty, all whitespace, all commas) yields undefined and
+ * the provider keeps its own defaults, rather than throwing: a typo in an
+ * optional env var should not take the feature offline.
+ */
+function modelChain(raw: string | undefined): ModelChain | undefined {
+  const [first, ...rest] = (raw ?? "")
+    .split(",")
+    .map((name) => name.trim())
+    .filter(Boolean);
+
+  return first === undefined ? undefined : [first, ...rest];
+}
 
 /**
  * The configured page generator, or null when AI drafting is not set up.
@@ -22,9 +43,8 @@ export function getPageGenerator(): PageGenerator | null {
   const key = apiKey();
   if (!key) return null;
 
-  // Optional override, so the model can be changed without a code change.
-  const model = process.env.GEMINI_PAGE_MODEL?.trim() || undefined;
-  return createGeminiGenerator(key, model);
+  // Optional override, so the models can be changed without a code change.
+  return createGeminiGenerator(key, modelChain(process.env.GEMINI_PAGE_MODEL));
 }
 
 /** Whether AI drafting is available, without constructing a client. */
@@ -44,8 +64,7 @@ export function getImageDescriber(): ImageDescriber | null {
   const key = apiKey();
   if (!key) return null;
 
-  const model = process.env.GEMINI_ALT_TEXT_MODEL?.trim() || undefined;
-  return createGeminiDescriber(key, model);
+  return createGeminiDescriber(key, modelChain(process.env.GEMINI_ALT_TEXT_MODEL));
 }
 
 /** Whether alt-text suggestions are available, without constructing a client. */

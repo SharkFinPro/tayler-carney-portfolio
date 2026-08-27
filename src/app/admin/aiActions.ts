@@ -247,7 +247,7 @@ export async function draftProjectPage(input: DraftInput): Promise<DraftResult> 
     // Sequential rather than alongside the images: the examples are the cheap
     // half, and a draft should not start generating before they land.
     const examples = await loadExamples(title);
-    const { page, unseen } = await generator.generateProjectPage({
+    const { page, unseen, model } = await generator.generateProjectPage({
       title,
       answers,
       images,
@@ -266,8 +266,11 @@ export async function draftProjectPage(input: DraftInput): Promise<DraftResult> 
       };
     }
 
+    // The model that answered, not the one configured — the provider works
+    // down a chain when the preferred model is out of quota, and which one
+    // served is the fact worth having in the log.
     console.info(
-      `[ai] drafted ${blocks.length} blocks for "${title}" via ${generator.name}` +
+      `[ai] drafted ${blocks.length} blocks for "${title}" via ${model}` +
         ` (${images.length} images, ${unseen.length} unseen, ${examples.length} examples)`
     );
     return { ok: true, blocks, generator: generator.name, unseenImages: unseen.length };
