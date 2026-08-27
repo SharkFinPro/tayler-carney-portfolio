@@ -127,11 +127,26 @@ jobs:
       # they keep running whatever that script means if it ever grows flags.
       #
       # Shuffles both file order and test order within a file, surfacing any
-      # state leaked between the suites. Vitest prints the seed it used, so a
-      # failure here is reproducible with `--sequence.seed=<seed>`.
+      # state leaked between the suites.
+      #
+      # Several fixed seeds rather than one random shuffle, because a single
+      # run is a coin toss: the first real order-dependence this job caught
+      # reproduced on only 3 of 8 seeds, and it had already passed a one-shot
+      # shuffled run locally. Fixed seeds also mean this job either fails for
+      # everyone or nobody, instead of going red on an unlucky unrelated PR.
+      # Each run takes about two seconds.
       - name: Tests in randomized order
         if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
-        run: npm test -- --sequence.shuffle
+        run: |
+          for seed in 1 2 3 5 8; do
+            echo "::group::seed $seed"
+            if ! npm test -- --sequence.shuffle --sequence.seed="$seed"; then
+              echo "::endgroup::"
+              echo "::error::Tests depend on execution order. Reproduce with: npm test -- --sequence.shuffle --sequence.seed=$seed"
+              exit 1
+            fi
+            echo "::endgroup::"
+          done
 
       # UTC+14 is the furthest zone ahead of UTC, so any code that formats or
       # compares dates against "today" without pinning a zone lands on the
