@@ -72,6 +72,7 @@
 }
 
 .cell {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
@@ -82,7 +83,35 @@
   cursor: pointer;
   text-align: left;
 
-  &:hover { border-color: var(--accent); }
+  &:hover:not(:disabled) { border-color: var(--accent); }
+
+  // Disabled means either "already added" or "the cap is reached" — both are
+  // states the admin should be able to read off the tile, not just feel.
+  &:disabled { opacity: 0.45; cursor: not-allowed; }
+}
+
+.cellChosen {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+// Selection order, not a checkmark: the order picked is the order the caller
+// receives, which for an AI draft is the order the images appear in.
+.tick {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--canvas);
+  font-family: var(--ff-mono);
+  font-size: 0.7rem;
 }
 
 .thumb {
@@ -144,4 +173,27 @@
   text-align: center;
   color: var(--ink-muted);
   font-size: 0.85rem;
+}
+
+.count {
+  font-family: var(--ff-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-left: auto;
+}
+
+.confirm {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--ink);
+  border-radius: 3px;
+  background: var(--ink);
+  color: var(--canvas);
+  cursor: pointer;
+
+  &:hover:not(:disabled) { opacity: 0.86; }
+  &:disabled { opacity: 0.4; cursor: not-allowed; }
 }

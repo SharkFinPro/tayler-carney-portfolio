@@ -147,7 +147,9 @@ export default function AiDraftModal({
                 <span className={styles.label}>Images</span>
                 <span className={styles.hint}>
                   Only these are used. Nothing else from the Media Library is referenced.
-                  Up to {MAX_IMAGES}.
+                  {images.length > 0
+                    ? ` ${images.length} of ${MAX_IMAGES} added.`
+                    : ` Up to ${MAX_IMAGES}.`}
                 </span>
 
                 {images.length > 0 && (
@@ -177,9 +179,9 @@ export default function AiDraftModal({
                   type="button"
                   className={styles.secondary}
                   onClick={() => setPickerOpen(true)}
-                  disabled={stage === "working"}
+                  disabled={stage === "working" || images.length >= MAX_IMAGES}
                 >
-                  + Add image
+                  {images.length === 0 ? "+ Add images" : "+ Add more images"}
                 </button>
               </div>
 
@@ -235,18 +237,27 @@ export default function AiDraftModal({
 
       {pickerOpen && (
         <AssetPicker
+          multiple
+          // Drafting a page means handing over a set of images, so the picker
+          // is opened once and closed once. The remaining headroom is passed
+          // down so the cap is visible while picking, rather than silently
+          // dropping the extras afterwards.
+          max={MAX_IMAGES - images.length}
+          selectedUrls={images.map((i) => i.url)}
           onClose={() => setPickerOpen(false)}
-          onSelect={(asset) => {
-            const name = asset.title?.trim() || asset.fileName;
-            setImages((prev) =>
-              // The same asset twice would just spend tokens describing it twice.
-              // The cap is the server's, enforced here so the admin sees the
-              // limit rather than getting a draft that quietly ignored images
-              // they picked.
-              prev.some((i) => i.url === asset.url) || prev.length >= MAX_IMAGES
-                ? prev
-                : [...prev, { url: asset.url, name, altText: asset.altText }]
-            );
+          onSelect={(assets) => {
+            setImages((prev) => {
+              const seen = new Set(prev.map((i) => i.url));
+              const added = assets.flatMap((asset) =>
+                // The same asset twice would just spend tokens describing it
+                // twice. The picker already excludes what is here, so this is
+                // the belt to its braces.
+                seen.has(asset.url)
+                  ? []
+                  : [{ url: asset.url, name: asset.title?.trim() || asset.fileName, altText: asset.altText }]
+              );
+              return [...prev, ...added].slice(0, MAX_IMAGES);
+            });
             setPickerOpen(false);
           }}
         />
