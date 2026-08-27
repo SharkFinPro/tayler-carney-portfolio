@@ -3,7 +3,7 @@
 // `verifySession`. This module is pure Web Crypto with no `next/headers`
 // import, so it can be tested directly with no mocking.
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ADMIN_COOKIE_NAME,
   SESSION_TTL_MS,
@@ -114,6 +114,71 @@ describe("signSession / verifySession", () => {
   it("rejects every token once ADMIN_KEY is unset", async () => {
     const token = await signSession(Date.now() + SESSION_TTL_MS);
     delete process.env.ADMIN_KEY;
+    await expect(verifySession(token)).resolves.toBe(false);
+  });
+});
+
+// ── The token's shape, and the length guard in front of the comparison ───────
+//
+// `verifySession` is the only path that hands `timingSafeEqual` two strings
+// that can differ in length: `checkAdminKey` compares two HMACs of the same
+// module, so its lengths always match. A forged cookie is where a short or
+// long signature actually arrives.
+
+describe("verifySession — a malformed token is refused, not compared", () => {
+  it.each([
+    ["no separator at all", "1234567890"],
+    ["an empty signature", "1234567890."],
+    ["a separator and nothing else", "."],
+    ["nothing but a signature", ".abc"],
+    ["an empty string", ""],
+  ])("refuses a token with %s", async (_name, token) => {
+    await expect(verifySession(token)).resolves.toBe(false);
+  });
+
+  // A signature that is not the right length can never be right, and the
+  // length check in front of the comparison is what says so without walking
+  // the shorter of the two.
+  it.each([
+    ["short", "abc"],
+    ["long", "a".repeat(200)],
+  ])("refuses a %s signature", async (_name, signature) => {
+    const expiry = Date.now() + 60_000;
+    await expect(verifySession(`${expiry}.${signature}`)).resolves.toBe(false);
+  });
+
+  it.each([
+    ["a non-numeric expiry", "notanumber"],
+    ["an infinite expiry", "Infinity"],
+    ["an empty expiry", ""],
+  ])("refuses %s", async (_name, expiry) => {
+    const token = await signSession(Date.now() + 60_000);
+    const signature = token.slice(token.indexOf(".") + 1);
+
+    await expect(verifySession(`${expiry}.${signature}`)).resolves.toBe(false);
+  });
+});
+
+describe("verifySession — the expiry boundary", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  // Expiry is compared with `<`, so a token expiring exactly now is still
+  // good. A frozen clock is the only way to sit on that boundary.
+  it("accepts a token whose expiry is exactly now", async () => {
+    const token = await signSession(1_000_000);
+
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000_000);
+    await expect(verifySession(token)).resolves.toBe(true);
+  });
+
+  it("refuses the same token one millisecond later", async () => {
+    const token = await signSession(1_000_000);
+
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000_001);
     await expect(verifySession(token)).resolves.toBe(false);
   });
 });
