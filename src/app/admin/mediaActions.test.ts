@@ -190,21 +190,25 @@ describe("uploadAsset — after the bytes are accepted", () => {
     expect(mutations().filter((m) => m.includes("updateAsset"))).toHaveLength(0);
   });
 
+  const metadataWrite = () =>
+    cmsMutate.mock.calls.find((c) => String(c[0]).includes("updateAsset"));
+
   it.each([
     [{ title: "A name" }, { title: "A name" }],
     [{ altText: "A description" }, { altText: "A description" }],
     [{ title: " A ", altText: " B " }, { title: "A", altText: "B" }],
-    // Whitespace-only fields are not metadata.
-    [{ title: "   " }, null],
   ])("writes %j as %j", async (fields, expected) => {
     await uploadAsset(form(fileOf(PNG), fields as Record<string, string>));
 
-    const update = cmsMutate.mock.calls.find((c) => String(c[0]).includes("updateAsset"));
-    if (expected === null) {
-      expect(update).toBeUndefined();
-    } else {
-      expect((update?.[1] as { data: unknown }).data).toEqual(expected);
-    }
+    expect((metadataWrite()?.[1] as { data: unknown }).data).toEqual(expected);
+  });
+
+  // Whitespace-only fields are not metadata, and the write is skipped
+  // entirely rather than sent as an empty update.
+  it("writes nothing when every field is whitespace", async () => {
+    await uploadAsset(form(fileOf(PNG), { title: "   " }));
+
+    expect(metadataWrite()).toBeUndefined();
   });
 
   // A draft image dropped on a page would not display for visitors, and a

@@ -7,6 +7,7 @@
 import next from "eslint-config-next/core-web-vitals";
 import nextTypescript from "eslint-config-next/typescript";
 import a11y from "eslint-plugin-jsx-a11y";
+import vitest from "@vitest/eslint-plugin";
 
 const config = [
   {
@@ -43,6 +44,63 @@ const config = [
     // means the set tracks the plugin version rather than a copied list.
     name: "jsx-a11y/recommended-rules",
     rules: a11y.flatConfigs.recommended.rules,
+  },
+
+  {
+    // The test suite is load-bearing here — coverage floors gate CI and a
+    // weekly mutation run gates the assertions themselves — so the tests get
+    // linted for the failures that are invisible when they happen. Each rule
+    // below is one that makes a suite report success while testing less than
+    // it appears to.
+    name: "vitest/test-files",
+    files: ["**/*.test.ts", "**/*.test.tsx", "src/test/**/*.ts"],
+    plugins: { vitest },
+    rules: {
+      // The worst of them: one committed `.only` silently reduces a file to a
+      // single test and CI still reports green.
+      "vitest/no-focused-tests": "error",
+      // A test with no assertion at all passes unconditionally.
+      "vitest/expect-expect": "error",
+      // `expect(x)` with no matcher, or a forgotten `await` on an async
+      // matcher — both are assertions that never actually assert.
+      //
+      // `maxArgs: 2` because Vitest, unlike Jest, takes a message as the
+      // second argument: `expect(value, "which case failed").toBe(...)`. The
+      // default of 1 flags every one of those, and they are worth keeping —
+      // inside a loop the message is the only thing identifying which
+      // iteration broke.
+      "vitest/valid-expect": ["error", { maxArgs: 2 }],
+      // Assertions inside a conditional may simply never run, which looks the
+      // same as passing.
+      "vitest/no-conditional-expect": "error",
+      // An `expect` outside a test never runs as part of one.
+      "vitest/no-standalone-expect": "error",
+      // Two tests with the same name in one describe: the suite reports both,
+      // but the duplicate title makes a failure impossible to locate.
+      "vitest/no-identical-title": "error",
+      // A skipped test is a silent hole. Warn rather than error, since
+      // skipping deliberately while investigating is legitimate; it just
+      // should not survive a merge unnoticed.
+      "vitest/no-disabled-tests": "warn",
+      // A commented-out test is a quieter hole than a skipped one: a skip is
+      // at least reported as a skip, while this is reported as nothing.
+      "vitest/no-commented-out-tests": "error",
+      // An `expect` inside a `.then()` on a promise the test never returns or
+      // awaits. The test finishes — and passes — before the assertion runs.
+      "vitest/valid-expect-in-promise": "error",
+      // A `describe` callback containing a `return` statement, which ends
+      // registration early and silently leaves out every test below it.
+      //
+      // Narrower than it sounds, and worth being exact since the obvious
+      // reading is wrong: this rule does NOT flag an `async` describe
+      // callback. That failure mode — the tests inside registering after the
+      // suite has been collected — is not covered by anything in this plugin.
+      "vitest/valid-describe-callback": "error",
+      // `toMatchSnapshot()` inside `test.concurrent` without taking the local
+      // `expect` from the test context: concurrent tests share the global one,
+      // so snapshots are matched against the wrong test's state.
+      "vitest/require-local-test-context-for-concurrent-snapshots": "error",
+    },
   },
 
   {
