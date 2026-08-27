@@ -8,10 +8,17 @@
 // rows from each other. `blocksProvideH1` decides whether a page supplies its
 // own <h1>, so getting it wrong leaves a document with none at all.
 //
-// All three are exhaustive switches over `BlockType`, which makes them the
-// place a newly added block type quietly falls through. The tables below are
-// driven from `BLOCK_TYPES` itself rather than from a copied list, so adding a
-// type without handling it fails here rather than shipping.
+// Two of them are exhaustive switches over `BlockType` with no `default:` arm
+// and a non-optional return type, so a newly added type that nobody handled
+// fails `tsc` with TS2366 before these tests ever run. That is the real guard
+// against an *unhandled* type, and it predates this file.
+//
+// What the tables below add is the case the compiler cannot see: an arm that
+// exists but is wrong. A summary that returns "" satisfies the type checker
+// and leaves a blank row in the editor; a `blockHasData` arm that returns true
+// for an empty template satisfies it too and litters the page with empty
+// sections. Driving the tables from `BLOCK_TYPES` rather than a copied list is
+// what makes those checks reach every type, including ones added later.
 
 import { describe, expect, it } from "vitest";
 import { at, only } from "@/test/at";
@@ -26,7 +33,14 @@ import {
   type BlockType,
 } from "./blocks";
 
-/** A block of `type` with `fields` merged over the empty template. */
+/**
+ * A block of `type` with `fields` merged over the empty template.
+ *
+ * Flat types only. The cast means nothing checks the merged shape against the
+ * `Block` union, so merging into a container's children this way would build
+ * something the real code never produces — `split` gets its own helper below
+ * that spreads onto `base.left` / `base.right` instead.
+ */
 const block = (type: BlockType, fields: Record<string, unknown> = {}) =>
   ({ ...createEmptyBlock(type), ...fields }) as Block;
 
@@ -39,7 +53,10 @@ const IMAGE = { url: "https://media.graphassets.com/a.jpg", altText: "A coat" };
 const CLEAN_IMAGE = { url: IMAGE.url, altText: "A coat" };
 
 describe("blockSummary — the collapsed row label", () => {
-  // Driven from BLOCK_TYPES so a new type cannot be added without an arm.
+  // Weak per type, deliberately: the point is that no arm returns a blank
+  // label, which the type checker is happy to allow and which shows up as an
+  // unidentifiable row in a collapsed list. Types whose exact wording matters
+  // get their own cases below.
   it.each(BLOCK_TYPES)("gives %s a non-empty label even when empty", (type) => {
     const summary = blockSummary(createEmptyBlock(type));
 
