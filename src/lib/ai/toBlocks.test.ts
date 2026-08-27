@@ -334,3 +334,282 @@ describe("toBlocks — every selected image reaches the page", () => {
     expect(toBlocks(null, images)).toEqual([]);
   });
 });
+
+// ── The mapping's own edges ──────────────────────────────────────────────────
+//
+// The blocks above prove each section kind maps to the right block type and
+// that a model cannot escape the vocabulary. What they leave is the detail
+// inside each arm — how prose becomes paragraphs, what a malformed row does,
+// which literals the layouts carry. Mutation testing found forty-five
+// survivors in there, mostly one-character edits that produce a block which is
+// still the right *type* and so passes every case above.
+
+describe("toBlocks — prose becomes paragraphs", () => {
+  const proseBlock = (body: unknown) =>
+    oneBlock(toBlocks(page([{ kind: "prose", heading: "H", body }]), []), "richText");
+
+  const texts = (body: unknown) =>
+    (proseBlock(body).content.children as { children: { text: string }[] }[]).map(
+      (p) => p.children[0]?.text
+    );
+
+  // A blank line is a paragraph break; a single newline is a soft wrap inside
+  // one. Splitting on every newline would shred a wrapped paragraph into a
+  // list of fragments.
+  it("splits on a blank line", () => {
+    expect(texts("First para.\n\nSecond para.")).toEqual(["First para.", "Second para."]);
+  });
+
+  it("does not split on a single newline", () => {
+    expect(texts("One para\nsoft wrapped.")).toEqual(["One para\nsoft wrapped."]);
+  });
+
+  it("treats a run of blank lines as one break", () => {
+    expect(texts("First.\n\n\n\nSecond.")).toEqual(["First.", "Second."]);
+  });
+
+  it("trims the whitespace around each paragraph", () => {
+    expect(texts("  First.  \n\n  Second.  ")).toEqual(["First.", "Second."]);
+  });
+
+  it("gives every paragraph the paragraph type the renderer looks for", () => {
+    const children = proseBlock("First.\n\nSecond.").content.children as { type: string }[];
+    expect(children.map((p) => p.type)).toEqual(["paragraph", "paragraph"]);
+  });
+
+  it("puts the text in a child node rather than on the paragraph itself", () => {
+    const children = proseBlock("Only.").content.children as { children: unknown[] }[];
+    expect(children[0]?.children).toHaveLength(1);
+  });
+
+  // A prose section with nothing usable is dropped rather than becoming an
+  // empty rich-text block that renders as a gap in the page.
+  it.each(["", "   ", "\n\n\n", null, undefined, 42])("drops a prose section whose body is %j", (body) => {
+    expect(toBlocks(page([{ kind: "prose", heading: "H", body }]), [])).toEqual([]);
+  });
+});
+
+describe("toBlocks — the intro arm keeps only what has content", () => {
+  const intro = (fields: Record<string, unknown>) =>
+    toBlocks(page([{ kind: "intro", eyebrow: "E", heading: "H", body: "B", ...fields }]), []);
+
+  it("keeps an intro that has only a heading", () => {
+    expect(oneBlock(intro({ body: "" }), "pageIntro").heading).toBe("H");
+  });
+
+  it("keeps an intro that has only a body", () => {
+    expect(oneBlock(intro({ heading: "" }), "pageIntro").type).toBe("pageIntro");
+  });
+
+  // Both empty is nothing to render, and an empty eyebrow is not content.
+  it("drops an intro with neither a heading nor a body", () => {
+    expect(intro({ heading: "", body: "", eyebrow: "Still here" })).toEqual([]);
+  });
+});
+
+describe("toBlocks — layouts carry the literal the renderer switches on", () => {
+  it("gives a captioned section the cards layout", () => {
+    const out = toBlocks(
+      page([{ kind: "captioned", heading: "H", items: [{ imageRef: A, title: "T", description: "D" }] }]),
+      images
+    );
+    expect(oneBlock(drafted(out), "mediaShowcase").layout).toBe("cards");
+  });
+
+  it("gives a feature gallery the feature layout", () => {
+    const out = toBlocks(page([{ kind: "gallery", heading: "H", imageRefs: [A], layout: "feature" }]), images);
+    expect(oneBlock(drafted(out), "gallery").layout).toBe("feature");
+  });
+
+  it.each(["grid", "cards", "", null, undefined, "banner"])(
+    "falls back to grid for the gallery layout %j",
+    (layout) => {
+      const out = toBlocks(page([{ kind: "gallery", heading: "H", imageRefs: [A], layout }]), images);
+      expect(oneBlock(drafted(out), "gallery").layout).toBe("grid");
+    }
+  );
+});
+
+describe("toBlocks — malformed rows inside a valid section", () => {
+  // Every repeatable arm reads its entries with `?.`, so a null in the middle
+  // of an otherwise good list must not take the whole section down with it.
+  it("survives a null entry among the specs rows", () => {
+    const out = toBlocks(
+      page([{ kind: "specs", heading: "H", rows: [null, { label: "Fabric", value: "Wool" }, undefined] }]),
+      []
+    );
+    expect(oneBlock(out, "specs").rows).toEqual([{ label: "Fabric", value: "Wool" }]);
+  });
+
+  it("survives a null entry among the timeline stages", () => {
+    const out = toBlocks(
+      page([
+        {
+          kind: "timeline",
+          heading: "H",
+          stages: [null, { marker: "1", title: "Start", description: "D" }],
+        },
+      ]),
+      []
+    );
+    expect(oneBlock(out, "timeline").stages).toHaveLength(1);
+  });
+
+  it("survives a null entry among the captioned items", () => {
+    const out = toBlocks(
+      page([{ kind: "captioned", heading: "H", items: [null, { imageRef: A, title: "T", description: "D" }] }]),
+      images
+    );
+    expect(oneBlock(drafted(out), "mediaShowcase").items).toHaveLength(1);
+  });
+
+  // A row whose fields are all non-strings cleans to empty and is dropped, so
+  // the section goes with it rather than rendering a blank table.
+  it.each([
+    [{ label: 42, value: {} }],
+    [{ label: null, value: undefined }],
+    [{}],
+  ])("drops a specs section whose only row is %j", (row) => {
+    expect(toBlocks(page([{ kind: "specs", heading: "H", rows: [row] }]), [])).toEqual([]);
+  });
+
+  it("keeps a specs row that has only a label", () => {
+    const out = toBlocks(page([{ kind: "specs", heading: "H", rows: [{ label: "Fabric" }] }]), []);
+    expect(oneBlock(out, "specs").rows).toEqual([{ label: "Fabric", value: "" }]);
+  });
+
+  // The mapper's own filter keeps a row with either field, but toBlocks ends by
+  // passing everything through `sanitizeBlocks` — and the CMS sanitizer is
+  // stricter: `cleanRows` drops a row with no label, because a value with
+  // nothing naming it renders as a table cell with a blank header. The
+  // stricter layer wins, which is the right way round: the mapper decides what
+  // the model meant, the sanitizer decides what may be stored.
+  it("drops a row with no label, because the CMS sanitizer has the final say", () => {
+    const out = toBlocks(page([{ kind: "specs", heading: "H", rows: [{ value: "Wool" }] }]), []);
+
+    // The section survives as an empty specs block rather than vanishing —
+    // `sanitizeBlocks` cleans the rows out but keeps the block. Harmless,
+    // because `blockHasData` reports an empty specs block as having none and
+    // the editor discards it on the next save.
+    expect(oneBlock(out, "specs").rows).toEqual([]);
+  });
+
+  // Same rule reached a different way: a non-string label cleans to "", which
+  // then fails the sanitizer's label requirement. A number the model put in a
+  // label never renders as "42".
+  it("drops a row whose label was not a string", () => {
+    const out = toBlocks(
+      page([{ kind: "specs", heading: "H", rows: [{ label: 42, value: "Wool" }] }]),
+      []
+    );
+    expect(oneBlock(out, "specs").rows).toEqual([]);
+  });
+
+  it("keeps a labelled row whose value was not a string, with the value emptied", () => {
+    const out = toBlocks(
+      page([{ kind: "specs", heading: "H", rows: [{ label: "Fabric", value: 42 }] }]),
+      []
+    );
+    expect(oneBlock(out, "specs").rows).toEqual([{ label: "Fabric", value: "" }]);
+  });
+
+  it("trims the strings it does keep", () => {
+    const out = toBlocks(
+      page([{ kind: "specs", heading: "H", rows: [{ label: "  Fabric  ", value: "  Wool  " }] }]),
+      []
+    );
+    expect(oneBlock(out, "specs").rows).toEqual([{ label: "Fabric", value: "Wool" }]);
+  });
+});
+
+describe("toBlocks — a list that is not a list", () => {
+  // Each repeatable arm falls back to an empty array, so a model answering
+  // with a string where a list belongs drops the section instead of throwing
+  // or emitting a block built from the string's characters.
+  it.each(["not a list", 42, {}, null, undefined])(
+    "drops a gallery whose imageRefs is %j",
+    (imageRefs) => {
+      expect(drafted(toBlocks(page([{ kind: "gallery", heading: "H", imageRefs }]), images))).toEqual([]);
+    }
+  );
+
+  it.each(["not a list", 42, {}, null])("drops a specs section whose rows is %j", (rows) => {
+    expect(toBlocks(page([{ kind: "specs", heading: "H", rows }]), [])).toEqual([]);
+  });
+
+  it.each(["not a list", 42, {}, null])("drops a captioned section whose items is %j", (items) => {
+    expect(drafted(toBlocks(page([{ kind: "captioned", heading: "H", items }]), images))).toEqual([]);
+  });
+});
+
+describe("toBlocks — the leftover gallery names itself", () => {
+  // `drafted()` above finds this block by comparing against the exported
+  // constant, which means blanking the constant would change both the code and
+  // the helper together and nothing would notice. Asserted as a literal here
+  // for that reason: an admin has to be able to tell this section apart from
+  // one the draft chose to write.
+  it("carries a heading that says what it is", () => {
+    const out = toBlocks(page([{ kind: "prose", heading: "H", body: "Words." }]), images);
+    const last = out.at(-1);
+
+    expect(last?.heading).toBe("Additional images");
+    expect(LEFTOVER_HEADING).toBe("Additional images");
+  });
+});
+
+describe("toBlocks — a timeline stage needs only one of its fields", () => {
+  const stages = (raw: unknown[]) => {
+    const out = toBlocks(page([{ kind: "timeline", heading: "H", stages: raw }]), []);
+    return oneBlock(out, "timeline").stages;
+  };
+
+  it.each([
+    ["a marker", { marker: "01" }],
+    ["a title", { title: "Toile" }],
+    ["a description", { description: "First fitting." }],
+  ])("keeps a stage that has only %s", (_n, stage) => {
+    expect(stages([stage])).toHaveLength(1);
+  });
+
+  it("drops a stage with none of the three", () => {
+    const out = toBlocks(
+      page([{ kind: "timeline", heading: "H", stages: [{ marker: "", title: "", description: "" }] }]),
+      []
+    );
+    expect(out).toEqual([]);
+  });
+});
+
+describe("toBlocks — a section that is not an object", () => {
+  // The loop skips anything that is not an object before touching `.kind`, so
+  // a model answering with a bare string in the sections array cannot throw.
+  it.each([null, undefined, "prose", 42, true])("skips the section %j", (section) => {
+    expect(() => toBlocks(page([section]), [])).not.toThrow();
+    expect(toBlocks(page([section]), [])).toEqual([]);
+  });
+
+  // The guard is `!section || typeof section !== "object"`, and the values
+  // above do not actually exercise it: each of them yields [] whether the
+  // guard runs or not, because `toBlock` either falls to its default arm or
+  // throws into the surrounding catch. A FUNCTION is the shape that tells them
+  // apart — truthy, not `typeof "object"`, and able to carry `kind`, `heading`
+  // and `body` as own properties. Without the guard this produces a real
+  // richText block from something that is not a section at all.
+  it("skips a function carrying section-shaped properties", () => {
+    const impostor = Object.assign(() => {}, {
+      kind: "prose",
+      heading: "Smuggled",
+      body: "Should never render.",
+    });
+
+    expect(toBlocks(page([impostor]), [])).toEqual([]);
+  });
+
+  it("keeps the valid sections around a non-object one", () => {
+    const out = toBlocks(
+      page([{ kind: "prose", heading: "A", body: "First." }, "nonsense", { kind: "prose", heading: "B", body: "Second." }]),
+      []
+    );
+    expect(out.map((b) => b.heading)).toEqual(["A", "B"]);
+  });
+});
