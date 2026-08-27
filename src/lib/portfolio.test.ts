@@ -189,7 +189,7 @@ describe("slugify", () => {
 // that decides what order the grid renders in, and the absolute-URL check that
 // keeps a relative path out of next/image.
 
-describe("slugify", () => {
+describe("slugify — each rule in the chain, separately", () => {
   it.each([
     ["A Wool Coat", "a-wool-coat"],
     ["UPPER CASE", "upper-case"],

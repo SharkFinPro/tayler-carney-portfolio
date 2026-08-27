@@ -119,8 +119,21 @@ describe("updatePortfolio", () => {
       if (!result.ok) throw new Error("expected ok");
 
       expect(persisted().data.portfolio).toEqual({ entries: [{ id: "a", archived: false }] });
-      if (coverUrl) expect(JSON.stringify(persisted().data)).not.toContain(coverUrl);
       expect(at(result.config.entries, 0).coverUrl).toBeUndefined();
+    }
+  );
+
+  // The same values, checked for anywhere in the written payload rather than
+  // just the entry. The empty string is left out of this one on purpose: it is
+  // a substring of every string, so `not.toContain("")` can never hold and the
+  // case would have to be skipped — which is how it was written before, and
+  // meant that row quietly asserted less than the others.
+  it.each(["javascript:alert(1)", "data:text/html,<script>", "not a url"])(
+    "leaves no trace of the unsafe coverUrl %j anywhere in the write",
+    async (coverUrl) => {
+      await updatePortfolio("s1", { entries: [{ id: "a", coverUrl }] });
+
+      expect(JSON.stringify(persisted().data)).not.toContain(coverUrl);
     }
   );
 
