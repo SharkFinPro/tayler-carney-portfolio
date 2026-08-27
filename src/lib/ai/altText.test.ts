@@ -335,6 +335,18 @@ describe("cleanAltText — preambles are anchored to the start", () => {
       "A bias-cut wool panel."
     );
   });
+
+  // With NO separator at all — the case the `*` quantifier exists for, and the
+  // one the space above hides. Two different one-character edits to that regex
+  // survive everything else: requiring a separator leaves the preamble in
+  // place, and widening the class to non-whitespace makes it greedily eat the
+  // first word of the answer, silently losing a character from the middle of
+  // the description.
+  it("strips a preamble with no separator after it at all", () => {
+    expect(cleanAltText("Here is the alt textA bias-cut wool panel.")).toBe(
+      "A bias-cut wool panel."
+    );
+  });
 });
 
 describe("cleanAltText — whitespace and control characters collapse", () => {
@@ -410,6 +422,22 @@ describe("cleanAltText — truncation lands on a word boundary", () => {
     const out = cleanAltText(`A ${"x".repeat(MAX_ALT_LENGTH * 2)}`);
 
     expect(out.length).toBeGreaterThan(MAX_ALT_LENGTH * 0.6);
+  });
+
+  // Exactly at the threshold, which `>` excludes and `>=` would include. Not
+  // an academic off-by-one: honouring this boundary would cut the description
+  // back to 60% of the cap and throw away a hundred characters someone wrote.
+  it("does not treat a boundary sitting exactly on the threshold as usable", () => {
+    const threshold = MAX_ALT_LENGTH * 0.6;
+    // The only space lands at index `threshold`, so `lastSpace === threshold`.
+    const input =
+      "a".repeat(threshold) + " " + "b".repeat(MAX_ALT_LENGTH - threshold - 1) + "c".repeat(10);
+
+    const out = cleanAltText(input);
+
+    // The full cut plus the ellipsis, not the far shorter boundary cut.
+    expect(out.length).toBe(MAX_ALT_LENGTH + 1);
+    expect(out.length).toBeGreaterThan(threshold + 1);
   });
 });
 
