@@ -142,7 +142,7 @@ production secrets.
 
 ### AI assistance (optional)
 
-One `ANTHROPIC_API_KEY` enables two things:
+Two optional features, both behind one `GEMINI_API_KEY`:
 
 - **Draft with AI**, in the block editor: pick images from the Media Library,
   answer a few short questions, and get draft content blocks back for review.
@@ -154,6 +154,22 @@ description lands in the field for you to read and edit, because alt text
 nobody checked is worse for a screen-reader user than an empty attribute — a
 confident wrong description gets believed, a missing one is at least obviously
 missing.
+
+**Why Gemini:** it has a free tier that includes image input, and both of
+these features are image-driven. Get a key from
+[AI Studio](https://aistudio.google.com). `GEMINI_PAGE_MODEL` and
+`GEMINI_ALT_TEXT_MODEL` override the model per feature. The defaults were
+picked by measuring, not from the model list: on the free tier the *newest*
+models are the contended ones, and both `gemini-3.7-flash` and
+`gemini-3.5-flash` returned 503 "experiencing high demand" for a page draft
+while `gemini-3.6-flash` answered in 14 seconds. A busy model is retried twice
+automatically; if one keeps failing, switching model is a config change rather
+than a code change.
+
+The free tier does come with a data trade: Google may use free-tier prompts and
+responses to improve its products, and human reviewers may read them. Paid
+Gemini does not. For images already published on a public site that is usually
+fine; for unreleased work sitting in DRAFT it is worth deciding deliberately.
 
 Without a key both features hide themselves and everything else works
 unchanged — no one needs a key to run the site.
