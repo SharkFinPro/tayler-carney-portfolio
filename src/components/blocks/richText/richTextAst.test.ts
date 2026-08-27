@@ -459,6 +459,55 @@ describe("pasted marks carried as inline styles", () => {
     expect(at(link.children as Record<string, unknown>[], 0)).toMatchObject({ [mark]: true });
   });
 
+  // Marks render INSIDE the anchor (`textToHtml` wraps the text, and
+  // `nodeToHtml`'s link case wraps that), so inheriting them cannot produce
+  // nested or interleaved <a> tags. Checked for every mark, not just bold.
+  it.each(["bold", "italic", "underline", "code"])(
+    "round-trips a link carrying the %s mark, marks inside the anchor",
+    (mark) => {
+      const children = [
+        {
+          type: "paragraph",
+          children: [
+            { type: "link", href: "/x", children: [{ text: "Linked", [mark]: true }] },
+          ],
+        },
+      ];
+
+      const html = astToHtml({ children });
+      expect(html).toMatch(/<a href="\/x"><(strong|em|u|code)>Linked<\/(strong|em|u|code)><\/a>/);
+
+      const once = roundTrip(children);
+      expect(roundTrip(once as unknown[])).toEqual(once);
+      expect(at(kidsOf(once), 0)).toMatchObject({ type: "link", href: "/x" });
+    }
+  );
+
+  it("keeps a marked link inside a list item stable", () => {
+    const children = [
+      {
+        type: "bulleted-list",
+        children: [
+          {
+            type: "list-item",
+            children: [
+              {
+                type: "list-item-child",
+                children: [
+                  { type: "link", href: "/x", children: [{ text: "Linked", bold: true }] },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ];
+
+    const once = roundTrip(children);
+    expect(roundTrip(once as unknown[])).toEqual(once);
+    expect(JSON.stringify(once)).toContain('"bold":true');
+  });
+
   // The shape the editor itself writes has to keep working unchanged.
   it("still round-trips a bold link back to the same AST", () => {
     const children = [
