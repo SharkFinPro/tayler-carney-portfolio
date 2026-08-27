@@ -123,7 +123,7 @@ npm start
 ```bash
 npm run verify        # typecheck + lint + test:coverage — what CI runs
 npm run typecheck     # tsc --noEmit
-npm run lint          # ESLint (flat config)
+npm run lint          # ESLint (flat config) — app rules, a11y, and the test-file rules
 npm test              # Vitest, single run
 npm run test:watch    # Vitest, watch mode
 npm run test:coverage # Vitest with a coverage report, and the coverage floors
