@@ -82,6 +82,7 @@ Model names are interpolated into the mutation string, so a value is only ever w
 - `npm run typecheck` — `tsc --noEmit`. `strict` is on.
 - `npm test` / `npm run test:watch` / `npm run test:coverage` — Vitest.
 - `npm run test:mutation` — Stryker. Slow (~5 min) and deliberately not part of `verify`.
+- `npm run test:e2e` — Playwright against the built app and a stubbed CMS. Needs `npx playwright install chromium` once. Not part of `verify` (it runs a production build); it has its own CI lane in [e2e.yml](.github/workflows/e2e.yml).
 - `npm run verify` — typecheck + lint + test-with-coverage. **This is what CI runs**, alongside the build.
 
 CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs all four on every PR, on Node 22 (what Vercel runs) and Node 24 (what it will run next). Every check runs even when an earlier one fails, so one push reports every problem at once. A second `determinism` job re-runs the suite in randomized order and under `TZ=Pacific/Kiritimati`, which is where order-dependence and unpinned date handling show up. Vercel's own build is a deployment, not a merge gate — it runs no lint, no tests, and arrives after the merge. Run `npm run verify` before pushing.
@@ -146,7 +147,7 @@ What is tested, and why those things:
 - **`assetRef.ts`** — the naming fallback chain (a string visitors read) and, more importantly, that a caught error is offered to `rethrowIfControlFlow` before being swallowed. This runs in the root layout and the metadata generator, which is exactly where eating that signal costs a route its dynamic rendering.
 - **`resume.ts`** — three lines of delegation, tested for the one part that isn't plumbing: the `"Resume"` fallback label, which is what a visitor sees on the link when the asset has neither a Media Library title nor a usable filename.
 
-Untested by design: `cms.ts`, `getAssets.ts`, and most React components, which need network or DOM mocking heavy enough to test the mocks rather than the code. Prefer an end-to-end test for those.
+Untested by design *at the unit level*: `cms.ts`, `getAssets.ts`, and most React components, which need network or DOM mocking heavy enough to test the mocks rather than the code. These are covered end-to-end instead — `npm run test:e2e` builds the app, serves it with `next start`, and drives it through a browser against a stubbed CMS ([e2e/](e2e/), [playwright.config.ts](playwright.config.ts)). The stub replaces only the CMS's HTTP boundary, so the real request layer, cache policy, sanitizers, middleware and components all run. They stay out of the coverage denominator, which reports unit coverage only.
 
 Nothing is currently in a third category. There used to be a list here of modules that were untested by omission rather than by decision — the Server Actions, the middleware, the legacy project fallback, the SEO documents — and it is empty now. If you add a module and do not test it, add it back rather than leaving the reader to infer that everything is covered.
 
