@@ -171,6 +171,17 @@ describe("updateBlockLayout — the layout-field whitelist", () => {
     expect(cmsMutate).not.toHaveBeenCalled();
   });
 
+  // `model` is interpolated into the mutation string here exactly as it is in
+  // updateContentField, so the accepted path deserves the same check.
+  it.each([
+    ["Project", "projectPage", "ProjectUpdateInput", "updateProject"],
+    ["SiteData", "about", "SiteDataUpdateInput", "updateSiteData"],
+  ])("builds the %s mutation from the whitelisted model", async (model, field, input, mutation) => {
+    await updateBlockLayout(model, "id", field, []);
+    expect(writtenQuery()).toContain(input);
+    expect(writtenQuery()).toContain(mutation);
+  });
+
   it.each(["Asset", "", "SiteDatas"])("refuses the unlisted model %j", async (model) => {
     await expect(updateBlockLayout(model, "id", "about", [])).resolves.toEqual({
       ok: false,
@@ -219,15 +230,59 @@ describe("nothing reaches the CMS unsanitized", () => {
     expect(writtenData().data.global).not.toHaveProperty("bogusKey");
   });
 
+  it("writes the sanitized seo, not the raw input", async () => {
+    const result = await updateSeo("s1", {
+      title: "  Padded Title  ",
+      keywords: ["  spaced  ", "", "   "],
+      bogusKey: "dropped",
+    });
+    if (!result.ok) throw new Error(`expected ok, got ${result.error}`);
+
+    // Trimmed, empty keywords dropped, unknown key gone — none of which is true
+    // of the object that went in.
+    expect(result.seo.title).toBe("Padded Title");
+    expect(result.seo.keywords).toEqual(["spaced"]);
+    expect(writtenData().data.seo).toEqual(result.seo);
+    expect(writtenData().data.seo).not.toHaveProperty("bogusKey");
+  });
+
+  it("replaces a non-list keywords value rather than storing it", async () => {
+    const result = await updateSeo("s1", { keywords: 42 });
+    if (!result.ok) throw new Error(`expected ok, got ${result.error}`);
+
+    expect(Array.isArray(result.seo.keywords)).toBe(true);
+    expect(result.seo.keywords).not.toContain(42);
+  });
+
+  it("writes the sanitized home, not the raw input", async () => {
+    const result = await updateHome("s1", {
+      hero: { stats: [{ key: "Program", value: "Apparel" }, { key: "", value: "" }] },
+      bogusKey: "dropped",
+    });
+    if (!result.ok) throw new Error(`expected ok, got ${result.error}`);
+
+    // The all-empty stat row is dropped; the real one survives.
+    expect(result.home.hero.stats).toEqual([{ key: "Program", value: "Apparel" }]);
+    expect(writtenData().data.home).toEqual(result.home);
+    expect(writtenData().data.home).not.toHaveProperty("bogusKey");
+  });
+
+  // The one genuinely dangerous field on this path: a destination href is
+  // rendered as a link, so an unsanitized `javascript:` URL is stored XSS.
   it.each([
-    ["updateGlobal", updateGlobal, "global"],
-    ["updateSeo", updateSeo, "seo"],
-    ["updateHome", updateHome, "home"],
-  ] as const)("%s survives a hostile payload and still writes an object", async (_n, action, field) => {
-    const result = await action("s1", { __proto__: { polluted: true }, nested: { deep: [1, 2] } });
-    expect(result.ok).toBe(true);
-    expect(writtenData().data[field]).toBeTypeOf("object");
-    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+    "javascript:alert(1)",
+    "JavaScript:alert(1)",
+    "data:text/html,<script>alert(1)</script>",
+    "vbscript:msgbox(1)",
+  ])("never stores the unsafe destination href %j", async (href) => {
+    const result = await updateHome("s1", {
+      destinations: [{ title: "Somewhere", href }],
+    });
+    if (!result.ok) throw new Error(`expected ok, got ${result.error}`);
+
+    const stored = at(result.home.destinations, 0);
+    expect(stored.href).toBe("/");
+    expect(JSON.stringify(writtenData().data.home)).not.toContain("alert(1)");
   });
 });
 
@@ -248,6 +303,9 @@ describe("the publishable-model whitelist", () => {
       error: `"${model}" is not publishable.`,
     });
     expect(cmsMutate).not.toHaveBeenCalled();
+    // Also nothing read: publishContent reports state back through
+    // getPublishState, and a refusal must not reach that either.
+    expect(cmsQueryAuthed).not.toHaveBeenCalled();
   });
 });
 
