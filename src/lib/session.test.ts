@@ -3,7 +3,7 @@
 // `verifySession`. This module is pure Web Crypto with no `next/headers`
 // import, so it can be tested directly with no mocking.
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ADMIN_COOKIE_NAME,
   SESSION_TTL_MS,
@@ -114,6 +114,109 @@ describe("signSession / verifySession", () => {
   it("rejects every token once ADMIN_KEY is unset", async () => {
     const token = await signSession(Date.now() + SESSION_TTL_MS);
     delete process.env.ADMIN_KEY;
+    await expect(verifySession(token)).resolves.toBe(false);
+  });
+});
+
+// ── The token's shape, and the length guard in front of the comparison ───────
+//
+// Two different blocks below, and it is worth being exact about which does
+// what — traced rather than assumed.
+//
+// The malformed-token cases never reach the comparison at all: a token with no
+// "." is refused by the separator check, and one whose expiry parses to a past
+// or non-finite number is refused by the expiry check. They pin the FORMAT
+// rules, not the comparison.
+//
+// The short and long signature cases are the ones that reach `timingSafeEqual`
+// with mismatched lengths, and so are the only ones exercising its length
+// guard. `verifySession` is the only path that can: `checkAdminKey` compares
+// two HMACs produced by the same function, so its lengths always match. A
+// forged cookie is where a wrong-length signature actually arrives.
+
+describe("verifySession — a malformed token is refused on its shape", () => {
+  it.each([
+    ["no separator at all", "1234567890"],
+    ["an empty signature", "1234567890."],
+    ["a separator and nothing else", "."],
+    ["nothing but a signature", ".abc"],
+    ["an empty string", ""],
+  ])("refuses a token with %s", async (_name, token) => {
+    await expect(verifySession(token)).resolves.toBe(false);
+  });
+
+  // These two DO reach the comparison — the expiry is in the future and parses
+  // fine, so the only thing left to reject them is the length guard. A
+  // signature of the wrong length can never be right, and comparing it would
+  // mean indexing past the end of the shorter string.
+  it.each([
+    ["short", "abc"],
+    ["long", "a".repeat(200)],
+  ])("refuses a %s signature on length, having got past the format checks", async (_name, signature) => {
+    const expiry = Date.now() + 60_000;
+    await expect(verifySession(`${expiry}.${signature}`)).resolves.toBe(false);
+  });
+
+  // The case the junk strings above do NOT cover, and the one that matters.
+  //
+  // Arbitrary junk is rejected with or without the length check, because it
+  // mismatches on the first character either way. A *truncated genuine*
+  // signature does not: every character it has is correct, so a comparison
+  // that only walked the shorter string would find no mismatch and accept it.
+  // The length check is the only thing standing between a valid prefix and a
+  // valid session — an attacker who can submit one character would otherwise
+  // be in.
+  it.each([1, 8, 32, 63])("refuses a genuine signature truncated to %d characters", async (length) => {
+    const expiry = Date.now() + 60_000;
+    const token = await signSession(expiry);
+    const signature = token.slice(token.indexOf(".") + 1);
+
+    expect(signature.length).toBeGreaterThan(length);
+    await expect(verifySession(`${expiry}.${signature.slice(0, length)}`)).resolves.toBe(false);
+  });
+
+  // The mirror: a genuine signature with anything appended is also wrong,
+  // which the same guard catches from the other side.
+  it("refuses a genuine signature with extra characters appended", async () => {
+    const expiry = Date.now() + 60_000;
+    const token = await signSession(expiry);
+    const signature = token.slice(token.indexOf(".") + 1);
+
+    await expect(verifySession(`${expiry}.${signature}00`)).resolves.toBe(false);
+  });
+
+  it.each([
+    ["a non-numeric expiry", "notanumber"],
+    ["an infinite expiry", "Infinity"],
+    ["an empty expiry", ""],
+  ])("refuses %s", async (_name, expiry) => {
+    const token = await signSession(Date.now() + 60_000);
+    const signature = token.slice(token.indexOf(".") + 1);
+
+    await expect(verifySession(`${expiry}.${signature}`)).resolves.toBe(false);
+  });
+});
+
+describe("verifySession — the expiry boundary", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  // Expiry is compared with `<`, so a token expiring exactly now is still
+  // good. A frozen clock is the only way to sit on that boundary.
+  it("accepts a token whose expiry is exactly now", async () => {
+    const token = await signSession(1_000_000);
+
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000_000);
+    await expect(verifySession(token)).resolves.toBe(true);
+  });
+
+  it("refuses the same token one millisecond later", async () => {
+    const token = await signSession(1_000_000);
+
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000_001);
     await expect(verifySession(token)).resolves.toBe(false);
   });
 });

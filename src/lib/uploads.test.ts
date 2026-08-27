@@ -153,3 +153,120 @@ describe("safeFileName", () => {
     }
   });
 });
+
+// ── The size message, and the parts of the name rules that repeat ────────────
+//
+// `formatBytes` is only ever seen inside the over-size error, which is the one
+// message an admin reads when an upload is refused — "that file is 9.4 MB, the
+// limit is 8 MB" is actionable, and a wrong unit turns it into nonsense. It is
+// private, so these go through `checkUpload`, which is how it is reached in
+// production anyway.
+
+describe("checkUpload — the size in the refusal message", () => {
+  /** The message for a file of `size` bytes, which is always a refusal here. */
+  const messageFor = (size: number) => {
+    const result = checkUpload(size, new Uint8Array([0xff, 0xd8, 0xff]));
+    if (result.ok) throw new Error(`expected ${size} bytes to be refused`);
+    return result.error;
+  };
+
+  // Only the megabyte arm is reachable from here, and that is worth saying
+  // rather than working around: `formatBytes` is called with the rejected size
+  // and with MAX_UPLOAD_BYTES, and a size only reaches it by exceeding that
+  // cap — so both arguments are always at least 8 MB. The byte and kilobyte
+  // branches are dead through the public API, which is why their boundary
+  // mutants survive and why contriving a test for them would be testing a
+  // function this module never calls that way.
+  it.each([MAX_UPLOAD_BYTES + 1, 9 * 1024 * 1024, 40 * 1024 * 1024])(
+    "reports %d bytes in megabytes",
+    (size) => {
+      expect(messageFor(size)).toMatch(/That file is [\d.]+ MB\./);
+    }
+  );
+
+  it("states the limit as well as the size, so the message is actionable", () => {
+    expect(messageFor(MAX_UPLOAD_BYTES + 1)).toContain(
+      `The limit is ${(MAX_UPLOAD_BYTES / (1024 * 1024)).toFixed(1)} MB`
+    );
+  });
+
+  // Dividing rather than multiplying, and by the right amount. A file just
+  // over the cap should read as just over it, not as millions.
+  it("scales the number to the unit rather than repeating the byte count", () => {
+    const message = messageFor(9 * 1024 * 1024);
+
+    expect(message).toContain("9.0 MB");
+    expect(message).not.toContain("9437184");
+  });
+
+  it("gives one decimal place, so a limit overrun reads precisely", () => {
+    expect(messageFor(Math.round(9.4 * 1024 * 1024))).toMatch(/9\.4 MB/);
+  });
+});
+
+describe("sniffType — WebP needs both halves of its signature", () => {
+  /** RIFF-container bytes with `tag` at offset 8. */
+  const riff = (lead: number[], tag: string) =>
+    new Uint8Array([...lead, 0, 0, 0, 0, ...[...tag].map((c) => c.charCodeAt(0))]);
+
+  const RIFF = [0x52, 0x49, 0x46, 0x46];
+
+  it("accepts RIFF followed by WEBP at offset 8", () => {
+    expect(sniffType(riff(RIFF, "WEBP"))).toBe("image/webp");
+  });
+
+  // The leading RIFF is checked as well as the tag. A container that says WEBP
+  // at offset 8 but is not a RIFF file is not a WebP.
+  it("rejects WEBP at offset 8 without the RIFF lead", () => {
+    expect(sniffType(riff([0x00, 0x00, 0x00, 0x00], "WEBP"))).toBeNull();
+  });
+
+  // And the tag as well as the lead: RIFF also fronts WAVE and AVI.
+  it.each(["WAVE", "AVI "])("rejects the RIFF container %j", (tag) => {
+    expect(sniffType(riff(RIFF, tag))).toBeNull();
+  });
+});
+
+describe("safeFileName — the rules that collapse runs", () => {
+  // A run of illegal characters becomes ONE hyphen, not one per character.
+  // Without that, "a   b.png" becomes "a---b.png".
+  it.each([
+    ["a   b.png", "a-b.png"],
+    ["a@@@b.png", "a-b.png"],
+    ["a !? b.png", "a-b.png"],
+  ])("collapses the run in %j to %j", (input, expected) => {
+    expect(safeFileName(input, "image/png")).toBe(expected);
+  });
+
+  // Trailing separators are stripped as a run too, so a name ending "..." does
+  // not keep two of the three.
+  it.each([
+    ["name...", "name.png"],
+    ["name---", "name.png"],
+    ["---name", "name.png"],
+  ])("strips the separator run around %j", (input, expected) => {
+    expect(safeFileName(input, "image/png")).toBe(expected);
+  });
+
+  // A leading-dot name is read as an extension, not as a prefix to strip:
+  // "...name" has its final ".name" removed as the extension, leaving ".."
+  // which cleans away to nothing. The fallback name is what ships.
+  it("falls back to a default name when nothing survives cleaning", () => {
+    expect(safeFileName("...name", "image/png")).toBe("upload.png");
+  });
+
+  // Every accepted type maps to its own extension. A blank mapping would name
+  // the stored file "photo." and every consumer would misread it.
+  it.each([
+    ["image/jpeg", "jpg"],
+    ["image/png", "png"],
+    ["image/webp", "webp"],
+    ["application/pdf", "pdf"],
+  ])("gives a %s the .%s extension", (type, ext) => {
+    expect(safeFileName("photo", type)).toBe(`photo.${ext}`);
+  });
+
+  it("falls back to .bin for a type it does not know", () => {
+    expect(safeFileName("photo", "image/tiff")).toBe("photo.bin");
+  });
+});
