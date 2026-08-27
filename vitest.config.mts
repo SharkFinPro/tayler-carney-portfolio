@@ -78,10 +78,24 @@ export default defineConfig({
       // set from every file, "even if they are included by glob patterns".
       // So the headline number still covers the whole codebase.
       thresholds: {
-        statements: 85,
-        branches: 76,
-        functions: 86,
-        lines: 87,
+        statements: 88,
+        branches: 82,
+        functions: 88,
+        lines: 90,
+
+        // The largest sanitizer, and the one AGENTS.md puts first: it runs on
+        // both render and save, so a gap here is a gap in two places. Pinned
+        // at full line and function coverage — every arm of its exhaustive
+        // switches is reached, which is what makes a newly added block type
+        // that nobody handled fail here rather than ship. Statements and
+        // branches sit lower: the remainder is defensive arms in `cleanBlock`
+        // that no reachable input takes.
+        "src/components/blocks/blocks.ts": {
+          statements: 95,
+          functions: 100,
+          lines: 100,
+          branches: 91,
+        },
 
         // The two documents written for crawlers rather than readers, and the
         // origin they share. Nothing here fails visibly: a lost `disallow`
