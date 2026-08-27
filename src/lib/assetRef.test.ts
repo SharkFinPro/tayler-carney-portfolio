@@ -50,6 +50,24 @@ describe("resolveAssetRef — when there is nothing to resolve", () => {
     cmsRead.mockResolvedValue(payload);
     await expect(resolveAssetRef("id")).resolves.toBeNull();
   });
+
+  // An absent asset is an ordinary condition — a reference to something since
+  // deleted — and the optional chaining is what keeps it on the normal path.
+  // Drop it and the same payloads throw a TypeError that the catch below
+  // quietly absorbs: the return value is identical, so nothing above notices,
+  // but every missing asset is now travelling as an exception. That is worth
+  // pinning on its own, because the catch is where error reporting would go,
+  // and it would then fire on a condition that is not an error.
+  it.each([
+    ["a missing asset", { asset: null }],
+    ["an absent asset key", {}],
+    ["a null payload", null],
+  ])("resolves %s without going through the failure path", async (_name, payload) => {
+    cmsRead.mockResolvedValue(payload);
+
+    await expect(resolveAssetRef("id")).resolves.toBeNull();
+    expect(rethrowIfControlFlow).not.toHaveBeenCalled();
+  });
 });
 
 describe("resolveAssetRef — the display-name fallback chain", () => {
@@ -103,6 +121,22 @@ describe("resolveAssetRef — the read itself", () => {
     const [, variables, options] = at(cmsRead.mock.calls, 0) as [string, unknown, { tags: string[] }];
     expect(variables).toEqual({ id: "asset-123" });
     expect(options.tags).toContain("siteData");
+  });
+
+  // Every other test here feeds the payload in through the mock, so the query
+  // text is never exercised: drop a field from it and the fixtures still
+  // supply that field, and nothing fails. In production the field would simply
+  // stop arriving — losing `title` silently demotes every asset to its
+  // filename, which is the fallback working exactly as designed and therefore
+  // invisible. This asserts the request asks for what the name chain reads.
+  it("asks for each field the display name is built from", async () => {
+    await resolveAssetRef("asset-123");
+
+    const [query] = at(cmsRead.mock.calls, 0) as [string];
+    expect(query).toContain("asset(where: { id: $id })");
+    for (const field of ["url", "fileName", "title"]) {
+      expect(query).toMatch(new RegExp(`^\\s*${field}\\s*$`, "m"));
+    }
   });
 });
 
