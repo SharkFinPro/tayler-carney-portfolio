@@ -421,18 +421,65 @@ describe("draftProjectPage — what is worth spending on", () => {
 });
 
 describe("draftProjectPage — the result", () => {
-  it("maps model output onto real blocks and reports the generator", async () => {
+  it("reports which generator answered", async () => {
+    const result = await draftProjectPage(draftInput());
+    if (!result.ok) throw new Error(`expected ok, got ${result.error}`);
+    expect(result.generator).toBe("gemini");
+  });
+
+  // The model speaks a small, flat vocabulary of section `kind`s that is
+  // deliberately NOT the CMS Block union; `toBlocks` is where one becomes the
+  // other. Asserting the actual mapping — rather than that *some* block came
+  // back — is what makes this a test of the translation instead of a test that
+  // an array was non-empty.
+  it.each([
+    ["intro", "pageIntro", { kind: "intro", eyebrow: "E", heading: "H", body: "B" }],
+    ["prose", "richText", { kind: "prose", heading: "H", body: "B" }],
+    ["specs", "specs", { kind: "specs", heading: "H", rows: [{ label: "L", value: "V" }] }],
+    [
+      "timeline",
+      "timeline",
+      { kind: "timeline", heading: "H", stages: [{ marker: "1", title: "T", description: "D" }] },
+    ],
+    [
+      "gallery",
+      "gallery",
+      { kind: "gallery", heading: "H", imageRefs: [ASSET_URL], layout: "grid" },
+    ],
+    [
+      "captioned",
+      "mediaShowcase",
+      { kind: "captioned", heading: "H", items: [{ imageRef: ASSET_URL, title: "T", description: "D" }] },
+    ],
+  ])("maps a %s section onto a %s block", async (_n, expectedType, section) => {
+    generateProjectPage.mockResolvedValue({ page: { sections: [section] }, unseen: [], model: "m" });
+
+    const result = await draftProjectPage(
+      draftInput({ images: [{ url: ASSET_URL, name: "coat" }] })
+    );
+    if (!result.ok) throw new Error(`expected ok, got ${result.error}`);
+
+    expect(at(result.blocks, 0).type).toBe(expectedType);
+  });
+
+  // A kind the mapping does not know is dropped rather than guessed at, so a
+  // model inventing a section type cannot put an unknown block on the page.
+  it("drops an invented section kind but keeps the rest of the draft", async () => {
+    generateProjectPage.mockResolvedValue({
+      page: {
+        sections: [
+          { kind: "not-a-real-kind", heading: "H", body: "B" },
+          { kind: "prose", heading: "Kept", body: "Body" },
+        ],
+      },
+      unseen: [],
+      model: "m",
+    });
+
     const result = await draftProjectPage(draftInput());
     if (!result.ok) throw new Error(`expected ok, got ${result.error}`);
 
-    expect(result.generator).toBe("gemini");
-    expect(result.blocks.length).toBeGreaterThan(0);
-    // Every block carries a type from the fixed vocabulary, not whatever the
-    // model happened to say.
-    for (const block of result.blocks) {
-      expect(typeof block.type).toBe("string");
-      expect(block.type.length).toBeGreaterThan(0);
-    }
+    expect(result.blocks.map((b) => b.type)).toEqual(["richText"]);
   });
 
   it.each([
