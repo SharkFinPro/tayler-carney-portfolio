@@ -38,7 +38,7 @@
     "react-advanced-cropper": "^0.20.1",
     "react-dom": "^19.2.8",
     "sass": "^1.103.1",
-    "sharp": "^0.35.3"
+    "sharp": "^0.35.4"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
